@@ -45,8 +45,7 @@ Shine.Hook.SetupClassHook("ResearchMixin","SetResearching","OnTechStartResearch"
 Shine.Hook.SetupClassHook("ConstructMixin","SetConstructionComplete","OnFinishedBuilt","PassivePost")
 Shine.Hook.SetupClassHook("ResearchMixin","OnResearchCancel","addUpgradeAbortedToLog","PassivePost")
 Shine.Hook.SetupClassHook("UpgradableMixin","RemoveUpgrade","addUpgradeLostToLog","PassivePost")
-Shine.Hook.SetupClassHook("ResourceTower","CollectResources","OnTeamGetResources","PassivePost") 
-Shine.Hook.SetupClassHook("DropPack","OnInitialized","OnPickableItemCreated","PassivePost") 
+Shine.Hook.SetupClassHook("ResourceTower","CollectResources","OnTeamGetResources","PassivePost")  
 Shine.Hook.SetupClassHook("DropPack","OnUpdate","OnPickableItemPicked","PassivePre")
 Shine.Hook.SetupClassHook("PlayerBot","UpdateName","OnBotRenamed","PassivePost")
 Shine.Hook.SetupClassHook("Player","SetName","PlayerNameChange","PassivePost")
@@ -193,11 +192,8 @@ end
 --PlayerConnected
 function Plugin:ClientConnect( Client )
     if not Client then return end
-    if Client:GetIsVirtual() then return end
-    local Config = {}
-    Config.WebsiteApiUrl = self.Config.WebsiteApiUrl
-    Config.SendMapData = self.Config.SendMapData    
-    Server.SendNetworkMessage(Client,"Shine_StatsConfig",Config,true)  
+    if Client:GetIsVirtual() then return end     
+    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)  
     
     --player disconnected and came back
     local taulu = Plugin:getPlayerByClient(Client)
@@ -648,21 +644,15 @@ end
 --Team Events
 
 --Pickable Stuff
-
+local Items = {}
 --Item is dropped
-function Plugin:OnPickableItemCreated(item)
-
+function Plugin:OnPickableItemCreated(item,ihit)
+    if not item then return end
+    Items[item:GetId()] = "dropped"
     local techId = item:GetTechId()
     local structureOrigin = item:GetOrigin()
     local steamid = Plugin:getTeamCommanderSteamid(item:GetTeamNumber())
-    local ihit = false
-    
-    --from droppack.lua    
-     local marinesNearby = GetEntitiesForTeamWithinRange("Marine", item:GetTeamNumber(), item:GetOrigin(), item.pickupRange)
-     Shared.SortEntitiesByDistance(item:GetOrigin(), marinesNearby)
-     for _, marine in ipairs(marinesNearby) do        
-        if item:GetIsValidRecipient(marine) then ihit = true break end
-     end            
+    if not ihit then ihit = false end           
     local newItem =
     {
         commander_steamid = steamid,
@@ -681,7 +671,6 @@ function Plugin:OnPickableItemCreated(item)
 
 end
 
-local Itempicked = {}
 --Item is picked
 function Plugin:OnPickableItemPicked(item)
     if not item then return end 
@@ -697,8 +686,15 @@ function Plugin:OnPickableItemPicked(item)
         end
     end    
     
-    if not player then return end
-    Itempicked[item:GetId()] = true
+    --check if droppack is new
+    if not player then
+        if not Items[item:GetId()]then
+            Plugin:OnPickableItemCreated(item,false)
+        end
+    return end
+    
+    if not Items[item:GetId()] then Plugin:OnPickableItemCreated(item,true) end
+    Items[item:GetId()] = "picked"
     
     local techId = item:GetTechId()
     local structureOrigin = item:GetOrigin()
@@ -731,7 +727,7 @@ end
 function Plugin:OnPickableItemDestroyed(item)
     
     if not item then return end
-    if Itempicked[item:GetId()] then Itempicked[item:GetId()] = nil return end
+    if Items[item:GetId()] == "picked" then Items[item:GetId()] = nil return end
     
     local techId = item:GetTechId()
     local structureOrigin = item:GetOrigin()
@@ -1780,7 +1776,7 @@ function Plugin:sendAwardListToClients()
         if RBPSawards[i].message == nil then break end
         AwardMessage.message = AwardMessage.message .. RBPSawards[i].message .. "\n"
     end 
-    Server.SendNetworkMessage( "Shine_StatsAwards", AwardMessage, true )
+    self:SendNetworkMessage(nil, "StatsAwards", AwardMessage, true )
  end
 
 function Plugin:addAward(award)

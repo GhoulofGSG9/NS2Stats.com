@@ -10,17 +10,21 @@ Plugin.DefaultState = true
 
 Shine:RegisterExtension( "ns2stats", Plugin )
 
-local AwardMessage = {
-message = "string (255)",
-duration = "integer (0 to 1800)"
-}
-Shared.RegisterNetworkMessage( "Shine_StatsAwards", AwardMessage )
+function Plugin:SetupDataTable()
 
-local Config = {
-    WebsiteApiUrl = "string(255)",
-    SendMapData = "boolean",
-}
-Shared.RegisterNetworkMessage( "Shine_StatsConfig", Config )
+    local AwardMessage = {
+    message = "string (255)",
+    duration = "integer (0 to 1800)"
+    }
+
+   self:AddNetworkMessage("StatsAwards", AwardMessage, "Client" )
+
+    local Config = {
+        WebsiteApiUrl = "string(255)",
+        SendMapData = "boolean",
+    }
+    self:AddNetworkMessage("StatsConfig", Config, "Client" )
+end
 local SendMapData = nil
 local WebsiteApiUrl = ""
 
@@ -44,10 +48,10 @@ end
 
 
 //get Config
-Client.HookNetworkMessage( "Shine_StatsConfig", function( Message )
+function Plugin:ReceiveStatsConfig( Message )
      WebsiteApiUrl = Message.WebsiteApiUrl
      SendMapData = Message.SendMapData    
-end)
+end
 
 local a = false
 function Plugin:Mapdata(GUIMinimap)
@@ -107,12 +111,12 @@ Shine.VoteMenu:EditPage( "Main", function( self )
     end
 end )
 
-Client.HookNetworkMessage( "Shine_StatsAwards", function( Message )
+function Plugin:ReceiveStatsAwards( Message )
     local AwardMessage = Message.message
     local Duration = Message.duration
     local ScreenText = Shine:AddMessageToQueue( 1, 0.95, 0.4, AwardMessage, Duration, 255, 0, 0, 2 )
     ScreenText.Obj:SetText(ScreenText.Text)
-end)
+end
 
 function Plugin:Cleanup()
     self.Enabled = false
