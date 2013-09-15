@@ -193,11 +193,8 @@ end
 --PlayerConnected
 function Plugin:ClientConnect( Client )
     if not Client then return end
-    if Client:GetIsVirtual() then return end
-    local Config = {}
-    Config.WebsiteApiUrl = self.Config.WebsiteApiUrl
-    Config.SendMapData = self.Config.SendMapData    
-    Server.SendNetworkMessage(Client,"Shine_StatsConfig",Config,true)  
+    if Client:GetIsVirtual() then return end     
+    self.SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)  
     
     --player disconnected and came back
     local taulu = Plugin:getPlayerByClient(Client)
@@ -1780,7 +1777,7 @@ function Plugin:sendAwardListToClients()
         if RBPSawards[i].message == nil then break end
         AwardMessage.message = AwardMessage.message .. RBPSawards[i].message .. "\n"
     end 
-    Server.SendNetworkMessage( "Shine_StatsAwards", AwardMessage, true )
+    self:SendNetworkMessage(nil, "StatsAwards", AwardMessage, true )
  end
 
 function Plugin:addAward(award)
