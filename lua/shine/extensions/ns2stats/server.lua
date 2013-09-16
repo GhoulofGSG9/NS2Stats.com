@@ -646,13 +646,16 @@ end
 --Pickable Stuff
 local Items = {}
 --Item is dropped
-function Plugin:OnPickableItemCreated(item,ihit)
+function Plugin:OnPickableItemCreated(item,player)
     if not item then return end
     Items[item:GetId()] = "dropped"
     local techId = item:GetTechId()
     local structureOrigin = item:GetOrigin()
-    local steamid = Plugin:getTeamCommanderSteamid(item:GetTeamNumber())
-    if not ihit then ihit = false end           
+    local steamid = Plugin:getTeamCommanderSteamid(item:GetTeamNumber()) or 0
+    
+    local ihit = false
+    if player then ihit = true end
+          
     local newItem =
     {
         commander_steamid = steamid,
@@ -667,8 +670,26 @@ function Plugin:OnPickableItemCreated(item,ihit)
         z = string.format("%.4f", structureOrigin.z)
     }
 
-    Plugin:addLog(newItem)	
+    Plugin:addLog(newItem)
+	
+	--istanthit pick
+    if ihit then     
+        local client = player:GetClient()
+        local steamId = 0
 
+        if client then
+            steamId = client:GetUserId()
+        end
+        
+        Items[item:GetId()] = "picked"
+        
+        newItem.action = "pickable_item_picked"
+        newItem.steamId = steamId
+        newItem.commander_steamid = nil
+        newItem.instanthit = nil
+        
+        Plugin:addLog(newItem)
+    end    
 end
 
 --Item is picked
@@ -687,13 +708,16 @@ function Plugin:OnPickableItemPicked(item)
     end    
     
     --check if droppack is new
-    if not player then
-        if not Items[item:GetId()]then
-            Plugin:OnPickableItemCreated(item,false)
-        end
-    return end
+   if not Items[item:GetId()]then
+            if player then
+            Plugin:OnPickableItemCreated(item,player) return
+            else Plugin:OnPickableItemCreated(item,nil) return end
+    end
     
-    if not Items[item:GetId()] then Plugin:OnPickableItemCreated(item,true) end
+    if not player then return end
+    
+    if not Items[item:GetId()] == "dropped" then return end
+    
     Items[item:GetId()] = "picked"
     
     local techId = item:GetTechId()
