@@ -1400,8 +1400,8 @@ function Plugin:addPlayerToTable(client)
 end
 
 --create new entry
-function Plugin:createPlayerTable(client)	
-    local player = client:GetPlayer()
+function Plugin:createPlayerTable(client)
+    local player = client.GetPlayer and client:GetPlayer() or nil
     if not player then
         Notify("Tried to update nil player")
     return
@@ -1448,12 +1448,11 @@ end
 --Update Player Entry
 function Plugin:UpdatePlayerInTable(client)
     if not client then return end    
-    local player = client:GetPlayer()    
+    local player = client.GetPlayer and client:GetPlayer() or nil 
     if not player then return end
     local pOrigin = player:GetOrigin()
     
     local taulu = Plugin:getPlayerByClient(client)
-    if not taulu then return end
     
     if taulu.dc then return end
     
@@ -1575,7 +1574,8 @@ end
 --GetIds
 
 function Plugin:GetId(client)
-    if not client then return -1 end  
+    if not client then return -1 end
+    if not client.GetUserId then return -1 end  
     local id = client:GetUserId()
     if client:GetIsVirtual() then id = Plugin:GetIdbyName(client:GetPlayer():GetName()) end
     if id then return id end
@@ -1751,6 +1751,18 @@ function Plugin:CreateCommands()
         end)        
     end,true)
     ShowSStats:Help("Shows server stats") 
+    
+    local ShowLStats = self:BindCommand( "sh_showlivestats", "showlivestats", function(Client)
+        Shared.SendHTTPRequest( self.Config.WebsiteApiUrl .. "/server?key=" .. self.Config.ServerKey,"GET",function(response)
+            local Data = json.decode( response )
+            local serverid=""
+            if Data then serverid = Data.id or "" end             
+            local url= self.Config.WebsiteUrl .. "/live/scoreboard/" .. serverid            
+    	    if self.Config.IngameBrowser then Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Scoreboard" }, true )
+    	    else Client.ShowWebpage(url) end
+        end)        
+    end,true)
+    ShowLStats:Help("Shows server live stats") 
     
     local Verify = self:BindCommand( "sh_verify", {"verifystats","verify"},function(Client)
             Shared.SendHTTPRequest(self.Config.WebsiteUrl .. "/api/verifyServer/" .. Plugin:GetId(Client) .. "?s=479qeuehq2829&key=" .. self.Config.ServerKey, "GET",
