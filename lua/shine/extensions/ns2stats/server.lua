@@ -646,13 +646,16 @@ end
 --Pickable Stuff
 local Items = {}
 --Item is dropped
-function Plugin:OnPickableItemCreated(item,ihit)
+function Plugin:OnPickableItemCreated(item,player)
     if not item then return end
     Items[item:GetId()] = "dropped"
     local techId = item:GetTechId()
     local structureOrigin = item:GetOrigin()
-    local steamid = Plugin:getTeamCommanderSteamid(item:GetTeamNumber())
-    if not ihit then ihit = false end           
+    local steamid = Plugin:getTeamCommanderSteamid(item:GetTeamNumber()) or 0
+    
+    local ihit = false
+    if player then ihit = true end
+          
     local newItem =
     {
         commander_steamid = steamid,
@@ -667,8 +670,26 @@ function Plugin:OnPickableItemCreated(item,ihit)
         z = string.format("%.4f", structureOrigin.z)
     }
 
-    Plugin:addLog(newItem)	
+    Plugin:addLog(newItem)
+	
+	--istanthit pick
+    if ihit then     
+        local client = player:GetClient()
+        local steamId = 0
 
+        if client then
+            steamId = client:GetUserId()
+        end
+        
+        Items[item:GetId()] = "picked"
+        
+        newItem.action = "pickable_item_picked"
+        newItem.steamId = steamId
+        newItem.commander_steamid = nil
+        newItem.instanthit = nil
+        
+        Plugin:addLog(newItem)
+    end    
 end
 
 --Item is picked
@@ -687,13 +708,16 @@ function Plugin:OnPickableItemPicked(item)
     end    
     
     --check if droppack is new
-    if not player then
-        if not Items[item:GetId()]then
-            Plugin:OnPickableItemCreated(item,false)
-        end
-    return end
+   if not Items[item:GetId()]then
+            if player then
+            Plugin:OnPickableItemCreated(item,player) return
+            else Plugin:OnPickableItemCreated(item,nil) return end
+    end
     
-    if not Items[item:GetId()] then Plugin:OnPickableItemCreated(item,true) end
+    if not player then return end
+    
+    if not Items[item:GetId()] == "dropped" then return end
+    
     Items[item:GetId()] = "picked"
     
     local techId = item:GetTechId()
@@ -1376,8 +1400,8 @@ function Plugin:addPlayerToTable(client)
 end
 
 --create new entry
-function Plugin:createPlayerTable(client)	
-    local player = client:GetPlayer()
+function Plugin:createPlayerTable(client)
+    local player = client.GetPlayer and client:GetPlayer() or nil
     if not player then
         Notify("Tried to update nil player")
     return
@@ -1424,12 +1448,11 @@ end
 --Update Player Entry
 function Plugin:UpdatePlayerInTable(client)
     if not client then return end    
-    local player = client:GetPlayer()    
+    local player = client.GetPlayer and client:GetPlayer() or nil 
     if not player then return end
     local pOrigin = player:GetOrigin()
     
     local taulu = Plugin:getPlayerByClient(client)
-    if not taulu then return end
     
     if taulu.dc then return end
     
@@ -1551,7 +1574,8 @@ end
 --GetIds
 
 function Plugin:GetId(client)
-    if not client then return -1 end  
+    if not client then return -1 end
+    if not client.GetUserId then return -1 end  
     local id = client:GetUserId()
     if client:GetIsVirtual() then id = Plugin:GetIdbyName(client:GetPlayer():GetName()) end
     if id then return id end
@@ -1727,6 +1751,18 @@ function Plugin:CreateCommands()
         end)        
     end,true)
     ShowSStats:Help("Shows server stats") 
+    
+    local ShowLStats = self:BindCommand( "sh_showlivestats", "showlivestats", function(Client)
+        Shared.SendHTTPRequest( self.Config.WebsiteApiUrl .. "/server?key=" .. self.Config.ServerKey,"GET",function(response)
+            local Data = json.decode( response )
+            local serverid=""
+            if Data then serverid = Data.id or "" end             
+            local url= self.Config.WebsiteUrl .. "/live/scoreboard/" .. serverid            
+    	    if self.Config.IngameBrowser then Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Scoreboard" }, true )
+    	    else Client.ShowWebpage(url) end
+        end)        
+    end,true)
+    ShowLStats:Help("Shows server live stats") 
     
     local Verify = self:BindCommand( "sh_verify", {"verifystats","verify"},function(Client)
             Shared.SendHTTPRequest(self.Config.WebsiteUrl .. "/api/verifyServer/" .. Plugin:GetId(Client) .. "?s=479qeuehq2829&key=" .. self.Config.ServerKey, "GET",
