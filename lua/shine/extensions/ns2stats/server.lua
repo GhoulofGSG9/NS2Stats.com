@@ -751,7 +751,9 @@ end
 function Plugin:OnPickableItemDestroyed(item)
     
     if not item then return end
-    if Items[item:GetId()] == "picked" then Items[item:GetId()] = nil return end
+    
+    if Items[item:GetId()] == "picked" then Items[item:GetId()] = nil end
+    if not Items[item:GetId()] then return end  
     
     local techId = item:GetTechId()
     local structureOrigin = item:GetOrigin()
@@ -1401,12 +1403,12 @@ end
 
 --create new entry
 function Plugin:createPlayerTable(client)
-    local player = client.GetPlayer and client:GetPlayer() or nil
-    if not player then
-        Notify("Tried to update nil player")
+    if not client.GetPlayer then
+        Notify("Tried to create nil player")
     return
     end
-    
+    local player = client:GetPlayer()
+    if not player then return end
     local taulu= {}   
     taulu.teamnumber = player:GetTeam():GetTeamNumber() or 0
     taulu.lifeform = ""
@@ -1447,13 +1449,15 @@ end
 
 --Update Player Entry
 function Plugin:UpdatePlayerInTable(client)
-    if not client then return end    
-    local player = client.GetPlayer and client:GetPlayer() or nil 
+    if not client then return end 
+    if not client.GetPlayer then return end   
+    local player = client:GetPlayer()
     if not player then return end
     local pOrigin = player:GetOrigin()
     
     local taulu = Plugin:getPlayerByClient(client)
     
+    if not taulu then return end
     if taulu.dc then return end
     
     taulu.name = player.name or ""
