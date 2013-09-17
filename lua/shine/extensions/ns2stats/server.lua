@@ -645,10 +645,10 @@ end
 
 --Pickable Stuff
 local Items = {}
+
 --Item is dropped
 function Plugin:OnPickableItemCreated(item,player)
-    if not item then return end
-    Items[item:GetId()] = "dropped"
+    if not item then return end    
     local techId = item:GetTechId()
     local structureOrigin = item:GetOrigin()
     local steamid = Plugin:getTeamCommanderSteamid(item:GetTeamNumber()) or 0
@@ -689,7 +689,7 @@ function Plugin:OnPickableItemCreated(item,player)
         newItem.instanthit = nil
         
         Plugin:addLog(newItem)
-    end    
+    else Items[item:GetId()] = true end    
 end
 
 --Item is picked
@@ -716,9 +716,9 @@ function Plugin:OnPickableItemPicked(item)
     
     if not player then return end
     
-    if not Items[item:GetId()] == "dropped" then return end
+    if not Items[item:GetId()] then return end
     
-    Items[item:GetId()] = "picked"
+    Items[item:GetId()] = nil
     
     local techId = item:GetTechId()
     local structureOrigin = item:GetOrigin()
@@ -752,8 +752,9 @@ function Plugin:OnPickableItemDestroyed(item)
     
     if not item then return end
     
-    if Items[item:GetId()] == "picked" then Items[item:GetId()] = nil end
     if not Items[item:GetId()] then return end  
+    
+    Items[item:GetId()] = nil
     
     local techId = item:GetTechId()
     local structureOrigin = item:GetOrigin()
