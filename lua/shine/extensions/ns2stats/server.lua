@@ -1407,7 +1407,7 @@ function Plugin:createPlayerTable(client)
     local player = client:GetPlayer()
     if not player then return end
     local taulu= {}   
-    taulu.teamnumber = player:GetTeam():GetTeamNumber() or 0
+    taulu.teamnumber = 0
     taulu.lifeform = ""
     taulu.score = player.score or 0
     taulu.assists = player.assistkills or 0
@@ -1726,9 +1726,8 @@ function Plugin:CreateCommands()
             local playerid = ""
             if Data then playerid = Data[1].player_page_id or "" end
             local url = self.Config.WebsiteUrl .. "/player/player/" .. playerid
-            Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )
-            end
-        end)      
+            Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )            
+            end)     
     end,true)
     ShowPStats:Help("Shows stats from yourself")
     
