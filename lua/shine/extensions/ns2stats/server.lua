@@ -1214,17 +1214,11 @@ function Plugin:addKill(attacker_steamId,target_steamId)
     for key,taulu in pairs(Plugin.Players) do	
         if taulu.steamId == attacker_steamId then	
             taulu.killstreak = taulu.killstreak +1	
-            Plugin:checkForMultiKills(taulu.name,taulu.killstreak)
             if taulu.killstreak > taulu.highestKillstreak then
                 taulu.highestKillstreak = taulu.killstreak
             end 
         end            
     end
-end
-
---Todo: Multikills ?
-function Plugin:checkForMultiKills(name,streak)
-    --add sounds?
 end
 
 --Events end
