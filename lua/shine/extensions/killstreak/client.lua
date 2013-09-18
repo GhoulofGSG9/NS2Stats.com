@@ -33,7 +33,7 @@ function Plugin:Initialise()
         ShineSoundWhickedsick = PrecacheAsset("lua/shine/extensions/killstreaks/sound/killstreaks.fev/killstreaks/whickedsick")
         ShineSoundMonsterkill = PrecacheAsset("lua/shine/extensions/killstreaks/sound/killstreaks.fev/killstreaks/monsterkill")
         ShineSoundHolyshit = PrecacheAsset("lua/shine/extensions/killstreaks/sound/killstreaks.fev/killstreaks/holyshit")
-        ShineSoundGodlike = PrecacheAsset("ShineSound/killstreaks.fev/killstreaks/godlike")        
+        ShineSoundGodlike = PrecacheAsset("lua/shine/extensions/killstreaks/sound/killstreaks.fev/killstreaks/godlike")        
     end
 end
 
