@@ -27,7 +27,6 @@ Plugin.DefaultConfig =
     AwardMsgTime = 20, -- secs to show awards
     LogChat = false, --log the chat?
     ServerKey = "",
-    IngameBrowser = true, -- use ingame browser or Steamoverlay 
     Tags = {}, --Tags added to log 
     Competitive = false, -- tag round as Competitive
     SendTime = 60, --Send after how many min?
@@ -1724,17 +1723,15 @@ function Plugin:CreateCommands()
             local playerid = ""
             if Data then playerid = Data[1].player_page_id or "" end
             local url = self.Config.WebsiteUrl .. "/player/player/" .. playerid
-            if self.Config.IngameBrowser then Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )
-            else Client.ShowWebpage(url)
+            Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )
             end
         end)      
     end,true)
     ShowPStats:Help("Shows stats from yourself")
     
     local ShowLastRound = self:BindCommand( "sh_showlastround", {"showlastround","lastround" }, function(Client)
-        if Plugin.Config.Lastroundlink == "" then Shine:Notify(Client, "", "", "[NS2Stats]: Last round was not saved at NS2Stats") return end      
-        if self.Config.IngameBrowser then Server.SendNetworkMessage( Client, "Shine_Web", { URL = Plugin.Config.Lastroundlink, Title = "Last Rounds Stats" }, true )
-        else Client.ShowWebpage(url)
+        if Plugin.Config.Lastroundlink == "" then Shine:Notify(Client, "", "", "[NS2Stats]: Last round was not saved at NS2Stats")       
+        else Server.SendNetworkMessage( Client, "Shine_Web", { URL = Plugin.Config.Lastroundlink, Title = "Last Rounds Stats" }, true )
         end     
     end,true)   
     ShowLastRound:Help("Shows stats of last round played on this server")
@@ -1745,8 +1742,7 @@ function Plugin:CreateCommands()
             local serverid=""
             if Data then serverid = Data.id or "" end             
             local url= self.Config.WebsiteUrl .. "/server/server/" .. serverid            
-    	    if self.Config.IngameBrowser then Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Server Stats" }, true )
-    	    else Client.ShowWebpage(url) end
+            Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Server Stats" }, true )
         end)        
     end,true)
     ShowSStats:Help("Shows server stats") 
@@ -1757,8 +1753,7 @@ function Plugin:CreateCommands()
             local serverid=""
             if Data then serverid = Data.id or "" end             
             local url= self.Config.WebsiteUrl .. "/live/scoreboard/" .. serverid            
-    	    if self.Config.IngameBrowser then Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Scoreboard" }, true )
-    	    else Client.ShowWebpage(url) end
+    	    Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Scoreboard" }, true )
         end)        
     end,true)
     ShowLStats:Help("Shows server live stats") 
