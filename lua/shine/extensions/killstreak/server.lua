@@ -24,7 +24,6 @@ function Plugin:Initialise()
     self.Enabled = true
 end
 
-function 
 function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, Dir )
     if not Attacker or not Victim then return end
     if not Victim:isa("Player") then return end
