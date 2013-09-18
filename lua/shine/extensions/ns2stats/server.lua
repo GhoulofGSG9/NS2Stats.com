@@ -649,7 +649,9 @@ local Items = {}
 function Plugin:OnPickableItemCreated(item,player)
     if not item then return end    
     local techId = item:GetTechId()
-    local structureOrigin = item:GetOrigin()
+    local itemname = EnumToString(kTechId, techId)
+    if not itemname or itemname == "None" then return end 
+    local itemOrigin = item:GetOrigin()
     local steamid = Plugin:getTeamCommanderSteamid(item:GetTeamNumber()) or 0
     
     local ihit = false
@@ -662,11 +664,11 @@ function Plugin:OnPickableItemCreated(item,player)
         id = item:GetId(),
         cost = GetCostForTech(techId),
         team = item:GetTeamNumber(),
-        name = EnumToString(kTechId, techId),
+        name = itemname,
         action = "pickable_item_dropped",
-        x = string.format("%.4f", structureOrigin.x),
-        y = string.format("%.4f", structureOrigin.y),
-        z = string.format("%.4f", structureOrigin.z)
+        x = string.format("%.4f", itemOrigin.x),
+        y = string.format("%.4f", itemOrigin.y),
+        z = string.format("%.4f", itemOrigin.z)
     }
 
     Plugin:addLog(newItem)
@@ -693,8 +695,7 @@ end
 
 --Item is picked
 function Plugin:OnPickableItemPicked(item)
-    if not item then return end 
-    
+    if not item then return end     
     --from dropack.lua
     local marinesNearby = GetEntitiesForTeamWithinRange("Marine", item:GetTeamNumber(), item:GetOrigin(), item.pickupRange)
     Shared.SortEntitiesByDistance(item:GetOrigin(), marinesNearby)
@@ -707,10 +708,8 @@ function Plugin:OnPickableItemPicked(item)
     end    
     
     --check if droppack is new
-   if not Items[item:GetId()]then
-            if player then
-            Plugin:OnPickableItemCreated(item,player) return
-            else Plugin:OnPickableItemCreated(item,nil) return end
+   if not Items[item:GetId()]then            
+            Plugin:OnPickableItemCreated(item,player) return            
     end
     
     if not player then return end
@@ -720,7 +719,11 @@ function Plugin:OnPickableItemPicked(item)
     Items[item:GetId()] = nil
     
     local techId = item:GetTechId()
-    local structureOrigin = item:GetOrigin()
+    
+    local itemname = EnumToString(kTechId, techId)
+    if not itemname or itemname == "None" then return end 
+    
+    local itemOrigin = item:GetOrigin()
 
     local client = player:GetClient()
     local steamId = 0
@@ -735,11 +738,11 @@ function Plugin:OnPickableItemPicked(item)
         id = item:GetId(),
         cost = GetCostForTech(techId),
         team = player:GetTeamNumber(),
-        name = EnumToString(kTechId, techId),
+        name = itemname,
         action = "pickable_item_picked",
-        x = string.format("%.4f", structureOrigin.x),
-        y = string.format("%.4f", structureOrigin.y),
-        z = string.format("%.4f", structureOrigin.z)
+        x = string.format("%.4f", itemOrigin.x),
+        y = string.format("%.4f", itemOrigin.y),
+        z = string.format("%.4f", itemOrigin.z)
     }
 
     Plugin:addLog(newItem)	
