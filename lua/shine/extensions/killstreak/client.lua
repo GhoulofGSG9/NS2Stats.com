@@ -13,7 +13,7 @@ function Plugin:Initialise()
     self.Enabled = true
     
     if Shine.Config.PlayShineSounds == nil then
-        Shine.Config.PlayShineSound = true
+        Shine.Config.PlayShineSounds = true
         Shine:SaveClientBaseConfig()
     end
     
