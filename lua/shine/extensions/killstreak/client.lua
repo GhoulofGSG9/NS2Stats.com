@@ -10,10 +10,9 @@ local Plugin = Plugin
 Plugin.Version = "1.0"
 
 function Plugin:Initialise()
-    self.Enabled = true
-    
+    self.Enabled = true    
     if Shine.Config.PlayShineSounds == nil then
-        Shine.Config.PlayShineSounds = true
+        Shine.Config.PlayShineSounds = false
         Shine:SaveClientBaseConfig()
     end
     
@@ -35,6 +34,7 @@ function Plugin:Initialise()
         ShineSoundHolyshit = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/holyshit")
         ShineSoundGodlike = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/godlike")        
     end
+    return true
 end
 
 function Plugin:ReceivePlaySound(Message)
@@ -43,6 +43,8 @@ function Plugin:ReceivePlaySound(Message)
         StartSoundEffect(Message.Name)
     end
 end
+
+Shine:LoadClientBaseConfig()
 
 local DisableSounds = Shine:RegisterClientCommand( "sh_disablesounds", function( Bool )
   Shine.Config.PlayShineSounds = Bool

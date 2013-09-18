@@ -22,6 +22,7 @@ Plugin.CheckConfig = true
 local Killstreaks = {}
 function Plugin:Initialise()
     self.Enabled = true
+    return true
 end
 
 function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, Dir )
@@ -43,13 +44,46 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, D
     if not AttackerClient then return end
     
     local steamId = AttackerClient:GetUserId()
+    local name = Attacker:GetName()
+    if steamId == 0 then steamId = Plugin:GetIdbyName(name) end
     if not steamId or steamId<=0 then return end
     
     if not Killstreaks[steamId] then Killstreaks[steamId] = 1
-    else Killstreaks[steamId] = Killstreaks[steamId] + 1 end
-    
-    local name = Attacker:GetName()
+    else Killstreaks[steamId] = Killstreaks[steamId] + 1 end    
+
     Plugin:checkForMultiKills(name,Killstreaks[steamId])      
+end
+
+--For Bots
+function Plugin:GetIdbyName(Name)
+
+    if not Name then return -1 end
+    
+    local newId=""
+    local letters = " (){}[]/.,+-=?!*1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
+    
+    --cut the [Bot]
+    local input = tostring(Name)
+    input = input:sub(6,#input)
+    
+    --to differ between e.g. name and name (2)
+    input = string.reverse(input)
+    
+    for i=1, #input do
+        local char = input:sub(i,i)
+        local num = string.find(letters,char,nil,true)
+        newId = newId .. tostring(num)
+    end
+    
+    --fill up the ns2id to 12 numbers
+    while string.len(newId) < 12 do
+        newId = newId .. "0"
+    end
+    newId = string.sub(newId, 1 , 12)
+    
+    --make a int
+    newId = tonumber(newId)
+    return newId
 end
 
 function Plugin:checkForMultiKills(name,streak)
