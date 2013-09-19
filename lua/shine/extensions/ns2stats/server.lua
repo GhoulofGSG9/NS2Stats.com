@@ -1,5 +1,5 @@
 --[[
-Shine ns2stats plugin.
+Shine ns2stats plugin. - Server 
 ]]
 
 local Shine = Shine
@@ -63,6 +63,7 @@ Plugin.Players = {}
 
 Plugin.Log = {}
 Plugin.LogPartNumber = 1
+Plugin.LogPartToSend = 1
 RBPSsuccessfulSends = 0
 Gamestarted = 0
 Plugin.gameFinished = 0
@@ -101,7 +102,7 @@ function Plugin:Initialise()
     --send datas to NS2StatsServer
     Shine.Timer.Create( "SendStats", 60 * Plugin.Config.SendTime, -1, function()
         if not GameHasStarted then return end
-        if Plugin.Config.Statsonline then Plugin:sendData() end
+        if Plugin.Config.Statsonline then Plugin:sendData(true) end
     end)
     
     return true 
@@ -122,7 +123,7 @@ function Plugin:OnGameReset()
 
     --Resets all Stats
         Plugin.LogPartNumber = 1
-        RBPSsuccessfulSends = 0
+        Plugin.LogPartToSend  = 1
         Gamestarted = 0
         Plugin.gameFinished = 0
         RBPSnextAwardId= 0
@@ -131,6 +132,7 @@ function Plugin:OnGameReset()
         Currentgamestate = 0
         Plugin.Log = {}
         Plugin.Players = {}
+        Items = {}
         -- update stats all connected players       
         for _, player in ipairs(GetEntitiesWithMixin("Scoring")) do
             local client = Server.GetOwner(player)
@@ -138,7 +140,7 @@ function Plugin:OnGameReset()
         end
         
         Buildings = {}       
-  
+    
     Plugin:addLog({action="game_reset"})
 end
 
@@ -183,7 +185,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
             }       
         Plugin:AddServerInfos(params)
         Plugin.gameFinished = 1
-        if Plugin.Config.Statsonline then Plugin:sendData()  end --senddata also clears log         
+        if Plugin.Config.Statsonline then Plugin:sendData(true)  end --senddata also clears log         
 end
 
 --Player Events
@@ -276,7 +278,7 @@ function Plugin:PlayerJoinedTeam(Player)
     local NewTeam = Player:GetTeamNumber()
     if taulu.teamnumber == NewTeam then return end
     
-    taulu.name = Player.name
+    taulu.name = Player:GetName()
     taulu.teamnumber = NewTeam
     
     local playerJoin =
@@ -646,7 +648,7 @@ end
 local Items = {}
 
 --Item is dropped
-function Plugin:OnPickableItemCreated(item,player)
+function Plugin:OnPickableItemCreated(item, player)
     if not item then return end    
     local techId = item:GetTechId()
     local itemname = EnumToString(kTechId, techId)
@@ -675,14 +677,12 @@ function Plugin:OnPickableItemCreated(item,player)
 	
 	--istanthit pick
     if ihit then     
-        local client = player:GetClient()
+        local client = Server.GetOwner(player)
         local steamId = 0
 
         if client then
             steamId = client:GetUserId()
         end
-        
-        Items[item:GetId()] = "picked"
         
         newItem.action = "pickable_item_picked"
         newItem.steamId = steamId
@@ -694,11 +694,13 @@ function Plugin:OnPickableItemCreated(item,player)
 end
 
 --Item is picked
-function Plugin:OnPickableItemPicked(item)
-    if not item then return end     
+function Plugin:OnPickableItemPicked(item,deltaTime)
+    if not item then return end
+     
     --from dropack.lua
     local marinesNearby = GetEntitiesForTeamWithinRange("Marine", item:GetTeamNumber(), item:GetOrigin(), item.pickupRange)
     Shared.SortEntitiesByDistance(item:GetOrigin(), marinesNearby)
+    
     local player
     for _, marine in ipairs(marinesNearby) do    
         if item:GetIsValidRecipient(marine) then
@@ -708,8 +710,10 @@ function Plugin:OnPickableItemPicked(item)
     end    
     
     --check if droppack is new
-   if not Items[item:GetId()]then            
-            Plugin:OnPickableItemCreated(item,player) return            
+    if deltaTime==0 then 
+            if player then Plugin:OnPickableItemCreated(item, player)       
+            else Plugin:OnPickableItemCreated(item, nil) end
+            return            
     end
     
     if not player then return end
@@ -734,7 +738,7 @@ function Plugin:OnPickableItemPicked(item)
 
     local newItem =
     {
-        steamId = SteamId,
+        steamId = steamId,
         id = item:GetId(),
         cost = GetCostForTech(techId),
         team = player:GetTeamNumber(),
@@ -1019,21 +1023,27 @@ end
 
 --Structure gets killed
 function Plugin:OnStructureKilled(structure, attacker , doer)
+    if not Buildings[structure:GetId()] then return end
     Buildings[structure:GetId()] = nil                
         local structureOrigin = structure:GetOrigin()
         local techId = structure:GetTechId()        
         if not doer then doer = "none" end
         --Structure killed
         if attacker then 
-            local player = attacker
+            if not attacker:isa("Player") then 
+                local realKiller = (attacker.GetOwner and attacker:GetOwner()) or nil
+                if realKiller and realKiller:isa("Player") then
+                    attacker = realKiller
+                else return
+                end
+            end
+            
             local steamId = -1
             
-            --attacker is a player
-            if player:isa("Player") then        
-                local client = player:GetClient()
-                if client then steamId = Plugin:GetId(client) end
-            end
-           
+            local player = attacker                 
+            local client = Server.GetOwner(player)
+            if client then steamId = Plugin:GetId(client) end
+            
             local weapon = ""        
 
             if not doer then weapon = "self"
@@ -1042,18 +1052,18 @@ function Plugin:OnStructureKilled(structure, attacker , doer)
 
             local newStructure =
             {
-            id = structure:GetId(),
-            killer_steamId = steamId,
-            killer_lifeform = player:GetMapName(),
-            killer_team = player:GetTeamNumber(),
-            structure_team = structure:GetTeamNumber(),
-            killerweapon = weapon,
-            structure_cost = GetCostForTech(techId),
-            structure_name = EnumToString(kTechId, techId),
-            action = "structure_killed",
-            structure_x = string.format("%.4f", structureOrigin.x),
-            structure_y = string.format("%.4f", structureOrigin.y),
-            structure_z = string.format("%.4f", structureOrigin.z)
+                id = structure:GetId(),
+                killer_steamId = steamId,
+                killer_lifeform = player:GetMapName() or "none",
+                killer_team = player:GetTeamNumber() or 0,
+                structure_team = structure:GetTeamNumber(),
+                killerweapon = weapon,
+                structure_cost = GetCostForTech(techId),
+                structure_name = EnumToString(kTechId, techId),
+                action = "structure_killed",
+                structure_x = string.format("%.4f", structureOrigin.x),
+                structure_y = string.format("%.4f", structureOrigin.y),
+                structure_z = string.format("%.4f", structureOrigin.z)
             }
             Plugin:addLog(newStructure)
                 
@@ -1240,19 +1250,9 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = Plugin.Log[Plugin.LogPartNumber] .. json.encode(tbl) .."\n"	
     
     --avoid that log gets too long also do resend by this way
-    if string.len(Plugin.Log[Plugin.LogPartNumber]) > 160000 then
-    
-        if Plugin.Config.Statsonline then 
-            -- don't reach critical length of 500 000
-            if string.len(Plugin.Log[Plugin.LogPartNumber]) > 490000 then
-                Notify("[NS2Stats]: The Log has reached a critical size we will stop logging now. This is probably because the NS2Stats Servers are offline at the moment")
-                
-                --disable online stats
-                Plugin.Config.Statsonline= false
-                Plugin.LogPartNumber = Plugin.LogPartNumber + 1 
-             
-           else Plugin:sendData()end
-        else Plugin.LogPartNumber = Plugin.LogPartNumber + 1 end
+    if string.len(Plugin.Log[Plugin.LogPartNumber]) > 250000 then    
+        if Plugin.Config.Statsonline then Plugin:sendData() end
+        Plugin.LogPartNumber = Plugin.LogPartNumber + 1
     end
     --local data = RBPSlibc:CompressHuffman(Plugin.Log)
     --Notify("compress size: " .. string.len(data) .. "decompress size: " .. string.len(RBPSlibc:Decompress(data)))        
@@ -1314,23 +1314,20 @@ function Plugin:AddServerInfos(params)
     Plugin:addLog(params)
 end
 
---- avoid that sendata is runned to often
-local working = false
-
 --send Log to NS2Stats Server
-function Plugin:sendData()
-    
-    if working then return end
-    working = true
-    
+function Plugin:sendData(force)
+
+    if not Plugin.Log[Plugin.LogPartToSend] then return end
+    if string.len(Plugin.Log[Plugin.LogPartToSend ]) < 250000 and not force then return end
+
     local params =
     {
         key = self.Config.ServerKey,
-        roundlog = Plugin.Log[Plugin.LogPartNumber],
-        part_number = Plugin.LogPartNumber,
+        roundlog = Plugin.Log[Plugin.LogPartToSend],
+        part_number = Plugin.LogPartToSend ,
         last_part = Plugin.gameFinished,
         map = Shared.GetMapName(),
-    }    
+    }
     Shared.SendHTTPRequest(self.Config.WebsiteDataUrl, "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
 end
 
@@ -1341,11 +1338,12 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
         local message = json.decode(response)        
         if message then
         
-            if string.len(response)>0 then --if we got somedata, that means send was completed
-                RBPSsuccessfulSends = RBPSsuccessfulSends +1
+            if string.len(response)>0 then --if we got somedata, that means send was completed                
                  if not string.find(response,"Server log empty",nil, true) then
-                     Plugin.Log[Plugin.LogPartNumber] = nil                     
-                     Plugin.LogPartNumber = Plugin.LogPartNumber + 1 
+                     Plugin.Log[Plugin.LogPartToSend ] = nil 
+                     Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
+                     RBPSsuccessfulSends = RBPSsuccessfulSends +1 
+                     Plugin:sendData()                                      
                 end
             end
         
@@ -1368,10 +1366,11 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
             end	
         elseif response then --if message = nil, json parse failed prob or timeout
             if string.len(response)>0 then --if we got somedata, that means send was completed
-                RBPSsuccessfulSends = RBPSsuccessfulSends +1
                 if not string.find(response,"Server log empty",nil, true) then
-                     Plugin.Log[Plugin.LogPartNumber] = nil                    
-                     Plugin.LogPartNumber = Plugin.LogPartNumber + 1        
+                     Plugin.Log[Plugin.LogPartToSend] = nil 
+                     Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
+                     RBPSsuccessfulSends = RBPSsuccessfulSends +1
+                     Plugin:sendData()          
                 end
             end
             Notify("NS2Stats.org: (" .. response .. ")")
@@ -1379,8 +1378,7 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
             if params then                                
                 Shine.Timer.Simple(5, function() Plugin:sendData() end)             
             end              
-   end 
-   working = false   
+   end   
 end
 
 --Log end 
@@ -1409,10 +1407,10 @@ function Plugin:createPlayerTable(client)
     local taulu= {}   
     taulu.teamnumber = 0
     taulu.lifeform = ""
-    taulu.score = player.score or 0
-    taulu.assists = player.assistkills or 0
-    taulu.deaths = player.deaths or 0
-    taulu.kills = player.kills or 0
+    taulu.score = 0
+    taulu.assists = 0
+    taulu.deaths = 0
+    taulu.kills = 0
     taulu.totalKills = player.totalKills or 0
     taulu.totalAssists = player.totalAssists or 0
     taulu.totalDeaths = player.totalDeaths or 0
@@ -1423,11 +1421,10 @@ function Plugin:createPlayerTable(client)
     taulu.steamId = Plugin:GetId(client) or 0
     taulu.name = player:GetName() or ""
     taulu.ping = client:GetPing() or 0
-    taulu.teamnumber = player:GetTeamNumber() or 0
     taulu.isbot = client:GetIsVirtual() or false	
-    taulu.isCommander = player:GetIsCommander() or false           
+    taulu.isCommander = false           
     taulu.dc = false
-    taulu.total_constructed=0        
+    taulu.total_constructed = 0        
     taulu.weapons = {}      
     taulu.killstreak =0
     taulu.highestKillstreak =0

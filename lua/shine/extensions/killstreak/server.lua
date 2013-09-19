@@ -38,12 +38,14 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, D
     end
     
     local VictimClient = Server.GetOwner( Victim )
-    Killstreaks[VictimClient:GetUserId()] = nil
+    local victimId = VictimClient:GetUserId() or 0
+    if victimId == 0 then victimId = Plugin:GetIdbyName(Victim:GetName()) end
+    if victimId>0 then Killstreaks[victimId] = nil end
     
     local AttackerClient = Server.GetOwner( Attacker )
     if not AttackerClient then return end
     
-    local steamId = AttackerClient:GetUserId()
+    local steamId = AttackerClient:GetUserId() or 0
     local name = Attacker:GetName()
     if steamId == 0 then steamId = Plugin:GetIdbyName(name) end
     if not steamId or steamId<=0 then return end

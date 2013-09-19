@@ -10,30 +10,13 @@ local Plugin = Plugin
 Plugin.Version = "1.0"
 
 function Plugin:Initialise()
-    self.Enabled = true    
+    self.Enabled = true
+    
     if Shine.Config.PlayShineSounds == nil then
         Shine.Config.PlayShineSounds = true
         Shine:SaveClientBaseConfig()
-    end
-    
-    if Shine.Config.PlayShineSounds then
-        --precache ShineSounds        
-        ShineSoundTriplekill = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/triplekill")
-        ShineSoundMultikill = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/multikill")
-        ShineSoundRampage = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/rampage")
-        ShineSoundKillingspree = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/killingspree")
-        ShineSoundDominating = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/dominating")
-        ShineSoundUnstoppable = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/unstoppable")
-        ShineSoundMegakill = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/megakill")
-        ShineSoundUltrakill = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/ultrakill")
-        ShineSoundOwnage = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/ownage")
-        ShineSoundLudicrouskill = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/ludicrouskill")
-        ShineSoundHeadhunter = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/headhunter")
-        ShineSoundWhickedsick = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/whickedsick")
-        ShineSoundMonsterkill = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/monsterkill")
-        ShineSoundHolyshit = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/holyshit")
-        ShineSoundGodlike = PrecacheAsset("lua/shine/extensions/killstreak/sound/killstreaks.fev/killstreaks/godlike")        
-    end
+    end   
+       
     return true
 end
 
