@@ -101,7 +101,7 @@ function Plugin:Initialise()
     --send datas to NS2StatsServer
     Shine.Timer.Create( "SendStats", 60 * Plugin.Config.SendTime, -1, function()
         if not GameHasStarted then return end
-        if Plugin.Config.Statsonline then Plugin:sendData() end
+        if Plugin.Config.Statsonline then Plugin:sendData(true) end
     end)
     
     return true 
@@ -183,7 +183,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
             }       
         Plugin:AddServerInfos(params)
         Plugin.gameFinished = 1
-        if Plugin.Config.Statsonline then Plugin:sendData()  end --senddata also clears log         
+        if Plugin.Config.Statsonline then Plugin:sendData(true)  end --senddata also clears log         
 end
 
 --Player Events
@@ -1242,19 +1242,9 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = Plugin.Log[Plugin.LogPartNumber] .. json.encode(tbl) .."\n"	
     
     --avoid that log gets too long also do resend by this way
-    if string.len(Plugin.Log[Plugin.LogPartNumber]) > 160000 then
-    
-        if Plugin.Config.Statsonline then 
-            -- don't reach critical length of 500 000
-            if string.len(Plugin.Log[Plugin.LogPartNumber]) > 490000 then
-                Notify("[NS2Stats]: The Log has reached a critical size we will stop logging now. This is probably because the NS2Stats Servers are offline at the moment")
-                
-                --disable online stats
-                Plugin.Config.Statsonline= false
-                Plugin.LogPartNumber = Plugin.LogPartNumber + 1 
-             
-           else Plugin:sendData()end
-        else Plugin.LogPartNumber = Plugin.LogPartNumber + 1 end
+    if string.len(Plugin.Log[Plugin.LogPartNumber]) > 250000 then    
+        if Plugin.Config.Statsonline then Plugin:sendData() end
+        Plugin.LogPartNumber = Plugin.LogPartNumber + 1
     end
     --local data = RBPSlibc:CompressHuffman(Plugin.Log)
     --Notify("compress size: " .. string.len(data) .. "decompress size: " .. string.len(RBPSlibc:Decompress(data)))        
@@ -1316,20 +1306,15 @@ function Plugin:AddServerInfos(params)
     Plugin:addLog(params)
 end
 
---- avoid that sendata is runned to often
-local working = false
-
 --send Log to NS2Stats Server
-function Plugin:sendData()
-    
-    if working then return end
-    working = true
-    
+function Plugin:sendData(force)
+    if string.len(Plugin.Log[RBPSsuccessfulSends+1]) < 250000 and not force then return end
+
     local params =
     {
         key = self.Config.ServerKey,
-        roundlog = Plugin.Log[Plugin.LogPartNumber],
-        part_number = Plugin.LogPartNumber,
+        roundlog = Plugin.Log[RBPSsuccessfulSends + 1],
+        part_number = RBPSsuccessfulSends + 1,
         last_part = Plugin.gameFinished,
         map = Shared.GetMapName(),
     }    
@@ -1343,11 +1328,11 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
         local message = json.decode(response)        
         if message then
         
-            if string.len(response)>0 then --if we got somedata, that means send was completed
-                RBPSsuccessfulSends = RBPSsuccessfulSends +1
+            if string.len(response)>0 then --if we got somedata, that means send was completed                
                  if not string.find(response,"Server log empty",nil, true) then
-                     Plugin.Log[Plugin.LogPartNumber] = nil                     
-                     Plugin.LogPartNumber = Plugin.LogPartNumber + 1 
+                     Plugin.Log[RBPSsuccessfulSends] = nil  
+                     RBPSsuccessfulSends = RBPSsuccessfulSends +1 
+                     Plugin:sendData()                                      
                 end
             end
         
@@ -1370,10 +1355,10 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
             end	
         elseif response then --if message = nil, json parse failed prob or timeout
             if string.len(response)>0 then --if we got somedata, that means send was completed
-                RBPSsuccessfulSends = RBPSsuccessfulSends +1
                 if not string.find(response,"Server log empty",nil, true) then
-                     Plugin.Log[Plugin.LogPartNumber] = nil                    
-                     Plugin.LogPartNumber = Plugin.LogPartNumber + 1        
+                     Plugin.Log[RBPSsuccessfulSends] = nil  
+                     RBPSsuccessfulSends = RBPSsuccessfulSends +1
+                     Plugin:sendData()          
                 end
             end
             Notify("NS2Stats.org: (" .. response .. ")")
@@ -1381,8 +1366,7 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
             if params then                                
                 Shine.Timer.Simple(5, function() Plugin:sendData() end)             
             end              
-   end 
-   working = false   
+   end   
 end
 
 --Log end 
