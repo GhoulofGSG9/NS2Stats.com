@@ -132,6 +132,7 @@ function Plugin:OnGameReset()
         Currentgamestate = 0
         Plugin.Log = {}
         Plugin.Players = {}
+        Items = {}
         -- update stats all connected players       
         for _, player in ipairs(GetEntitiesWithMixin("Scoring")) do
             local client = Server.GetOwner(player)
@@ -700,7 +701,7 @@ function Plugin:OnPickableItemPicked(item,deltaTime)
     local marinesNearby = GetEntitiesForTeamWithinRange("Marine", item:GetTeamNumber(), item:GetOrigin(), item.pickupRange)
     Shared.SortEntitiesByDistance(item:GetOrigin(), marinesNearby)
     
-    local player = nil
+    local player
     for _, marine in ipairs(marinesNearby) do    
         if item:GetIsValidRecipient(marine) then
             player = marine
@@ -737,7 +738,7 @@ function Plugin:OnPickableItemPicked(item,deltaTime)
 
     local newItem =
     {
-        steamId = SteamId,
+        steamId = steamId,
         id = item:GetId(),
         cost = GetCostForTech(techId),
         team = player:GetTeamNumber(),
