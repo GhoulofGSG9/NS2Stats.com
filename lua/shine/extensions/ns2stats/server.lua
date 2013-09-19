@@ -63,6 +63,7 @@ Plugin.Players = {}
 
 Plugin.Log = {}
 Plugin.LogPartNumber = 1
+Plugin.LogPartToSend = 1
 RBPSsuccessfulSends = 0
 Gamestarted = 0
 Plugin.gameFinished = 0
@@ -122,7 +123,7 @@ function Plugin:OnGameReset()
 
     --Resets all Stats
         Plugin.LogPartNumber = 1
-        RBPSsuccessfulSends = 0
+        Plugin.LogPartToSend  = 1
         Gamestarted = 0
         Plugin.gameFinished = 0
         RBPSnextAwardId= 0
@@ -138,7 +139,7 @@ function Plugin:OnGameReset()
         end
         
         Buildings = {}       
-  
+    
     Plugin:addLog({action="game_reset"})
 end
 
@@ -1308,16 +1309,18 @@ end
 
 --send Log to NS2Stats Server
 function Plugin:sendData(force)
-    if string.len(Plugin.Log[RBPSsuccessfulSends+1]) < 250000 and not force then return end
+
+    if not Plugin.Log[Plugin.LogPartToSend] then return end
+    if string.len(Plugin.Log[Plugin.LogPartToSend ]) < 250000 and not force then return end
 
     local params =
     {
         key = self.Config.ServerKey,
-        roundlog = Plugin.Log[RBPSsuccessfulSends + 1],
-        part_number = RBPSsuccessfulSends + 1,
+        roundlog = Plugin.Log[Plugin.LogPartToSend],
+        part_number = Plugin.LogPartToSend ,
         last_part = Plugin.gameFinished,
         map = Shared.GetMapName(),
-    }    
+    }
     Shared.SendHTTPRequest(self.Config.WebsiteDataUrl, "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
 end
 
@@ -1330,7 +1333,8 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
         
             if string.len(response)>0 then --if we got somedata, that means send was completed                
                  if not string.find(response,"Server log empty",nil, true) then
-                     Plugin.Log[RBPSsuccessfulSends] = nil  
+                     Plugin.Log[Plugin.LogPartToSend ] = nil 
+                     Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
                      RBPSsuccessfulSends = RBPSsuccessfulSends +1 
                      Plugin:sendData()                                      
                 end
@@ -1356,7 +1360,8 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
         elseif response then --if message = nil, json parse failed prob or timeout
             if string.len(response)>0 then --if we got somedata, that means send was completed
                 if not string.find(response,"Server log empty",nil, true) then
-                     Plugin.Log[RBPSsuccessfulSends] = nil  
+                     Plugin.Log[Plugin.LogPartToSend] = nil 
+                     Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
                      RBPSsuccessfulSends = RBPSsuccessfulSends +1
                      Plugin:sendData()          
                 end
