@@ -276,7 +276,7 @@ function Plugin:PlayerJoinedTeam(Player)
     local NewTeam = Player:GetTeamNumber()
     if taulu.teamnumber == NewTeam then return end
     
-    taulu.name = Player.name
+    taulu.name = Player:GetName()
     taulu.teamnumber = NewTeam
     
     local playerJoin =
@@ -646,7 +646,7 @@ end
 local Items = {}
 
 --Item is dropped
-function Plugin:OnPickableItemCreated(item,player)
+function Plugin:OnPickableItemCreated(item, player)
     if not item then return end    
     local techId = item:GetTechId()
     local itemname = EnumToString(kTechId, techId)
@@ -706,8 +706,9 @@ function Plugin:OnPickableItemPicked(item,deltaTime)
     end    
     
     --check if droppack is new
-    if deltaTime==0 then        
-            Plugin:OnPickableItemCreated(item,player) return            
+    if deltaTime==0 then 
+            if player then Plugin:OnPickableItemCreated(item, player)       
+            else Plugin:OnPickableItemCreated(item, nil) end return            
     end
     
     if not player then return end
@@ -1407,10 +1408,10 @@ function Plugin:createPlayerTable(client)
     local taulu= {}   
     taulu.teamnumber = 0
     taulu.lifeform = ""
-    taulu.score = player.score or 0
-    taulu.assists = player.assistkills or 0
-    taulu.deaths = player.deaths or 0
-    taulu.kills = player.kills or 0
+    taulu.score = 0
+    taulu.assists = 0
+    taulu.deaths = 0
+    taulu.kills = 0
     taulu.totalKills = player.totalKills or 0
     taulu.totalAssists = player.totalAssists or 0
     taulu.totalDeaths = player.totalDeaths or 0
@@ -1421,11 +1422,10 @@ function Plugin:createPlayerTable(client)
     taulu.steamId = Plugin:GetId(client) or 0
     taulu.name = player:GetName() or ""
     taulu.ping = client:GetPing() or 0
-    taulu.teamnumber = player:GetTeamNumber() or 0
     taulu.isbot = client:GetIsVirtual() or false	
-    taulu.isCommander = player:GetIsCommander() or false           
+    taulu.isCommander = false           
     taulu.dc = false
-    taulu.total_constructed=0        
+    taulu.total_constructed = 0        
     taulu.weapons = {}      
     taulu.killstreak =0
     taulu.highestKillstreak =0
