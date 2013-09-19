@@ -682,8 +682,6 @@ function Plugin:OnPickableItemCreated(item,player)
             steamId = client:GetUserId()
         end
         
-        Items[item:GetId()] = "picked"
-        
         newItem.action = "pickable_item_picked"
         newItem.steamId = steamId
         newItem.commander_steamid = nil
@@ -694,7 +692,7 @@ function Plugin:OnPickableItemCreated(item,player)
 end
 
 --Item is picked
-function Plugin:OnPickableItemPicked(item)
+function Plugin:OnPickableItemPicked(item,deltaTime)
     if not item then return end     
     --from dropack.lua
     local marinesNearby = GetEntitiesForTeamWithinRange("Marine", item:GetTeamNumber(), item:GetOrigin(), item.pickupRange)
@@ -708,7 +706,7 @@ function Plugin:OnPickableItemPicked(item)
     end    
     
     --check if droppack is new
-   if not Items[item:GetId()]then            
+    if deltaTime==0 then        
             Plugin:OnPickableItemCreated(item,player) return            
     end
     
