@@ -1022,21 +1022,27 @@ end
 
 --Structure gets killed
 function Plugin:OnStructureKilled(structure, attacker , doer)
+    if not Buildings[structure:GetId()] then return end
     Buildings[structure:GetId()] = nil                
         local structureOrigin = structure:GetOrigin()
         local techId = structure:GetTechId()        
         if not doer then doer = "none" end
         --Structure killed
         if attacker then 
-            local player = attacker
+            if not attacker:isa("Player") then 
+                local realKiller = (attacker.GetOwner and attacker:GetOwner()) or nil
+                if realKiller and realKiller:isa("Player") then
+                    attacker = realKiller
+                else return
+                end
+            end
+            
             local steamId = -1
             
-            --attacker is a player
-            if player:isa("Player") then        
-                local client = player:GetClient()
-                if client then steamId = Plugin:GetId(client) end
-            end
-           
+            local player = attacker                 
+            local client = Server.GetOwner(player)
+            if client then steamId = Plugin:GetId(client) end
+            
             local weapon = ""        
 
             if not doer then weapon = "self"
@@ -1045,18 +1051,18 @@ function Plugin:OnStructureKilled(structure, attacker , doer)
 
             local newStructure =
             {
-            id = structure:GetId(),
-            killer_steamId = steamId,
-            killer_lifeform = player:GetMapName(),
-            killer_team = player:GetTeamNumber(),
-            structure_team = structure:GetTeamNumber(),
-            killerweapon = weapon,
-            structure_cost = GetCostForTech(techId),
-            structure_name = EnumToString(kTechId, techId),
-            action = "structure_killed",
-            structure_x = string.format("%.4f", structureOrigin.x),
-            structure_y = string.format("%.4f", structureOrigin.y),
-            structure_z = string.format("%.4f", structureOrigin.z)
+                id = structure:GetId(),
+                killer_steamId = steamId,
+                killer_lifeform = player:GetMapName() or "none",
+                killer_team = player:GetTeamNumber() or 0,
+                structure_team = structure:GetTeamNumber(),
+                killerweapon = weapon,
+                structure_cost = GetCostForTech(techId),
+                structure_name = EnumToString(kTechId, techId),
+                action = "structure_killed",
+                structure_x = string.format("%.4f", structureOrigin.x),
+                structure_y = string.format("%.4f", structureOrigin.y),
+                structure_z = string.format("%.4f", structureOrigin.z)
             }
             Plugin:addLog(newStructure)
                 
