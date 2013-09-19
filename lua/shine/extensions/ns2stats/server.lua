@@ -1,5 +1,5 @@
 --[[
-Shine ns2stats plugin.
+Shine ns2stats plugin. - Server 
 ]]
 
 local Shine = Shine
@@ -675,7 +675,7 @@ function Plugin:OnPickableItemCreated(item, player)
 	
 	--istanthit pick
     if ihit then     
-        local client = player:GetClient()
+        local client = Server.GetOwner(player)
         local steamId = 0
 
         if client then
@@ -693,11 +693,13 @@ end
 
 --Item is picked
 function Plugin:OnPickableItemPicked(item,deltaTime)
-    if not item then return end     
+    if not item then return end
+     
     --from dropack.lua
     local marinesNearby = GetEntitiesForTeamWithinRange("Marine", item:GetTeamNumber(), item:GetOrigin(), item.pickupRange)
     Shared.SortEntitiesByDistance(item:GetOrigin(), marinesNearby)
-    local player
+    
+    local player = nil
     for _, marine in ipairs(marinesNearby) do    
         if item:GetIsValidRecipient(marine) then
             player = marine
@@ -708,7 +710,8 @@ function Plugin:OnPickableItemPicked(item,deltaTime)
     --check if droppack is new
     if deltaTime==0 then 
             if player then Plugin:OnPickableItemCreated(item, player)       
-            else Plugin:OnPickableItemCreated(item, nil) end return            
+            else Plugin:OnPickableItemCreated(item, nil) end
+            return            
     end
     
     if not player then return end
