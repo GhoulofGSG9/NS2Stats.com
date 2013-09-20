@@ -318,7 +318,7 @@ function Plugin:OnLifeformChanged(Player)
         if taulu.teamnumber == 1 then
             Currentlifeform = "marine_commander"
         else Currentlifeform = "alien_commander" end
-    end       
+    end
     if taulu.lifeform ~= Currentlifeform then        
         taulu.lifeform = Currentlifeform
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})
@@ -1402,7 +1402,7 @@ function Plugin:createPlayerTable(client)
     local player = client:GetPlayer()
     if not player then return end
     local taulu= {}   
-    taulu.teamnumber = 0
+    taulu.teamnumber = player:GetTeamNumber() or 0
     taulu.lifeform = ""
     taulu.score = 0
     taulu.assists = 0
