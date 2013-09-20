@@ -272,10 +272,15 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force )
     local Client = Server.GetOwner( Player )
 
     if not Client then return end
+    if Client:GetIsVirtual() then return end
     
     local taulu = Plugin:getPlayerByClient(Client)
     
-    if not taulu then return end
+    if not taulu then
+        Plugin:ClientConnect(Client)
+        Plugin:JoinTeam( Gamerules, Player, NewTeam, Force )
+        return 
+    end
     
     taulu.name = Player:GetName()
     taulu.teamnumber = NewTeam
