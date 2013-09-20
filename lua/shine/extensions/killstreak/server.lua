@@ -39,8 +39,13 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, D
     
     local VictimClient = Server.GetOwner( Victim )
     local victimId = VictimClient:GetUserId() or 0
-    if victimId == 0 then victimId = Plugin:GetIdbyName(Victim:GetName()) end
-    if victimId>0 then Killstreaks[victimId] = nil end
+    if victimId == 0 then victimId = Plugin:GetIdbyName(Victim:GetName()) or 0 end
+    if victimId>0 then
+        local vname        
+        if Killstreaks[victimId] and Killstreaks[victimId] > 3 then  vname = Victim:GetName() end
+        Killstreaks[victimId] = nil 
+        if vname then Shine:NotifyColour(nil,255,0,0,vname .. " has been stoped") end
+    else return end
     
     local AttackerClient = Server.GetOwner( Attacker )
     if not AttackerClient then return end
@@ -54,6 +59,13 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, D
     else Killstreaks[steamId] = Killstreaks[steamId] + 1 end    
 
     Plugin:checkForMultiKills(name,Killstreaks[steamId])      
+end
+
+Shine.Hook.SetupGlobalHook("RemoveAllObstacles","OnGameReset","PassivePost")
+
+--Gamereset
+function Plugin:OnGameReset()
+    Killstreaks = {}
 end
 
 --For Bots
