@@ -266,17 +266,21 @@ end
 
 
 -- Player joins a team
-function Plugin:PlayerJoinedTeam(Player)
-    local client = Player:GetClient()
+function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force )
+    if not Player then return end
+
+    local Client = Server.GetOwner( Player )
+
+    if not Client then return end
+    if Client:GetIsVirtual() then return end
     
-    if not client then client = Server.GetOwner(Player) end
+    local taulu = Plugin:getPlayerByClient(Client)
     
-    local taulu = Plugin:getPlayerByClient(client)
-    
-    if not taulu then return end
-    
-    local NewTeam = Player:GetTeamNumber()
-    if taulu.teamnumber == NewTeam then return end
+    if not taulu then
+        Plugin:ClientConnect(Client)
+        Plugin:JoinTeam( Gamerules, Player, NewTeam, Force )
+        return 
+    end
     
     taulu.name = Player:GetName()
     taulu.teamnumber = NewTeam
@@ -314,11 +318,12 @@ function Plugin:OnLifeformChanged(Player)
     
     Currentlifeform = Player:GetMapName()
     if not Player:GetIsAlive() then Currentlifeform = "dead" end
+    if taulu.teamnumber == 0 then Currentlifeform = "spectator" end
     if taulu.isCommander == true then
         if taulu.teamnumber == 1 then
             Currentlifeform = "marine_commander"
         else Currentlifeform = "alien_commander" end
-    end       
+    end
     if taulu.lifeform ~= Currentlifeform then        
         taulu.lifeform = Currentlifeform
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})
@@ -355,9 +360,6 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     if not client then return end
     
     Plugin:UpdatePlayerInTable(client)
-    
-    --check if teamchanged
-    Plugin:PlayerJoinedTeam(Player)
     
     --check if lifeform changed
     Plugin:OnLifeformChanged(Player)
@@ -1405,7 +1407,7 @@ function Plugin:createPlayerTable(client)
     local player = client:GetPlayer()
     if not player then return end
     local taulu= {}   
-    taulu.teamnumber = 0
+    taulu.teamnumber = player:GetTeamNumber() or 0
     taulu.lifeform = ""
     taulu.score = 0
     taulu.assists = 0
