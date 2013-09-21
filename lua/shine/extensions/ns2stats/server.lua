@@ -174,7 +174,8 @@ function Plugin:EndGame( Gamerules, WinningTeam )
         local initialHiveTechIdString = "None"            
         if Gamerules.initialHiveTechId then
                 initialHiveTechIdString = EnumToString(kTechId, Gamerules.initialHiveTechId)
-        end        
+        end
+        Plugin.gameFinished = 1       
         local params =
             {
                 version = ToString(Shared.GetBuildNumber()),
@@ -186,8 +187,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
                 start_path_distance = Gamerules.startingLocationsPathDistance,
                 start_hive_tech = initialHiveTechIdString,
             }       
-        Plugin:AddServerInfos(params)
-        Plugin.gameFinished = 1
+        Plugin:AddServerInfos(params)        
         if Plugin.Config.Statsonline then Plugin:sendData(true)  end --senddata also clears log         
 end
 
