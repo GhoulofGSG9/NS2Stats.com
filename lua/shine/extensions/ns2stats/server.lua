@@ -1338,6 +1338,7 @@ function Plugin:sendData(force)
         map = Shared.GetMapName(),
     }
     Shared.SendHTTPRequest(self.Config.WebsiteDataUrl, "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
+    Notify("[NS2Stats] Log sent Partnumber: " .. tostring(Plugin.LogPartToSend))
 end
 
 local resendtimes = 0
@@ -1722,6 +1723,17 @@ function Plugin:onHTTPResponseFromSendStatus(client,action,response,status)
 end
 
 --Other Ns2Stat functions end
+local serverid = ""
+
+function Plugin:GetServerId()    
+    if serverid == "" then 
+        Shared.SendHTTPRequest( self.Config.WebsiteApiUrl .. "/server?key=" .. self.Config.ServerKey,"GET",function(response)
+            local Data = json.decode( response )
+            if Data then serverid = Data.id or "" end
+        end)
+    end
+    return serverid       
+end
 
 --Commands
 function Plugin:CreateCommands()
@@ -1744,25 +1756,15 @@ function Plugin:CreateCommands()
     end,true)   
     ShowLastRound:Help("Shows stats of last round played on this server")
     
-    local ShowSStats = self:BindCommand( "sh_showserverstats", "showserverstats", function(Client)
-        Shared.SendHTTPRequest( self.Config.WebsiteApiUrl .. "/server?key=" .. self.Config.ServerKey,"GET",function(response)
-            local Data = json.decode( response )
-            local serverid=""
-            if Data then serverid = Data.id or "" end             
-            local url= self.Config.WebsiteUrl .. "/server/server/" .. serverid            
-            Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Server Stats" }, true )
-        end)        
+    local ShowSStats = self:BindCommand( "sh_showserverstats", "showserverstats", function(Client)                     
+        local url= self.Config.WebsiteUrl .. "/server/server/" .. Plugin:GetServerId()           
+        Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Server Stats" }, true )       
     end,true)
     ShowSStats:Help("Shows server stats") 
     
-    local ShowLStats = self:BindCommand( "sh_showlivestats", "showlivestats", function(Client)
-        Shared.SendHTTPRequest( self.Config.WebsiteApiUrl .. "/server?key=" .. self.Config.ServerKey,"GET",function(response)
-            local Data = json.decode( response )
-            local serverid=""
-            if Data then serverid = Data.id or "" end             
-            local url= self.Config.WebsiteUrl .. "/live/scoreboard/" .. serverid            
-    	    Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Scoreboard" }, true )
-        end)        
+    local ShowLStats = self:BindCommand( "sh_showlivestats", "showlivestats", function(Client)                    
+        local url= self.Config.WebsiteUrl .. "/live/scoreboard/" .. Plugin:GetServerId()           
+        Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Scoreboard" }, true )       
     end,true)
     ShowLStats:Help("Shows server live stats") 
     
@@ -1774,7 +1776,7 @@ function Plugin:CreateCommands()
     
     local Tag = self:BindCommand( "sh_addtag","addtag",function(Client,tag)
         table.insert(Plugin.Config.Tags, tag)
-        Notify("NS2Stats]: " ..tag .. " has been aded as Tag to this roundlog")       
+        Notify("[NS2Stats]: " ..tag .. " has been added as Tag to this roundlog")       
     end)    
     Tag:AddParam{ Type = "string",TakeRestOfLine = true,Error = "Please specify a tag to be added.", MaxLength = 30}
     Tag:Help ("Adds the given tag to the Stats")
