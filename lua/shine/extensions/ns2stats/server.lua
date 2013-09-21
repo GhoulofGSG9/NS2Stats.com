@@ -191,7 +191,7 @@ end
 --Player Events
 
 --PlayerConnected
-function Plugin:ClientConnect( Client )
+function Plugin:ClientConfirmConnect( Client )
     if not Client then return end
     if Client:GetIsVirtual() then return end     
     self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)  
@@ -266,7 +266,7 @@ end
 
 
 -- Player joins a team
-function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force )
+function Plugin:PostJoinTeam( Gamerules, Player, NewTeam, Force )
     if not Player then return end
     
    
@@ -1327,14 +1327,16 @@ end
 function Plugin:sendData(force)
 
     if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if string.len(Plugin.Log[Plugin.LogPartToSend ]) < 250000 and not force then return end
+    if string.len(Plugin.Log[Plugin.LogPartToSend]) < 250000 and not force then return end
+    local lastpart = Plugin.gameFinished
+    if lastpart == 1 and Plugin.LogPartToSend ~= Plugin.LogPartNumber then lastpart = 0 end
 
     local params =
     {
         key = self.Config.ServerKey,
         roundlog = Plugin.Log[Plugin.LogPartToSend],
         part_number = Plugin.LogPartToSend ,
-        last_part = Plugin.gameFinished,
+        last_part = lastpart,
         map = Shared.GetMapName(),
     }
     Shared.SendHTTPRequest(self.Config.WebsiteDataUrl, "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
@@ -2044,4 +2046,4 @@ function Plugin:Cleanup()
     Shine.Timer.Destroy("WeaponUpdate")
     Shine.Timer.Destroy("SendStats")
     Shine.Timer.Destroy("SendStatus")
-end    
+end
