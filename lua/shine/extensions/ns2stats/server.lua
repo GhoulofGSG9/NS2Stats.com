@@ -87,7 +87,10 @@ function Plugin:Initialise()
             function(response) Plugin:acceptKey(response) end)
     end   
     
-    --Timers
+    --getting server id
+    local serverid = Plugin:GetServerId()
+    
+    --Timers   
     
     --every 1 sec
     --to update Weapondatas
@@ -96,7 +99,7 @@ function Plugin:Initialise()
     end)
     
     -- every 1 min send Server Status    
-     Shine.Timer.Create("SendStatus" , 60, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end)
+     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end)
 
     --every x min (Sendtime at config)
     --send datas to NS2StatsServer
@@ -1259,7 +1262,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = Plugin.Log[Plugin.LogPartNumber] .. json.encode(tbl) .."\n"	
     
     --avoid that log gets too long also do resend by this way
-    if string.len(Plugin.Log[Plugin.LogPartNumber]) > 250000 then    
+    if string.len(Plugin.Log[Plugin.LogPartNumber]) > 160000 then    
         if Plugin.Config.Statsonline then Plugin:sendData() end
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1
     end
@@ -1327,7 +1330,7 @@ end
 function Plugin:sendData(force)
 
     if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if string.len(Plugin.Log[Plugin.LogPartToSend]) < 250000 and not force then return end
+    if string.len(Plugin.Log[Plugin.LogPartToSend]) < 160000 and not force then return end
     
     local params =
     {
@@ -1729,10 +1732,10 @@ function Plugin:GetServerId()
     if serverid == "" then 
         Shared.SendHTTPRequest( self.Config.WebsiteApiUrl .. "/server?key=" .. self.Config.ServerKey,"GET",function(response)
             local Data = json.decode( response )
-            if Data then serverid = Data.id or "" end
+            if Data then serverid = Data.id or "" end            
         end)
-    end
-    return serverid       
+     end
+    return serverid    
 end
 
 --Commands
