@@ -1328,15 +1328,13 @@ function Plugin:sendData(force)
 
     if not Plugin.Log[Plugin.LogPartToSend] then return end
     if string.len(Plugin.Log[Plugin.LogPartToSend]) < 250000 and not force then return end
-    local lastpart = Plugin.gameFinished
-    if lastpart == 1 and Plugin.LogPartToSend ~= Plugin.LogPartNumber then lastpart = 0 end
-
+    
     local params =
     {
         key = self.Config.ServerKey,
         roundlog = Plugin.Log[Plugin.LogPartToSend],
         part_number = Plugin.LogPartToSend ,
-        last_part = lastpart,
+        last_part = Plugin.gameFinished,
         map = Shared.GetMapName(),
     }
     Shared.SendHTTPRequest(self.Config.WebsiteDataUrl, "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
