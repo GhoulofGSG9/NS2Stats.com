@@ -1804,8 +1804,10 @@ function Plugin:sendAwardListToClients()
     AwardMessage.duration = Plugin.Config.AwardMsgTime
     
     for i=1,Plugin.Config.ShowNumAwards do
-        if RBPSawards[i].message == nil then break end
-        AwardMessage.message = AwardMessage.message .. RBPSawards[i].message .. "\n"
+        if i > #RBPSawards then break end
+        if RBPSawards[i].message then 
+            AwardMessage.message = AwardMessage.message .. RBPSawards[i].message .. "\n"
+        end
     end 
     self:SendNetworkMessage(nil, "StatsAwards", AwardMessage, true )
  end
