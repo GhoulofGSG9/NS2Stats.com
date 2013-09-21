@@ -269,9 +269,8 @@ end
 
 
 -- Player joins a team
-function Plugin:PostJoinTeam( Gamerules, Player, NewTeam, Force )
-    if not Player then return end
-    
+function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
+    if not Player then return end 
    
     if not Player.GetClient then
         --Debug
@@ -1326,18 +1325,25 @@ function Plugin:AddServerInfos(params)
     Plugin:addLog(params)
 end
 
---send Log to NS2Stats Server
-function Plugin:sendData(force)
+local working = false
 
+--send Log to NS2Stats Server
+function Plugin:sendData(force)    
     if not Plugin.Log[Plugin.LogPartToSend] then return end
     if string.len(Plugin.Log[Plugin.LogPartToSend]) < 160000 and not force then return end
+    
+    if working then return end
+    working = true
+    
+    local lastpart = 0
+    if Plugin.gameFinished == 1 and Plugin.LogPartToSend == Plugin.LogPartNumber then lastpart = 1 end
     
     local params =
     {
         key = self.Config.ServerKey,
         roundlog = Plugin.Log[Plugin.LogPartToSend],
         part_number = Plugin.LogPartToSend ,
-        last_part = Plugin.gameFinished,
+        last_part = lastpart,
         map = Shared.GetMapName(),
     }
     Shared.SendHTTPRequest(self.Config.WebsiteDataUrl, "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
@@ -1348,50 +1354,52 @@ local resendtimes = 0
 
 --Analyze the answer of server
 function Plugin:onHTTPResponseFromSend(client,action,response,status,params)	
-        local message = json.decode(response)        
-        if message then
-        
-            if string.len(response)>0 then --if we got somedata, that means send was completed                
-                 if not string.find(response,"Server log empty",nil, true) then
-                     Plugin.Log[Plugin.LogPartToSend ] = nil 
-                     Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
-                     RBPSsuccessfulSends = RBPSsuccessfulSends +1 
-                     Plugin:sendData()                                      
-                end
+    local message = json.decode(response)        
+    if message then        
+        if string.len(response)>0 then --if we got somedata, that means send was completed                
+             if not string.find(response,"Server log empty",nil, true) then
+                 Plugin.Log[Plugin.LogPartToSend ] = nil 
+                 Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
+                 RBPSsuccessfulSends = RBPSsuccessfulSends +1
+                 working = false
+                 Plugin:sendData()                                      
             end
-        
-            if message.other then
-                Notify("[NSStats]: ".. message.other)
-            end
-        
-            if message.error == "NOT_ENOUGH_PLAYERS" then
-                   local playerList = EntityListToTable(Shared.GetEntitiesWithClassname("Player"))
-                Notify("[NS2Stats]: Send failed because of too less players ")
-                return
-            end	
+        end
+    
+        if message.other then
+            Notify("[NSStats]: ".. message.other)
+        end
+    
+        if message.error == "NOT_ENOUGH_PLAYERS" then
+               local playerList = EntityListToTable(Shared.GetEntitiesWithClassname("Player"))
+            Notify("[NS2Stats]: Send failed because of too less players ")
+            return
+        end	
 
-            if message.link then
-                local link = Plugin.Config.WebsiteUrl .. message.link	
-                local playerList = EntityListToTable(Shared.GetEntitiesWithClassname("Player"))
-                Shine:Notify( nil, "", "", "Round has been saved to NS2Stats : " .. link)
-                Plugin.Config.Lastroundlink = link
-                self:SaveConfig()                
-            end	
-        elseif response then --if message = nil, json parse failed prob or timeout
-            if string.len(response)>0 then --if we got somedata, that means send was completed
-                if not string.find(response,"Server log empty",nil, true) then
-                     Plugin.Log[Plugin.LogPartToSend] = nil 
-                     Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
-                     RBPSsuccessfulSends = RBPSsuccessfulSends +1
-                     Plugin:sendData()          
-                end
+        if message.link then
+            local link = Plugin.Config.WebsiteUrl .. message.link	
+            local playerList = EntityListToTable(Shared.GetEntitiesWithClassname("Player"))
+            Shine:Notify( nil, "", "", "Round has been saved to NS2Stats : " .. link)
+            Plugin.Config.Lastroundlink = link
+            self:SaveConfig()                
+        end	
+    elseif response then --if message = nil, json parse failed prob or timeout
+        if string.len(response)>0 then --if we got somedata, that means send was completed
+            if not string.find(response,"Server log empty",nil, true) then
+                 Plugin.Log[Plugin.LogPartToSend] = nil 
+                 Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
+                 RBPSsuccessfulSends = RBPSsuccessfulSends +1
+                 working = false
+                 Plugin:sendData()          
             end
-            Notify("NS2Stats.org: (" .. response .. ")")
-       elseif not response then --we couldn't reach the NS2Stats Servers
-            if params then                                
-                Shine.Timer.Simple(5, function() Plugin:sendData() end)             
-            end              
-   end   
+        end
+        Notify("NS2Stats.org: (" .. response .. ")")
+    elseif not response then --we couldn't reach the NS2Stats Servers
+        if params then
+            working = false                                
+            Shine.Timer.Simple(5, function() Plugin:sendData() end)             
+        end              
+    end    
 end
 
 --Log end 
