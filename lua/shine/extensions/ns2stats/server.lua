@@ -268,10 +268,18 @@ end
 -- Player joins a team
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force )
     if not Player then return end
-
-    local Client = Server.GetOwner( Player )
+    
+   
+    if not Player.GetClient then
+        --Debug
+        Shine:DebugLog("Error: [NS2Stats Debug]: ".. Player:GetName() .. " failed at JoinTeam \n") 
+        return 
+    end
+    
+    local Client = Player:GetClient()
 
     if not Client then return end
+    
     if Client:GetIsVirtual() then return end
     
     local taulu = Plugin:getPlayerByClient(Client)
@@ -282,7 +290,6 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force )
         return 
     end
     
-    taulu.name = Player:GetName()
     taulu.teamnumber = NewTeam
     
     local playerJoin =
