@@ -194,7 +194,7 @@ end
 --Player Events
 
 --PlayerConnected
-function Plugin:ClientConfirmConnect( Client )
+function Plugin:ClientConnect( Client )
     if not Client then return end
     if Client:GetIsVirtual() then return end     
     self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)  
@@ -274,7 +274,7 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
    
     if not Player.GetClient then
         --Debug
-        Shine:DebugLog("Error: [NS2Stats Debug]: ".. Player:GetName() .. " failed at JoinTeam \n") 
+        Notify("[NS2Stats Debug]: ".. Player:GetName() .. " failed at JoinTeam \n") 
         return 
     end
     
@@ -288,7 +288,7 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
     
     if not taulu then
         Plugin:ClientConnect(Client)
-        Plugin:JoinTeam( Gamerules, Player, NewTeam, Force )
+        Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
         return 
     end
     
@@ -1328,22 +1328,20 @@ end
 local working = false
 
 --send Log to NS2Stats Server
-function Plugin:sendData(force)    
+function Plugin:sendData(force)
+    
     if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if string.len(Plugin.Log[Plugin.LogPartToSend]) < 160000 and not force then return end
+    if string.len(Plugin.Log[Plugin.LogPartToSend]) < 160000 and not force and not Plugin.gameFinished == 1 then return end
     
     if working then return end
     working = true
-    
-    local lastpart = 0
-    if Plugin.gameFinished == 1 and Plugin.LogPartToSend == Plugin.LogPartNumber then lastpart = 1 end
     
     local params =
     {
         key = self.Config.ServerKey,
         roundlog = Plugin.Log[Plugin.LogPartToSend],
         part_number = Plugin.LogPartToSend ,
-        last_part = lastpart,
+        last_part = Plugin.gameFinished,
         map = Shared.GetMapName(),
     }
     Shared.SendHTTPRequest(self.Config.WebsiteDataUrl, "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
