@@ -200,7 +200,7 @@ function Plugin:ClientConfirmConnect( Client )
     
     local connect={
             action = "connect",
-            steamId = Client:GetUserId()
+            steamId = Plugin:GetId(Client)
     }
     Plugin:addLog(connect)        
 end
