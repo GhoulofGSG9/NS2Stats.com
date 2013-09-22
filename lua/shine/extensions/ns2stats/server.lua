@@ -1505,12 +1505,10 @@ end
 --GetIds
 
 function Plugin:GetId(client)
-    if not client then return -1 end
-    if not client.GetUserId then return -1 end  
-    local id = client:GetUserId()
-    if client:GetIsVirtual() then id = Plugin:GetIdbyName(client:GetPlayer():GetName()) end
-    if id then return id end
-    return -1
+    if client and client.GetUserId then     
+        if client:GetIsVirtual() then return Plugin:GetIdbyName(client:GetPlayer():GetName())
+        else return client:GetUserId() end
+    end 
 end
 
 --display warning only once
