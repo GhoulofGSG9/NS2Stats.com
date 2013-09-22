@@ -1336,7 +1336,8 @@ function Plugin:createPlayerTable(client)
     end
     local player = client:GetPlayer()
     if not player then return end
-    local taulu= {}   
+    local taulu= {}
+       
     taulu.teamnumber = player:GetTeamNumber() or 0
     taulu.lifeform = Plugin:GetLifeform(player)
     taulu.score = 0
@@ -1386,7 +1387,6 @@ function Plugin:UpdatePlayerInTable(client)
     if not taulu then return end
     if taulu.dc then return end
     
-    taulu.name = player.name or ""
     taulu.score = player.score or 0
     taulu.assists = player.assistkills or 0
     taulu.deaths = player.deaths or 0
