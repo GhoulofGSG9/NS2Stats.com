@@ -188,30 +188,33 @@ end
 --Player Events
 
 --PlayerConnected
-function Plugin:ClientConfirmConnect( Client )
-    if not Client then return end  
-    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)  
+function Plugin:ClientConfirmConnect( client )
     
-    --player disconnected and came back
-    local taulu = Plugin:getPlayerByClient(Client)
-    
-    if not taulu then Plugin:addPlayerToTable(Client)  
-    else taulu.dc = false end
+    if not client then return end
     
     local connect={
             action = "connect",
-            steamId = Plugin:GetId(Client)
+            steamId = Plugin:GetId(client)
     }
-    Plugin:addLog(connect)        
+    Plugin:addLog(connect)
+    
+    --player disconnected and came back
+    local taulu = Plugin:getPlayerByClient(client)
+    
+    if not taulu then Plugin:addPlayerToTable(client)  
+    else taulu.dc = false end
+    
+    self:SendNetworkMessage(client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)
+        
 end
 
 --PlayerDisconnect
-function Plugin:ClientDisconnect(Client)
-    if not Client then return end
-    local Player = Client:GetPlayer()
+function Plugin:ClientDisconnect(client)
+    if not client then return end
+    local Player = client:GetPlayer()
     if not Player then return end 
     
-    local taulu = Plugin:getPlayerByClient(Client)
+    local taulu = Plugin:getPlayerByClient(client)
     
     if not taulu then return end
     
@@ -231,24 +234,17 @@ function Plugin:PlayerNameChange( Player, Name, OldName )
    
     local taulu = Plugin:getPlayerByName(OldName)    
     if not taulu then return end    
-    if taulu.isBot then return end
-    
+    if taulu.isBot then return end    
     taulu.name = Name
 end
 
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state) 
-    local client
-    if Player.GetClient then client = Player:GetClient()    
-    else client = Server.GetOwner(Player) end
-    if not client then return end 
+    local name = Player:GetName()
+    if not name return end    
+    local taulu = Plugin:getPlayerByName(name)
     
-    local taulu = Plugin:getPlayerByClient(client)
-    
-    if not taulu then
-    Plugin:ClientConfirmConnect(client)
-    taulu = Plugin:getPlayerByClient(client)
-    end
+    if not taulu then return end -- should be imposible
     
     --check teamchange
     if taulu.teamnumber ~= Player:GetTeamNumber() then
@@ -270,7 +266,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})
     end
     
-    Plugin:UpdatePlayerInTable(client)
+    Plugin:UpdateEntryInTable(taulu)
 end
 
 function Plugin:GetLifeform(Player)
@@ -1141,8 +1137,7 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 target_lifetime = string.format("%.4f", Shared.GetTime() - target:GetCreationTime())
             }
             
-            Plugin:addLog(deathLog)
-            Plugin:UpdatePlayerInTable(target_client)  
+            Plugin:addLog(deathLog)  
     end
 end
 
@@ -1375,14 +1370,7 @@ function Plugin:createPlayerTable(client)
 end
 
 --Update Player Entry
-function Plugin:UpdatePlayerInTable(client)
-    if not client then return end 
-    if not client.GetPlayer then return end   
-    local player = client:GetPlayer()
-    if not player then return end
-    local pOrigin = player:GetOrigin()
-    
-    local taulu = Plugin:getPlayerByClient(client)
+function Plugin:UpdateEntryInTable(taulu)   
     
     if not taulu then return end
     if taulu.dc then return end
