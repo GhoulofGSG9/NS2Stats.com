@@ -606,7 +606,7 @@ function Plugin:OnPickableItemCreated(item, player)
         local steamId = 0
 
         if client then
-            steamId = client:GetUserId()
+            steamId = Plugin:GetId(client)
         end
         
         newItem.action = "pickable_item_picked"
@@ -658,7 +658,7 @@ function Plugin:OnPickableItemPicked(item,deltaTime)
     local steamId = 0
 
     if client then
-        steamId = client:GetUserId()
+        steamId = Plugin:GetId(client)
     end
 
     local newItem =
@@ -1120,7 +1120,7 @@ function Plugin:addDeathToLog(target, attacker, doer)
 
                 attacker_weapon = "self",
                 attacker_lifeform = attacker:GetMapName(),
-                attacker_steamId = attacker_client:GetUserId(),
+                attacker_steamId = Plugin:GetId(attacker_client),
                 attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
                 attacker_hp = attacker:GetHealth(),
                 attacker_armor = attacker:GetArmorAmount(),
