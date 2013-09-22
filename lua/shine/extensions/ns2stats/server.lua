@@ -1332,13 +1332,13 @@ end
 function Plugin:createPlayerTable(client)
     if not client.GetPlayer then
         Notify("Tried to create nil player")
-    return
+        return
     end
     local player = client:GetPlayer()
     if not player then return end
     local taulu= {}   
     taulu.teamnumber = player:GetTeamNumber() or 0
-    taulu.lifeform = ""
+    taulu.lifeform = Plugin:GetLifeform(player)
     taulu.score = 0
     taulu.assists = 0
     taulu.deaths = 0
