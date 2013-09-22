@@ -241,7 +241,7 @@ end
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state) 
     local name = Player:GetName()
-    if not name return end    
+    if not name then return end    
     local taulu = Plugin:getPlayerByName(name)
     
     if not taulu then return end -- should be imposible
@@ -266,7 +266,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})
     end
     
-    Plugin:UpdateEntryInTable(taulu)
+    Plugin:UpdatePlayerInTable(Player)
 end
 
 function Plugin:GetLifeform(Player)
@@ -1326,7 +1326,7 @@ end
 --create new entry
 function Plugin:createPlayerTable(client)
     if not client.GetPlayer then
-        Notify("Tried to create nil player")
+        Notify("[NS2Stats Debug]: Tried to create nil player")
         return
     end
     local player = client:GetPlayer()
@@ -1370,8 +1370,9 @@ function Plugin:createPlayerTable(client)
 end
 
 --Update Player Entry
-function Plugin:UpdateEntryInTable(taulu)   
+function Plugin:UpdatePlayerInTable(player)   
     
+    local taulu = Plugin:getPlayerByName(player.name)
     if not taulu then return end
     if taulu.dc then return end
     
@@ -1391,7 +1392,7 @@ function Plugin:UpdateEntryInTable(taulu)
     if player:GetIsAlive() == false then
         taulu.killstreak = 0        
     end
-    if not taulu.isbot then taulu.ping = client:GetPing() or 0 end        
+    if not taulu.isbot and player.GetClient and player:GetClient() then taulu.ping = player:GetClient():GetPing() or 0 end        
 end
 
 
