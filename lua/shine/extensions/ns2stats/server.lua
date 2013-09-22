@@ -46,7 +46,6 @@ Shine.Hook.SetupClassHook("ResearchMixin","OnResearchCancel","addUpgradeAbortedT
 Shine.Hook.SetupClassHook("UpgradableMixin","RemoveUpgrade","addUpgradeLostToLog","PassivePost")
 Shine.Hook.SetupClassHook("ResourceTower","CollectResources","OnTeamGetResources","PassivePost")  
 Shine.Hook.SetupClassHook("DropPack","OnUpdate","OnPickableItemPicked","PassivePre")
-Shine.Hook.SetupClassHook("PlayerBot","UpdateName","OnBotRenamed","PassivePost")
 Shine.Hook.SetupClassHook("Player","SetName","PlayerNameChange","PassivePost")
 Shine.Hook.SetupClassHook("Player","OnJump","OnPlayerJump","PassivePost")
 Shine.Hook.SetupClassHook("Player","SetScoreboardChanged","OnPlayerScoreChanged","PassivePost")
@@ -123,8 +122,8 @@ end
 
 --Game reset
 function Plugin:OnGameReset()
-
-    --Resets all Stats
+        stoplogging = false 
+        --Resets all Stats
         Plugin.LogPartNumber = 1
         Plugin.LogPartToSend  = 1
         Gamestarted = 0
@@ -162,20 +161,14 @@ end
 
 --Gameend
 function Plugin:EndGame( Gamerules, WinningTeam )     
-        if Plugin.Config.Awards then Plugin:sendAwardListToClients() end
-        -- update stats all connected players       
-        for _, player in ipairs(GetEntitiesWithMixin("Scoring")) do
-            local client = Server.GetOwner(player)
-            Plugin:UpdatePlayerInTable(client)        
-        end        
+        if Plugin.Config.Awards then Plugin:sendAwardListToClients() end               
         Buildings = {}
         Plugin:addPlayersToLog(1)
         stoplogging = true      
         local initialHiveTechIdString = "None"            
         if Gamerules.initialHiveTechId then
                 initialHiveTechIdString = EnumToString(kTechId, Gamerules.initialHiveTechId)
-        end
-        Plugin.gameFinished = 1       
+        end           
         local params =
             {
                 version = ToString(Shared.GetBuildNumber()),
@@ -186,7 +179,8 @@ function Plugin:EndGame( Gamerules, WinningTeam )
                 start_location2 = Gamerules.startingLocationNameTeam2,
                 start_path_distance = Gamerules.startingLocationsPathDistance,
                 start_hive_tech = initialHiveTechIdString,
-            }       
+            }
+        Plugin.gameFinished = 1       
         Plugin:AddServerInfos(params)        
         if Plugin.Config.Statsonline then Plugin:sendData(true)  end --senddata also clears log         
 end
@@ -195,8 +189,7 @@ end
 
 --PlayerConnected
 function Plugin:ClientConnect( Client )
-    if not Client then return end
-    if Client:GetIsVirtual() then return end     
+    if not Client then return end  
     self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)  
     
     --player disconnected and came back
@@ -232,79 +225,6 @@ function Plugin:ClientDisconnect(Client)
     Plugin:addLog(connect)
 end
 
---Bots renamed
-function Plugin:OnBotRenamed(Bot)
-    local player = Bot:GetPlayer()
-    local name = player:GetName()
-    if not name then return end    
-    if string.find(name, "NSPlayer") or string.find(name, "Bot",nil,true) and not string.find(name, "[BOT]",nil,true)  then return end    
-    local client = player:GetClient()    
-    if not client then return end
-    if not Plugin:getPlayerByClient(client) then
-    Plugin:addPlayerToTable(client) end
-    
-    local taulu = Plugin:getPlayerByClient(client)    
-    if not taulu then return end
-    
-    --Bot connects
-    local connect={
-            action = "connect",
-            steamId = taulu.steamId
-    }
-    
-    Plugin:addLog(connect) 
-  
-    -- Bot joins Team
-    local playerJoin =
-    {
-        action="player_join_team",
-        name = taulu.name,
-        team = taulu.team,
-        steamId = taulu.steamId,
-        score = taulu.score
-    }
-    Plugin:addLog(playerJoin)   
-        
-end
-
-
--- Player joins a team
-function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
-    if not Player then return end 
-   
-    if not Player.GetClient then
-        --Debug
-        Notify("[NS2Stats Debug]: ".. Player:GetName() .. " failed at JoinTeam \n") 
-        return 
-    end
-    
-    local Client = Player:GetClient()
-
-    if not Client then return end
-    
-    if Client:GetIsVirtual() then return end
-    
-    local taulu = Plugin:getPlayerByClient(Client)
-    
-    if not taulu then
-        Plugin:ClientConnect(Client)
-        Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
-        return 
-    end
-    
-    taulu.teamnumber = NewTeam
-    
-    local playerJoin =
-    {
-        action="player_join_team",
-        name = taulu.name,
-        team = NewTeam,
-        steamId = taulu.steamId,
-        score = taulu.score
-    }
-    Plugin:addLog(playerJoin)   
-end
-
 --Player changes Name
 function Plugin:PlayerNameChange( Player, Name, OldName )
     if not Player or not Name or not OldName then return end
@@ -316,62 +236,55 @@ function Plugin:PlayerNameChange( Player, Name, OldName )
     taulu.name = Name
 end
 
---Player changes lifeform
-function Plugin:OnLifeformChanged(Player)
-   -- search for playername in players table if its there player is real and lifeform change should be tracked    
-    local client = Player:GetClient()
-    if not client then return end
-   
-    local taulu = Plugin:getPlayerByClient(client)
-    if not taulu then return end
-    
-    Currentlifeform = Player:GetMapName()
-    if not Player:GetIsAlive() then Currentlifeform = "dead" end
-    if taulu.teamnumber == 0 then Currentlifeform = "spectator" end
-    if taulu.isCommander == true then
-        if taulu.teamnumber == 1 then
-            Currentlifeform = "marine_commander"
-        else Currentlifeform = "alien_commander" end
-    end
-    if taulu.lifeform ~= Currentlifeform then        
-        taulu.lifeform = Currentlifeform
-        Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})
-    end     
-end
-
---Player become Comm
-function Plugin:CommLoginPlayer( Chair, Player )
-    if not Player then return end
-    local taulu = Plugin:getPlayerByName(Player.name)
-    
-    if not taulu then return end
-    
-    taulu.isCommander = true    
-
-end
-
---Player log out CC
-function Plugin:CommLogout( Chair, Player )
-    if not Player then return end
-    local taulu = Plugin:getPlayerByName(Player.name)
-    
-    if not taulu then return end
-    
-    taulu.isCommander = false  
-    
-end
-
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)
     if not state then return end
     
-    local client = Player:GetClient()
-    if not client then return end
+    local client
+    if Player.GetClient then client = Player:GetClient()    
+    else client = Server.GetOwner(Player) end
+    if not client then return end 
     
-    Plugin:UpdatePlayerInTable(client)
+    local taulu = Plugin:getPlayerByClient(client)
+    
+    if not taulu then Plugin:ClientConnect(client) taulu = Plugin:getPlayerByClient(client) end
+    
+    --check teamchange
+    if taulu.teamnumber ~= Player:GetTeamNumber() then
+        taulu.teamnumber = Player:GetTeamNumber()
+        local playerJoin =
+        {
+            action="player_join_team",
+            name = taulu.name,
+            team = taulu.teamnumber,
+            steamId = taulu.steamId,
+            score = taulu.score
+        }
+        Plugin:addLog(playerJoin)
+    end
     
     --check if lifeform changed
-    Plugin:OnLifeformChanged(Player)
+    if taulu.lifeform ~= Plugin:GetLifeform(Player) then
+        taulu.lifeform = Plugin:GetLifeform(Player)
+        Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})
+    end
+    
+    Plugin:UpdatePlayerInTable(client)
+end
+
+function Plugin:GetLifeform(Player)
+    if not Player then return end
+    local Currentlifeform = Player:GetMapName()
+    local teamnumber = Player:GetTeamNumber()
+    if not teamnumber then teamnumber = 0 end
+    if not Player:GetIsAlive() then Currentlifeform = "dead" end
+    if teamnumber == 0 then Currentlifeform = "spectator" end
+    if Player:GetIsCommander() then
+        if teamnumber == 1 then
+            Currentlifeform = "marine_commander"
+        else Currentlifeform = "alien_commander" end
+    end
+    return Currentlifeform
 end
 
 --Player shoots weapon
@@ -1250,9 +1163,8 @@ end
 
 --add to log
 function Plugin:addLog(tbl)
-
-    if stoplogging and tbl.action ~= "game_ended" then return end 
-    stoplogging = false   
+    
+    if stoplogging and tbl.action ~= "game_ended" then return end      
     if not Plugin.Log then Plugin.Log = {} end
     if not Plugin.Log[Plugin.LogPartNumber] then Plugin.Log[Plugin.LogPartNumber] = "" end
     if not tbl then return end 
@@ -1484,7 +1396,8 @@ function Plugin:UpdatePlayerInTable(client)
     taulu.playerSkill = player.playerSkill or 0
     taulu.totalScore = player.totalScore or 0
     taulu.totalPlayTime = player.totalPlayTime or 0
-    taulu.playerLevel = player.playerLevel or 0    
+    taulu.playerLevel = player.playerLevel or 0
+    taulu.isCommander = player:GetIsCommander() or false    
     --if player is dead
     if player:GetIsAlive() == false then
         taulu.killstreak = 0        
