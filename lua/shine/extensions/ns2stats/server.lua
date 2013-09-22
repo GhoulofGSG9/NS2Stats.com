@@ -136,11 +136,9 @@ function Plugin:OnGameReset()
         Plugin.Players = {}
         Items = {}
         -- update stats all connected players       
-        for _, player in ipairs(GetEntitiesWithMixin("Scoring")) do
-            local client = Server.GetOwner(player)
+        for _, player in ipairs(GetEntitiesWithMixin("WeaponOwner")) do
             Plugin:addPlayerToTable(client)        
-        end
-        
+        end        
         Buildings = {}       
     
     Plugin:addLog({action="game_reset"})
@@ -242,11 +240,10 @@ end
 function Plugin:OnPlayerScoreChanged(Player,state) 
     local name = Player:GetName()
     if not name then return end    
-    local taulu = Plugin:getPlayerByName(name)
+    local taulu = Plugin:getPlayerByName(name)    
+    if not taulu then return end
     
-    if not taulu then return end -- should be imposible
-    
-    --check teamchange
+    --check teamchange  
     if taulu.teamnumber ~= Player:GetTeamNumber() then
         taulu.teamnumber = Player:GetTeamNumber()
         local playerJoin =
@@ -263,7 +260,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     --check if lifeform changed
     if taulu.lifeform ~= Plugin:GetLifeform(Player) then
         taulu.lifeform = Plugin:GetLifeform(Player)
-        Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})
+        Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})      
     end
     
     Plugin:UpdatePlayerInTable(Player)
