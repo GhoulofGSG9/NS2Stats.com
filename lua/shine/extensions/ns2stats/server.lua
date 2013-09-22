@@ -188,7 +188,7 @@ end
 --Player Events
 
 --PlayerConnected
-function Plugin:ClientConnect( Client )
+function Plugin:ClientConfirmConnect( Client )
     if not Client then return end  
     self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)  
     
@@ -237,9 +237,7 @@ function Plugin:PlayerNameChange( Player, Name, OldName )
 end
 
 --score changed
-function Plugin:OnPlayerScoreChanged(Player,state)
-    if not state then return end
-    
+function Plugin:OnPlayerScoreChanged(Player,state) 
     local client
     if Player.GetClient then client = Player:GetClient()    
     else client = Server.GetOwner(Player) end
@@ -247,7 +245,10 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     
     local taulu = Plugin:getPlayerByClient(client)
     
-    if not taulu then Plugin:ClientConnect(client) taulu = Plugin:getPlayerByClient(client) end
+    if not taulu then
+    Plugin:ClientConfirmConnect(client)
+    taulu = Plugin:getPlayerByClient(client)
+    end
     
     --check teamchange
     if taulu.teamnumber ~= Player:GetTeamNumber() then
