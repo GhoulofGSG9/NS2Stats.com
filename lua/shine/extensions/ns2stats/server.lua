@@ -137,6 +137,7 @@ function Plugin:OnGameReset()
         Items = {}
         -- update stats all connected players       
         for _, player in ipairs(GetEntitiesWithMixin("WeaponOwner")) do
+            local client = player:GetClient() or Server.GetOwner(player)
             Plugin:addPlayerToTable(client)        
         end        
         Buildings = {}       
