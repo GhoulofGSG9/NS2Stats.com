@@ -247,6 +247,32 @@ function Plugin:PlayerNameChange( Player, Name, OldName )
     taulu.name = Name
 end
 
+function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
+    if not Player or not NewTeam then return end
+    
+    local taulu = Plugin:getPlayerByName(Player:GetName())
+    
+    if not taulu and Player.GetClient then 
+        local client = Player:GetClient()
+        if not client then return end
+        Plugin:ClientConfirmConnect(client)
+        taulu = Plugin:getPlayerByName(Player:GetName())
+    end
+    
+    if not taulu then return end
+    
+    taulu.teamnumber = NewTeam
+    local playerJoin =
+    {
+        action="player_join_team",
+        name = taulu.name,
+        team = taulu.teamnumber,
+        steamId = taulu.steamId,
+        score = taulu.score
+    }
+    Plugin:addLog(playerJoin)    
+end
+
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)
     if not state then return end
@@ -255,24 +281,10 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     if not name then return end  
     
     local taulu = Plugin:getPlayerByName(name)
-    if not taulu then
-        local client = Player:GetClient()
-        if client and not client:GetIsVirtual() then Plugin:ClientConfirmConnect(client) taulu=Plugin:getPlayerByName(name)
-        else return end
-    end
+    if not taulu then return end
     
-    --check teamchange  
     if taulu.teamnumber ~= Player:GetTeamNumber() then
-        taulu.teamnumber = Player:GetTeamNumber()
-        local playerJoin =
-        {
-            action="player_join_team",
-            name = taulu.name,
-            team = taulu.teamnumber,
-            steamId = taulu.steamId,
-            score = taulu.score
-        }
-        Plugin:addLog(playerJoin)
+        
     end
     
     --check if lifeform changed
@@ -1478,15 +1490,13 @@ function Plugin:getPlayerByClient(client)
     if not client then return end
     local steamId = nil
     local name = nil
-    if type(client["GetUserId"]) ~= "nil" then
+    if client.GetUserId then
         steamId = Plugin:GetId(client)
+    elseif client.GetPlayer then
+        local player = client:GetPlayer()
+        local name = player:GetName()
     else
-        if type(client["GetPlayer"]) ~= "nil" then
-                local player = client:GetPlayer()
-                local name = player:GetName()
-            else
-                return
-        end
+        return
     end
 
     for key,taulu in pairs(Plugin.Players) do	
