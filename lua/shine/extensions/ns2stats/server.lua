@@ -13,6 +13,9 @@ local StringFormat = string.format
 local StringSub = string.UTF8Sub
 local StringLen = string.len
 
+local JsonEncode = json.encode
+local JsonDecode = json.decode 
+
 Plugin.Version = "0.42"
 
 Plugin.HasConfig = true
@@ -190,7 +193,7 @@ end
 --Player Events
 
 --PlayerConnected
-function Plugin:ClientConfirmConnect( Client)
+function Plugin:ClientConnect( Client )
     
     if not Client then return end
     if Client:GetIsVirtual() then return end
@@ -234,32 +237,43 @@ end
 
 --Player changes Name
 function Plugin:PlayerNameChange( Player, Name, OldName )
-
-    if not Player or not Name then return end    
+    if not Player or not Name then return end
+    
+    if not OldName or OldName == "" then return end
+   
     local taulu = Plugin:getPlayerByName(OldName)  
-    if not taulu then
-        if StringFind(Name,"[BOT]",nill,true) and Player.GetClient then
-            Plugin:addPlayerToTable(Player:GetClient())
-        end    
-        return 
-    end    
-    if taulu.isBot then return end    
+    if not taulu then return end
+  
     taulu.name = Name
 end
 
+--Player joins a team
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
     if not Player or not NewTeam then return end
     
     local taulu = Plugin:getPlayerByName(Player:GetName())
     
-    if not taulu and Player.GetClient then 
-        local client = Player:GetClient()
-        if not client then return end
-        Plugin:ClientConfirmConnect(client)
+    if not taulu then
+ 
+        local Client
+        
+        if Player.GetClient then Client = Player:GetClient()
+        else Client = Server.GetOwner( Player ) end
+        
+        if not Client then return end
+        
+        local connect=
+        {
+            action = "connect",
+            steamId = Plugin:GetId(Client)
+        }        
+        Plugin:addLog(connect)
+        
+        Plugin:addPlayerToTable(Client)  
         taulu = Plugin:getPlayerByName(Player:GetName())
     end
     
-    if not taulu then return end
+    if not taulu then Notify( StringFormat("[Ns2Stats Debug]: Player %s failed",Player:GetName())) return end
     
     taulu.teamnumber = NewTeam
     local playerJoin =
@@ -282,11 +296,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     
     local taulu = Plugin:getPlayerByName(name)
     if not taulu then return end
-    
-    if taulu.teamnumber ~= Player:GetTeamNumber() then
-        
-    end
-    
+
     --check if lifeform changed
     if taulu.lifeform ~= Plugin:GetLifeform(Player) then
         taulu.lifeform = Plugin:GetLifeform(Player)
@@ -1193,7 +1203,7 @@ function Plugin:addLog(tbl)
     if not tbl then return end 
     tbl.time = Shared.GetGMTString(false)
     tbl.gametime = Shared.GetTime() - Gamestarted
-    Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber] , json.encode(tbl))	
+    Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber] , JsonEncode(tbl))	
     
     --avoid that log gets too long also do resend by this way
     if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 1000000 then    
@@ -1286,7 +1296,7 @@ local resendtimes = 0
 
 --Analyze the answer of server
 function Plugin:onHTTPResponseFromSend(client,action,response,status,params)	
-    local message = json.decode(response)        
+    local message = JsonDecode(response)        
     if message then        
         if StringLen(response)>0 then --if we got somedata, that means send was completed                
              if not StringFind(response,"Server log empty",nil, true) then
@@ -1614,7 +1624,7 @@ function Plugin:acceptKey(response)
             Notify("NS2Stats: Unable to receive unique key from server, stats wont work yet. ")
             Notify("NS2Stats: Server restart might help.")
         else
-            local decoded = json.decode(response)
+            local decoded = JsonDecode(response)
             if decoded and decoded.key then
                 self.Config.ServerKey = decoded.key
                 Notify(StringFormat("NS2Stats: Key %s has been assigned to this server ", self.Config.ServerKey))
@@ -1637,7 +1647,7 @@ function Plugin:sendServerStatus(gameState)
         local params =
         {
             key = self.Config.ServerKey,
-            players = json.encode(Plugin.Players),
+            players = JsonEncode(Plugin.Players),
             state = gameState,
             time = stime,
             gametime = gameTime,
@@ -1648,7 +1658,7 @@ function Plugin:sendServerStatus(gameState)
 end
 
 function Plugin:onHTTPResponseFromSendStatus(client,action,response,status)
-    --Maybe add Log notice
+    --Notify(StringFormat("Status Response: %s , %s", response,status)) --Debug for Statussend
 end
 
 --Other Ns2Stat functions end
@@ -1657,7 +1667,7 @@ local serverid = ""
 function Plugin:GetServerId()    
     if serverid == "" then 
         Shared.SendHTTPRequest( StringFormat("%s/server?key=%s",self.Config.WebsiteApiUrl,self.Config.ServerKey),"GET",function(response)
-            local Data = json.decode( response )
+            local Data = JsonDecode( response )
             if Data then serverid = Data.id or "" end            
         end)
      end
@@ -1669,7 +1679,7 @@ function Plugin:CreateCommands()
     
     local ShowPStats = self:BindCommand( "sh_showplayerstats", {"showplayerstats","showstats" }, function(Client)
         Shared.SendHTTPRequest( StringFormat("%s/player?ns2_id=%s", self.Config.WebsiteApiUrl, Plugin:GetId(Client)), "GET",function(response)   
-            local Data = json.decode(response)
+            local Data = JsonDecode(response)
             local playerid = ""
             if Data then playerid = Data[1].player_page_id or "" end
             local url = StringFormat( "%s/player/player/%s", self.Config.WebsiteUrl, playerid)
@@ -1709,6 +1719,14 @@ function Plugin:CreateCommands()
     end)    
     Tag:AddParam{ Type = "string",TakeRestOfLine = true,Error = "Please specify a tag to be added.", MaxLength = 30}
     Tag:Help ("Adds the given tag to the Stats")
+    
+    local Debug = self:BindCommand( "sh_statsdebug","statsdebug",function()
+    Notify("Current Player Table:")
+    Notify(tostring(JsonEncode(Plugin.Players)))
+    Notify(StringFormat("%s Players in PlayerTable.",#Plugin.Players))
+    Notify("Current temp Log:")
+    Notify(tostring(Plugin.Log[Plugin.LogPartToSend]))
+    end,true)
 end
 
 --Awards
