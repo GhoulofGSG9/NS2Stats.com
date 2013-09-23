@@ -6,9 +6,12 @@ local Shine = Shine
 local Notify = Shared.Message
 
 local Plugin = Plugin
+
 local tostring = tostring
 local StringFind = string.find
 local StringFormat = string.format
+local StringSub = string.UTF8Sub
+local StringLen = string.len
 
 Plugin.Version = "0.42"
 
@@ -48,7 +51,6 @@ Shine.Hook.SetupClassHook("ResearchMixin","OnResearchCancel","addUpgradeAbortedT
 Shine.Hook.SetupClassHook("UpgradableMixin","RemoveUpgrade","addUpgradeLostToLog","PassivePost")
 Shine.Hook.SetupClassHook("ResourceTower","CollectResources","OnTeamGetResources","PassivePost")  
 Shine.Hook.SetupClassHook("DropPack","OnUpdate","OnPickableItemPicked","PassivePre")
-Shine.Hook.SetupClassHook("Player","SetName","PlayerNameChange","PassivePost")
 Shine.Hook.SetupClassHook("Player","OnJump","OnPlayerJump","PassivePost")
 Shine.Hook.SetupClassHook("Player","SetScoreboardChanged","OnPlayerScoreChanged","PassivePost")
 --NS2Ranking
@@ -188,13 +190,15 @@ end
 --Player Events
 
 --PlayerConnected
-function Plugin:ClientConfirmConnect( Client )
+function Plugin:ClientConfirmConnect( Client)
     
     if not Client then return end
+    if Client:GetIsVirtual() then return end
     
-    local connect={
-            action = "connect",
-            steamId = Plugin:GetId(client)
+    local connect=
+    {
+        action = "connect",
+        steamId = Plugin:GetId(Client)
     }
     Plugin:addLog(connect)
     
@@ -204,7 +208,7 @@ function Plugin:ClientConfirmConnect( Client )
     if not taulu then Plugin:addPlayerToTable(Client)  
     else taulu.dc = false end
     
-    self:SendNetworkMessage(client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)
+    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)
         
 end
 
@@ -214,7 +218,7 @@ function Plugin:ClientDisconnect(Client)
     local Player = Client:GetPlayer()
     if not Player then return end 
     
-    local taulu = Plugin:getPlayerByName(Player.GetName())
+    local taulu = Plugin:getPlayerByName(Player:GetName())
     
     if not taulu then return end
     
@@ -230,20 +234,32 @@ end
 
 --Player changes Name
 function Plugin:PlayerNameChange( Player, Name, OldName )
-    if not Player or not Name or not OldName then return end
-   
-    local taulu = Plugin:getPlayerByName(OldName)    
-    if not taulu then return end    
+
+    if not Player or not Name then return end    
+    local taulu = Plugin:getPlayerByName(OldName)  
+    if not taulu then
+        if StringFind(Name,"[BOT]",nill,true) and Player.GetClient then
+            Plugin:addPlayerToTable(Player:GetClient())
+        end    
+        return 
+    end    
     if taulu.isBot then return end    
     taulu.name = Name
 end
 
 --score changed
-function Plugin:OnPlayerScoreChanged(Player,state) 
+function Plugin:OnPlayerScoreChanged(Player,state)
+    if not state then return end
+ 
     local name = Player:GetName()
-    if not name then return end    
-    local taulu = Plugin:getPlayerByName(name)    
-    if not taulu then return end
+    if not name then return end  
+    
+    local taulu = Plugin:getPlayerByName(name)
+    if not taulu then
+        local client = Player:GetClient()
+        if client and not client:GetIsVirtual() then Plugin:ClientConfirmConnect(client) taulu=Plugin:getPlayerByName(name)
+        else return end
+    end
     
     --check teamchange  
     if taulu.teamnumber ~= Player:GetTeamNumber() then
@@ -1165,15 +1181,15 @@ function Plugin:addLog(tbl)
     if not tbl then return end 
     tbl.time = Shared.GetGMTString(false)
     tbl.gametime = Shared.GetTime() - Gamestarted
-    Plugin.Log[Plugin.LogPartNumber] = Plugin.Log[Plugin.LogPartNumber] .. json.encode(tbl) .."\n"	
+    Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber] , json.encode(tbl))	
     
     --avoid that log gets too long also do resend by this way
-    if string.len(Plugin.Log[Plugin.LogPartNumber]) > 160000 then    
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 1000000 then    
         if Plugin.Config.Statsonline then Plugin:sendData() end
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1
     end
     --local data = RBPSlibc:CompressHuffman(Plugin.Log)
-    --Notify("compress size: " .. string.len(data) .. "decompress size: " .. string.len(RBPSlibc:Decompress(data)))        
+    --Notify("compress size: " .. StringLen(data) .. "decompress size: " .. StringLen(RBPSlibc:Decompress(data)))        
 end
 
 --add playerlist to log
@@ -1238,7 +1254,7 @@ local working = false
 function Plugin:sendData(force)
     
     if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if string.len(Plugin.Log[Plugin.LogPartToSend]) < 160000 and not force and not Plugin.gameFinished == 1 then return end
+    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 1000000 and not force and not Plugin.gameFinished == 1 then return end
     
     if working then return end
     working = true
@@ -1260,7 +1276,7 @@ local resendtimes = 0
 function Plugin:onHTTPResponseFromSend(client,action,response,status,params)	
     local message = json.decode(response)        
     if message then        
-        if string.len(response)>0 then --if we got somedata, that means send was completed                
+        if StringLen(response)>0 then --if we got somedata, that means send was completed                
              if not StringFind(response,"Server log empty",nil, true) then
                  Plugin.Log[Plugin.LogPartToSend ] = nil 
                  Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
@@ -1275,29 +1291,27 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
         end
     
         if message.error == "NOT_ENOUGH_PLAYERS" then
-               local playerList = EntityListToTable(Shared.GetEntitiesWithClassname("Player"))
             Notify("[NS2Stats]: Send failed because of too less players ")
             return
         end	
 
         if message.link then
-            local link = Plugin.Config.WebsiteUrl .. message.link	
-            local playerList = EntityListToTable(Shared.GetEntitiesWithClassname("Player"))
-            Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : " ,link)
+            local link = StringFormat("%s%s",Plugin.Config.WebsiteUrl, message.link)
+            Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
             Plugin.Config.Lastroundlink = link
             self:SaveConfig()                
         end	
     elseif response then --if message = nil, json parse failed prob or timeout
-        if string.len(response)>0 then --if we got somedata, that means send was completed
+        if StringLen(response)>0 then --if we got somedata, that means send was completed
             if not StringFind(response,"Server log empty",nil, true) then
                  Plugin.Log[Plugin.LogPartToSend] = nil 
                  Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
                  RBPSsuccessfulSends = RBPSsuccessfulSends +1
-                 working = false
+                 working =  false
                  Plugin:sendData()          
             end
         end
-        Notify(StringFormat("NS2Stats.org: (" ,response ,")")
+        Notify(StringFormat("NS2Stats.org: ( %s )", response))
     elseif not response then --we couldn't reach the NS2Stats Servers
         if params then
             working = false                                
@@ -1493,7 +1507,7 @@ end
 
 function Plugin:GetId(client)
     if client and client.GetUserId then     
-        if client:GetIsVirtual() then return Plugin:GetIdbyName(client:GetPlayer():GetName())
+        if client:GetIsVirtual() then return Plugin:GetIdbyName(client:GetPlayer():GetName()) or 0
         else return client:GetUserId() end
     end 
 end
@@ -1504,33 +1518,33 @@ local a = true
 --For Bots
 function Plugin:GetIdbyName(Name)
 
-    if not Name then return -1 end
+    if not Name then return end
     
     --disable Onlinestats
-    if a then Notify( "NS2Stats won't store game with bots. Disabling online stats now!") a=false end
-    Plugin.Config.Statsonline = false
+    if a then Notify( "NS2Stats won't store game with bots. Disabling online stats now!") a=false 
+    Plugin.Config.Statsonline = false end
     
     local newId=""
     local letters = " (){}[]/.,+-=?!*1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
     
     --cut the [Bot]
     local input = tostring(Name)
-    input = input:sub(6,#input)
+    input = StringSub(input,6)
     
     --to differ between e.g. name and name (2)   
-    input = string.reverse(input)
+    input = string.UTF8Reverse(input)
     
     for i=1, #input do
-        local char = input:sub(i,i)
+        local char = StringSub(input,i,i)
         local num = StringFind(letters,char,nil,true)
-        newId = StringFormat(newId,num)        
+        newId = StringFormat("%s%s",newId,num)        
     end
     
     --fill up the ns2id to 12 numbers
-    while string.len(newId) < 12 do
-        newId = StringFormat(newId, "0"
+    while StringLen(newId) < 12 do
+        newId = StringFormat("%s%s",newId, "0")
     end       
-    newId = string.sub(newId, 1 , 12)
+    newId = StringSub(newId, 1 , 12)
     
     --make a int
     newId = tonumber(newId)
@@ -1556,7 +1570,7 @@ function Plugin:updateWeaponData(client)
     local RBPSplayer = Plugin:getPlayerByClient(client)
     local foundId = false
     if not RBPSplayer then return end    
-    local weapon = player:GetActiveWeaponName() or "none"
+    local weapon = client:GetPlayer():GetActiveWeaponName() or "none"
     if weapon == "" then weapon = "none" end
     weapon = string.lower(weapon)
     
@@ -1593,7 +1607,7 @@ function Plugin:acceptKey(response)
             local decoded = json.decode(response)
             if decoded and decoded.key then
                 self.Config.ServerKey = decoded.key
-                Notify(StringFormat("NS2Stats: Key ", self.Config.ServerKey, " has been assigned to this server"))
+                Notify(StringFormat("NS2Stats: Key %s has been assigned to this server ", self.Config.ServerKey))
                 Notify("NS2Stats: You may use admin command sh_verity to claim this server.")
                 Notify("NS2Stats setup complete.")
                 self:SaveConfig()
@@ -1601,7 +1615,7 @@ function Plugin:acceptKey(response)
             else
                 Notify("NS2Stats: Unable to receive unique key from server, stats wont work yet. ")
                 Notify("NS2Stats: Server restart might help.")
-                Notify(StringFormat("NS2Stats: Server responded: ", response))
+                Notify(StringFormat("NS2Stats: Server responded: %s", response))
             end
         end
 end
@@ -1632,7 +1646,7 @@ local serverid = ""
 
 function Plugin:GetServerId()    
     if serverid == "" then 
-        Shared.SendHTTPRequest( StringFormat(self.Config.WebsiteApiUrl, "/server?key=", self.Config.ServerKey),"GET",function(response)
+        Shared.SendHTTPRequest( StringFormat("%s/server?key=%s",self.Config.WebsiteApiUrl,self.Config.ServerKey),"GET",function(response)
             local Data = json.decode( response )
             if Data then serverid = Data.id or "" end            
         end)
@@ -1644,11 +1658,11 @@ end
 function Plugin:CreateCommands()
     
     local ShowPStats = self:BindCommand( "sh_showplayerstats", {"showplayerstats","showstats" }, function(Client)
-        Shared.SendHTTPRequest( StringFormat(self.Config.WebsiteApiUrl, "/player?ns2_id=", Plugin:GetId(Client)), "GET",function(response)   
+        Shared.SendHTTPRequest( StringFormat("%s/player?ns2_id=%s", self.Config.WebsiteApiUrl, Plugin:GetId(Client)), "GET",function(response)   
             local Data = json.decode(response)
             local playerid = ""
             if Data then playerid = Data[1].player_page_id or "" end
-            local url = StringFormat(self.Config.WebsiteUrl, "/player/player/", playerid)
+            local url = StringFormat( "%s/player/player/%s", self.Config.WebsiteUrl, playerid)
             Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )            
             end)     
     end,true)
@@ -1662,26 +1676,26 @@ function Plugin:CreateCommands()
     ShowLastRound:Help("Shows stats of last round played on this server")
     
     local ShowSStats = self:BindCommand( "sh_showserverstats", "showserverstats", function(Client)                     
-        local url= StringFormat(self.Config.WebsiteUrl, "/server/server/", Plugin:GetServerId())           
+        local url= StringFormat("%s/server/server/%s",self.Config.WebsiteUrl,Plugin:GetServerId())           
         Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Server Stats" }, true )       
     end,true)
     ShowSStats:Help("Shows server stats") 
     
     local ShowLStats = self:BindCommand( "sh_showlivestats", "showlivestats", function(Client)                    
-        local url= StringFormat(self.Config.WebsiteUrl, "/live/scoreboard/", Plugin:GetServerId())           
+        local url= StringFormat("%s/live/scoreboard/%s", self.Config.WebsiteUrl, Plugin:GetServerId())           
         Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Scoreboard" }, true )       
     end,true)
     ShowLStats:Help("Shows server live stats") 
     
     local Verify = self:BindCommand( "sh_verify", {"verifystats","verify"},function(Client)
-            Shared.SendHTTPRequest(StringFormat(self.Config.WebsiteUrl, "/api/verifyServer/", Plugin:GetId(Client), "?s=479qeuehq2829&key=", self.Config.ServerKey), "GET",
+            Shared.SendHTTPRequest(StringFormat("%s/api/verifyServer/%s", self.Config.WebsiteUrl, Plugin:GetId(Client), "?s=479qeuehq2829&key=", self.Config.ServerKey), "GET",
             function(response) ServerAdminPrint(Client,response) end)       
     end)
     Verify:Help ("Sets yourself as serveradmin at NS2Stats.com")
     
     local Tag = self:BindCommand( "sh_addtag","addtag",function(Client,tag)
         table.insert(Plugin.Config.Tags, tag)
-        Notify( StringFormat("[NS2Stats]: ", tag, " has been added as Tag to this roundlog"))       
+        Notify( StringFormat("[NS2Stats]: %S  has been added as Tag to this roundlog", tag))       
     end)    
     Tag:AddParam{ Type = "string",TakeRestOfLine = true,Error = "Please specify a tag to be added.", MaxLength = 30}
     Tag:Help ("Adds the given tag to the Stats")
@@ -1720,7 +1734,7 @@ function Plugin:sendAwardListToClients()
     for i=1,Plugin.Config.ShowNumAwards do
         if i > #RBPSawards then break end
         if RBPSawards[i].message then 
-            AwardMessage.message = StringFormat(AwardMessage.message, RBPSawards[i].message, "\n")
+            AwardMessage.message = StringFormat("%s%s\n", AwardMessage.message, RBPSawards[i].message )
         end
     end 
     self:SendNetworkMessage(nil, "StatsAwards", AwardMessage, true )
@@ -1757,7 +1771,7 @@ function Plugin:awardMostDamage()
     
     rating = (highestDamage+1)/350
     
-    return {steamId = highestSteamId, rating = rating, message = StringFormat("Most damage done by ", highestPlayer, " with total of ", math.floor(highestDamage), " damage!")}
+    return {steamId = highestSteamId, rating = rating, message = StringFormat("Most damage done by %s with total damage of %s !", highestPlayer, math.floor(highestDamage))}
 end
 
 function Plugin:awardMostKillsAndAssists()
@@ -1779,7 +1793,7 @@ function Plugin:awardMostKillsAndAssists()
     
     rating = highestTotal
     
-    return {steamId = highestSteamId, rating = rating, message = StringFormat(highestPlayer, " is deathbringer with total of ", highestTotal, " kills and assists!")}
+    return {steamId = highestSteamId, rating = rating, message = StringFormat("%s is deathbringer with total of %s  kills and assists!", highestPlayer, highestTotal)}
 end
 
 function Plugin:awardMostConstructed()
@@ -1798,7 +1812,7 @@ function Plugin:awardMostConstructed()
     
     rating = (highestTotal+1)/30
     
-    return {steamId = highestSteamId, rating = rating, message = StringFormat("Bob the builder: ", highestPlayer, "!"}
+    return {steamId = highestSteamId, rating = rating, message = StringFormat("Bob the builder: %s !", highestPlayer)}
 end
 
 
@@ -1825,7 +1839,7 @@ function Plugin:awardMostStructureDamage()
     
     rating = (highestTotal+1)/150
     
-    return {steamId = highestSteamId, rating = rating, message = StringFormat("Demolition man: ", highestPlayer, " with ", math.floor(highestTotal), " structure damage.")}
+    return {steamId = highestSteamId, rating = rating, message = StringFormat("Demolition man: %s with %s  structure damage.", highestPlayer, math.floor(highestTotal))}
 end
 
 
@@ -1852,7 +1866,7 @@ function Plugin:awardMostPlayerDamage()
     
     rating = (highestTotal+1)/90
     
-    return {steamId = highestSteamId, rating = rating, message = StringFormat(highestPlayer, " was spilling blood worth of ", math.floor(highestTotal), " damage.")}
+    return {steamId = highestSteamId, rating = rating, message = StringFormat( " %s was spilling blood worth of %s damage.",highestPlayer, math.floor(highestTotal))}
 end
 
 
@@ -1882,9 +1896,9 @@ function Plugin:awardBestAccuracy()
     rating = highestTotal*10
     
     if highestTeam == 2 then
-        return {steamId = highestSteamId, rating = rating, message = StringFormat("Versed: ", highestPlayer)}
+        return {steamId = highestSteamId, rating = rating, message = StringFormat("Versed: %s", highestPlayer)}
     else --marine or ready room
-         return {steamId = highestSteamId, rating = rating, message = StringFormat("Weapon specialist: ", highestPlayer)}
+         return {steamId = highestSteamId, rating = rating, message = StringFormat("Weapon specialist: %s", highestPlayer)}
     end
 end
 
@@ -1912,7 +1926,7 @@ function Plugin:awardMostJumps()
     
     rating = highestTotal/30
         
-    return {steamId = highestSteamId, rating = rating, message = StringFormat(highestPlayer, " is jump maniac with ", highestTotal, " jumps!")}
+    return {steamId = highestSteamId, rating = rating, message = StringFormat("%s is jump maniac with %s jumps!", highestPlayer,  highestTotal)}
     
 end
 
@@ -1937,7 +1951,7 @@ function Plugin:awardHighestKillstreak()
     
     rating = highestTotal
         
-    return {steamId = highestSteamId, rating = rating, message = StringFormat(highestPlayer, " became unstoppable with streak of ", highestTotal, " kills!")}
+    return {steamId = highestSteamId, rating = rating, message = StringFormat("%s became unstoppable with streak of %s kills", highestPlayer, highestTotal)}
 end
 
 --Url Method
