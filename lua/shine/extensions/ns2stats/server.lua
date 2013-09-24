@@ -786,25 +786,23 @@ end
 
 --Building built
 function  Plugin:OnFinishedBuilt(ConstructMixin, builder)
-
-    Buildings[ConstructMixin:GetId()] = true   
+    Buildings[ConstructMixin:GetId()] = true 
+  
     local techId = ConstructMixin:GetTechId()    
     local strloc = ConstructMixin:GetOrigin()
-    if builder then
-        if builder:isa("Player") then
-            local client = builder:GetClient()
-        end
-    end    
+    
+    if builder and builder.GetName then
+        local taulu = Plugin:getPlayerByName(builder:GetName())
+    end
+    
     local team = ConstructMixin:GetTeamNumber()
-    local steamId = Plugin:getTeamCommanderSteamid(team) or 0
+    local steamId = Plugin:getTeamCommanderSteamid(team) or 0    
     local buildername = ""
-
-    if client then               
-        local taulu = Plugin:getPlayerByClient(client)        
-        if taulu then
-            steamId = taulu.steamId
-            buildername = taulu.name
-            taulu.total_constructed = taulu.total_constructed + 1 end               
+        
+    if taulu then
+        steamId = taulu.steamId
+        buildername = taulu.name
+        taulu.total_constructed = taulu.total_constructed + 1           
     end
     
     local build=
