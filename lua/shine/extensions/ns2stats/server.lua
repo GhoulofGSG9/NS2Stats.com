@@ -37,7 +37,6 @@ Plugin.DefaultConfig =
     ServerKey = "",
     Tags = {}, --Tags added to log 
     Competitive = false, -- tag round as Competitive
-    SendTime = 60, --Send after how many min?
     Lastroundlink = "", --Link of last round
     VanillaRanking = false,
 }
@@ -105,16 +104,8 @@ function Plugin:Initialise()
     end)
     
     -- every 1 min send Server Status    
-     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end)
-
-    --every x min (Sendtime at config)
-    --send datas to NS2StatsServer
-    Shine.Timer.Create( "SendStats", 60 * Plugin.Config.SendTime, -1, function()
-        if not GameHasStarted then return end
-        if Plugin.Config.Statsonline then Plugin:sendData(true) end
-    end)
-    
-    return true 
+     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end)    
+     return true 
 end
 
 -- NS2VanillaStats Bugging atm
@@ -1205,7 +1196,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long also do resend by this way
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 160000 and not Plugin.gameFinished == 1 then
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and not Plugin.gameFinished == 1 then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1276,7 +1267,7 @@ local working = false
 function Plugin:sendData(force)
     
     if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 160000 and not force then return end
+    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 500000 and not force then return end
     
     if working then return end
     working = true
