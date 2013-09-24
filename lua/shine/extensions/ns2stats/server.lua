@@ -218,10 +218,8 @@ end
 --PlayerDisconnect
 function Plugin:ClientDisconnect(Client)
     if not Client then return end
-    local Player = Client:GetPlayer()
-    if not Player then return end 
     
-    local taulu = Plugin:getPlayerByName(Player:GetName())
+    local taulu = Plugin:getPlayerByClient(Client)
     
     if not taulu then return end
     
@@ -273,7 +271,7 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
         taulu = Plugin:getPlayerByName(Player:GetName())
     end
     
-    if not taulu then Notify( StringFormat("[Ns2Stats Debug]: Player %s failed",Player:GetName())) return end
+    if not taulu then Notify( StringFormat("[NS2Stats Debug]: Player %s failed",Player:GetName())) return end
     
     taulu.teamnumber = NewTeam
     local playerJoin =
@@ -1278,7 +1276,7 @@ local working = false
 function Plugin:sendData(force)
     
     if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 160000 and not force and not Plugin.gameFinished == 1 then return end
+    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 160000 and not force then return end
     
     if working then return end
     working = true
