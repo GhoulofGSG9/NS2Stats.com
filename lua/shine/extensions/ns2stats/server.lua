@@ -1578,13 +1578,16 @@ end
 function Plugin:updateWeaponData(client) 
     if not client then return end
     
-    local RBPSplayer = Plugin:getPlayerByClient(client)
-    local foundId = false
-    if not RBPSplayer then return end    
+    local RBPSplayer = Plugin:getPlayerByClient(client)    
+    
+    if not RBPSplayer then return end
+    if not client.GetPlayer or not client:GetPlayer() then return end
+   
     local weapon = client:GetPlayer():GetActiveWeaponName() or "none"
     if weapon == "" then weapon = "none" end
     weapon = string.lower(weapon)
     
+    local foundId
     for i=1, #RBPSplayer.weapons do
         if RBPSplayer.weapons[i].name == weapon then foundId=i end
     end
