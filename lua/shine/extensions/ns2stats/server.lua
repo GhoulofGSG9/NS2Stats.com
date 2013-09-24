@@ -193,7 +193,7 @@ end
 --Player Events
 
 --PlayerConnected
-function Plugin:ClientConnect( Client )
+function Plugin:ClientConfirmConnect( Client )
     
     if not Client then return end
     if Client:GetIsVirtual() then return end
@@ -1197,19 +1197,23 @@ end
 --add to log
 function Plugin:addLog(tbl)
     
-    if stoplogging and tbl.action ~= "game_ended" then return end      
+    if stoplogging and tbl.action ~= "game_ended" then return end
+     
     if not Plugin.Log then Plugin.Log = {} end
     if not Plugin.Log[Plugin.LogPartNumber] then Plugin.Log[Plugin.LogPartNumber] = "" end
-    if not tbl then return end 
+    
+    if not tbl then return end
+ 
     tbl.time = Shared.GetGMTString(false)
     tbl.gametime = Shared.GetTime() - Gamestarted
-    Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber] , JsonEncode(tbl))	
+    Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long also do resend by this way
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 1000000 then    
-        if Plugin.Config.Statsonline then Plugin:sendData() end
-        Plugin.LogPartNumber = Plugin.LogPartNumber + 1
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 160000 and not Plugin.gameFinished == 1 then
+        Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
+        if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
+    
     --local data = RBPSlibc:CompressHuffman(Plugin.Log)
     --Notify("compress size: " .. StringLen(data) .. "decompress size: " .. StringLen(RBPSlibc:Decompress(data)))        
 end
@@ -1276,7 +1280,7 @@ local working = false
 function Plugin:sendData(force)
     
     if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 1000000 and not force and not Plugin.gameFinished == 1 then return end
+    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 160000 and not force and not Plugin.gameFinished == 1 then return end
     
     if working then return end
     working = true
@@ -1429,7 +1433,6 @@ function Plugin:UpdatePlayerInTable(player)
     if not taulu.isbot and player.GetClient and player:GetClient() then taulu.ping = player:GetClient():GetPing() or 0 end        
 end
 
-
 --All search functions
 function Plugin:IsClientInTable(client)
 
@@ -1521,7 +1524,7 @@ function Plugin:getPlayerByClient(client)
     return nil
 end
 
---Plyer Table end
+--Player Table end
 
 --GetIds
 
@@ -1542,7 +1545,8 @@ function Plugin:GetIdbyName(Name)
     
     --disable Onlinestats
     if a then Notify( "NS2Stats won't store game with bots. Disabling online stats now!") a=false 
-    Plugin.Config.Statsonline = false end
+    --Plugin.Config.Statsonline = false 
+    end
     
     local newId=""
     local letters = " (){}[]/.,+-=?!*1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
@@ -1721,11 +1725,12 @@ function Plugin:CreateCommands()
     Tag:Help ("Adds the given tag to the Stats")
     
     local Debug = self:BindCommand( "sh_statsdebug","statsdebug",function()
-    Notify("Current Player Table:")
-    Notify(tostring(JsonEncode(Plugin.Players)))
-    Notify(StringFormat("%s Players in PlayerTable.",#Plugin.Players))
-    Notify("Current temp Log:")
-    Notify(tostring(Plugin.Log[Plugin.LogPartToSend]))
+        Notify("NS2Stats Debug Report:")
+        Notify("Current Player Table:")
+        Notify(tostring(JsonEncode(Plugin.Players)))
+        Notify(StringFormat("%s Players in PlayerTable.",#Plugin.Players))
+        Notify("Current temp Log:")
+        Notify(Plugin.Log[Plugin.LogPartToSend])
     end,true)
 end
 
