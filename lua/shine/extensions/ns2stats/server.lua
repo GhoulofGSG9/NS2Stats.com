@@ -111,7 +111,6 @@ end
 -- NS2VanillaStats Bugging atm
 function Plugin:EnableNS2Ranking()
     if Plugin.Config.VanillaRanking then return Plugin.Config.Statsonline end
-    return false
 end
 
 -- Events
@@ -1181,6 +1180,9 @@ end
 
 --Log functions
 
+-- avoids Cheat message spam
+local TempC = true
+
 --add to log
 function Plugin:addLog(tbl)
     
@@ -1190,7 +1192,13 @@ function Plugin:addLog(tbl)
     if not Plugin.Log[Plugin.LogPartNumber] then Plugin.Log[Plugin.LogPartNumber] = "" end
     
     if not tbl then return end
- 
+    
+    if Shared.GetCheatsEnabled() and TempC then 
+        Plugin.Config.Statsonline = false
+        Shine:Notify( nil, "", "NS2Stats", "Cheats were enabled! NS2Stats will disable itself now!")
+        TempC = nil
+    end
+    
     tbl.time = Shared.GetGMTString(false)
     tbl.gametime = Shared.GetTime() - Gamestarted
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
@@ -1532,7 +1540,7 @@ function Plugin:GetIdbyName(Name)
     
     --disable Onlinestats
     if a then Notify( "NS2Stats won't store game with bots. Disabling online stats now!") a=false 
-    --Plugin.Config.Statsonline = false 
+    Plugin.Config.Statsonline = false 
     end
     
     local newId=""
@@ -1714,13 +1722,10 @@ function Plugin:CreateCommands()
     Tag:AddParam{ Type = "string",TakeRestOfLine = true,Error = "Please specify a tag to be added.", MaxLength = 30}
     Tag:Help ("Adds the given tag to the Stats")
     
-    local Debug = self:BindCommand( "sh_statsdebug","statsdebug",function()
-        Notify("NS2Stats Debug Report:")
-        Notify("Current Player Table:")
-        Notify(tostring(JsonEncode(Plugin.Players)))
-        Notify(StringFormat("%s Players in PlayerTable.",#Plugin.Players))
-        Notify("Current temp Log:")
-        Notify(Plugin.Log[Plugin.LogPartToSend])
+    local Debug = self:BindCommand( "sh_statsdebug","statsdebug",function(Client)
+        Shine:AdminPrint( Client,"NS2Stats Debug Report:")
+        Shine:AdminPrint( Client,StringFormat("%s Players in PlayerTable.",#Plugin.Players))
+        Shine:AdminPrint( Client,StringFormat("Current Logparts %s / %s . Length of ToSend: %s",Plugin.LogPartToSend,Plugin.LogPartNumber ,StringLen(Plugin.Log[Plugin.LogPartToSend])))
     end,true)
 end
 
