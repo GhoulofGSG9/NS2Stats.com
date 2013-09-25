@@ -37,8 +37,7 @@ Plugin.DefaultConfig =
     ServerKey = "",
     Tags = {}, --Tags added to log 
     Competitive = false, -- tag round as Competitive
-    Lastroundlink = "", --Link of last round
-    VanillaRanking = false,
+    Lastroundlink = "" --Link of last round
 }
 
 Plugin.CheckConfig = true
@@ -110,7 +109,7 @@ end
 
 -- NS2VanillaStats Bugging atm
 function Plugin:EnableNS2Ranking()
-    if Plugin.Config.VanillaRanking then return Plugin.Config.Statsonline end
+    return Plugin.Config.Statsonline
 end
 
 -- Events
