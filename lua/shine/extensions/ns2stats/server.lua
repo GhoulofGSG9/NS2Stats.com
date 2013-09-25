@@ -1203,7 +1203,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long also do resend by this way
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and not Plugin.gameFinished == 1 then
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 250000 and not stoplogging then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1274,7 +1274,7 @@ local working = false
 function Plugin:sendData(force)
     
     if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 500000 and not force then return end
+    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 250000 and not force then return end
     
     if working then return end
     working = true
