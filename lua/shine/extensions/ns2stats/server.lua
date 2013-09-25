@@ -107,7 +107,7 @@ function Plugin:Initialise()
      return true 
 end
 
--- NS2VanillaStats Bugging atm
+-- NS2VanillaStats
 function Plugin:EnableNS2Ranking()
     return Plugin.Config.Statsonline
 end
