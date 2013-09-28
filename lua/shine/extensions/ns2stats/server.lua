@@ -246,7 +246,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     
     --check teamchange
     local NewTeam = Player:GetTeamNumber() or 0
-    if taulu.teamnumber ~= NewTeam then
+    if taulu.teamnumber ~= NewTeam and NewTeam ~= -1 then
         taulu.teamnumber = NewTeam
         local playerJoin =
         {
@@ -275,7 +275,6 @@ function Plugin:GetLifeform(Player)
     if not teamnumber then teamnumber = 0 end
     if not Player:GetIsAlive() then Currentlifeform = "dead" end
     if teamnumber == 0 then Currentlifeform = "spectator" end
-    if teamnumber == -1 then Currentlifeform = "ready_room_player" end
     if Player:GetIsCommander() then
         if teamnumber == 1 then
             Currentlifeform = "marine_commander"
