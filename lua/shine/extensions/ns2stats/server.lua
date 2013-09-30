@@ -87,7 +87,7 @@ function Plugin:Initialise()
     Plugin:CreateCommands()
     
     if self.Config.ServerKey == "" then
-        Shared.SendHTTPRequest(StringFormat(Plugin.Config.WebsiteUrl, "/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj"), "GET",
+        Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",Plugin.Config.WebsiteUrl), "GET",
             function(response) Plugin:acceptKey(response) end)
     end   
     
@@ -1233,7 +1233,7 @@ function Plugin:AddServerInfos(params)
     params.private = self.Config.Competitive
     params.autoarrange = false --use Shine plugin settings later?
     local ip = IPAddressToString(Server.GetIpAddress()) 
-    if not StringFind(ip,":") then ip = StringFormat(ip, ":", Server.GetPort()) end
+    if not StringFind(ip,":") then ip = StringFormat("%s:%s",ip,Server.GetPort()) end
     params.serverInfo =
     {
         password = "",
@@ -1684,14 +1684,14 @@ function Plugin:CreateCommands()
     ShowLStats:Help("Shows server live stats") 
     
     local Verify = self:BindCommand( "sh_verify", {"verifystats","verify"},function(Client)
-            Shared.SendHTTPRequest(StringFormat("%s/api/verifyServer/%s", self.Config.WebsiteUrl, Plugin:GetId(Client), "?s=479qeuehq2829&key=", self.Config.ServerKey), "GET",
+            Shared.SendHTTPRequest(StringFormat("%s/api/verifyServer/%s?s=479qeuehq2829&key=%s", self.Config.WebsiteUrl, Plugin:GetId(Client), self.Config.ServerKey), "GET",
             function(response) ServerAdminPrint(Client,response) end)       
     end)
     Verify:Help ("Sets yourself as serveradmin at NS2Stats.com")
     
     local Tag = self:BindCommand( "sh_addtag","addtag",function(Client,tag)
         table.insert(Plugin.Config.Tags, tag)
-        Notify( StringFormat("[NS2Stats]: %S  has been added as Tag to this roundlog", tag))       
+        Notify( StringFormat("[NS2Stats]: %s  has been added as Tag to this roundlog", tag))       
     end)    
     Tag:AddParam{ Type = "string",TakeRestOfLine = true,Error = "Please specify a tag to be added.", MaxLength = 30}
     Tag:Help ("Adds the given tag to the Stats")
