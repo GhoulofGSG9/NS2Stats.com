@@ -10,7 +10,7 @@ local Notify = Shared.Message
 local SendMapData
 local WebsiteApiUrl
 
-//Get Mapdata
+--Get Mapdata
 Shine.Hook.Add( "Think", "MinimapHook", function()
     if GUIMinimap then
         --wait for Config from Server
@@ -20,6 +20,9 @@ Shine.Hook.Add( "Think", "MinimapHook", function()
         end    
     end
 end )
+
+--Startup Message
+Shine.AddStartupMessage("Shine NS2Stats.com Plugin is running. Please use sh_verify to set yourself as server admin at NS2Stats.com")
 
 function Plugin:Initialise()
    self.Enabled = true    
@@ -73,8 +76,7 @@ function Plugin:Mapdata(GUIMinimap)
     end
  end
  
-//Votemenu
-    
+--Votemenu    
 Shine.VoteMenu:AddPage( "Stats", function( self )
     self:AddSideButton( "Show my Stats", function()
        Shared.ConsoleCommand("sh_showplayerstats")

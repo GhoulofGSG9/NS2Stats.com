@@ -44,7 +44,7 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, D
         local vname        
         if Killstreaks[victimId] and Killstreaks[victimId] > 3 then  vname = Victim:GetName() end
         Killstreaks[victimId] = nil 
-        if vname then Shine:NotifyColour(nil,255,0,0,vname .. " has been stoped") end
+        if vname then Shine:NotifyColour(nil,255,0,0,vname .. " has been stopped") end
     else return end
     
     local AttackerClient = Server.GetOwner( Attacker )
