@@ -26,15 +26,12 @@ Plugin.DefaultConfig =
     Statsonline = true, -- Upload stats?
     SendMapData = false, --Send Mapdata, only set true if minimap is missing at website or is incorrect
     Statusreport = true, -- send Status to NS2Stats every min
-    WebsiteUrl = "http://dev.ns2stats.com", --this is url which is shown in player private messages, so its for advertising
-    WebsiteDataUrl = "http://dev.ns2stats.com/api/sendlog", --this is url where posted data is send and where it is parsed into database
-    WebsiteStatusUrl="http://dev.ns2stats.com/api/sendstatus", --this is url where posted data is send on status sends
-    WebsiteApiUrl = "http://dev.ns2stats.com/api",
+    WebsiteUrl = "http://ns2stats.com", --this is the ns2stats url
     Awards = true, --show award
     ShowNumAwards = 4, --how many awards should be shown at the end of the game?
     AwardMsgTime = 20, -- secs to show awards
     LogChat = false, --log the chat?
-    ServerKey = "",
+    ServerKey = "", -- Serverkey given by ns2stats.com
     Tags = {}, --Tags added to log 
     Competitive = false, -- tag round as Competitive
     Lastroundlink = "" --Link of last round
@@ -200,7 +197,7 @@ function Plugin:ClientConfirmConnect( Client )
     if not taulu then Plugin:addPlayerToTable(Client)  
     else taulu.dc = false end
     
-    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = self.Config.WebsiteApiUrl,SendMapData = self.Config.SendMapData } ,true)
+    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = StringFormat("%s/api",self.Config.WebsiteUrl),SendMapData = self.Config.SendMapData } ,true)
         
 end
 
@@ -224,9 +221,11 @@ end
 
 --Player changes Name
 function Plugin:PlayerNameChange( Player, Name, OldName )
-    if not Player or not Name then return end
+    if not Player or not Name or not OldName then return end
     
-    if not OldName or OldName == "" then return end
+    if OldName == "" then return end
+    if Name == kDefaultPlayerName then return end
+    if OldName == kDefaultPlayerName then return end
    
     local taulu = Plugin:getPlayerByName(OldName)  
     if not taulu then return end
@@ -1262,7 +1261,7 @@ function Plugin:sendData(force)
         last_part = Plugin.gameFinished,
         map = Shared.GetMapName(),
     }
-    Shared.SendHTTPRequest(self.Config.WebsiteDataUrl, "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
+    Shared.SendHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
 end
 
 local resendtimes = 0
@@ -1630,7 +1629,7 @@ function Plugin:sendServerStatus(gameState)
             map = Shared.GetMapName(),
         }
 
-    Shared.SendHTTPRequest(self.Config.WebsiteStatusUrl, "POST", params, function(response,status) Plugin:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)	
+    Shared.SendHTTPRequest(StringFormat("%s/api/sendstatus", self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)	
 end
 
 function Plugin:onHTTPResponseFromSendStatus(client,action,response,status)
@@ -1642,7 +1641,7 @@ local serverid = ""
 
 function Plugin:GetServerId()    
     if serverid == "" then 
-        Shared.SendHTTPRequest( StringFormat("%s/server?key=%s",self.Config.WebsiteApiUrl,self.Config.ServerKey),"GET",function(response)
+        Shared.SendHTTPRequest( StringFormat("%s/api/server?key=%s",self.Config.WebsiteUrl,self.Config.ServerKey),"GET",function(response)
             local Data = JsonDecode( response )
             if Data then serverid = Data.id or "" end            
         end)
@@ -1654,7 +1653,7 @@ end
 function Plugin:CreateCommands()
     
     local ShowPStats = self:BindCommand( "sh_showplayerstats", {"showplayerstats","showstats" }, function(Client)
-        Shared.SendHTTPRequest( StringFormat("%s/player?ns2_id=%s", self.Config.WebsiteApiUrl, Plugin:GetId(Client)), "GET",function(response)   
+        Shared.SendHTTPRequest( StringFormat("%s/api/player?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET",function(response)   
             local Data = JsonDecode(response)
             local playerid = ""
             if Data then playerid = Data[1].player_page_id or "" end
