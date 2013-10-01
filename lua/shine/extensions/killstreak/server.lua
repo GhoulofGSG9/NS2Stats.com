@@ -3,7 +3,13 @@ Shine Killstreak Plugin - Server
 ]]
 
 local Shine = Shine
+local GetOwner = Server.GetOwner
 local Notify = Shared.Message
+
+local StringFormat = string.format
+local StringSub = string.UTF8Sub
+local StringLen = string.len
+local StringFind = string.find
 
 local Plugin = Plugin
 
@@ -37,17 +43,20 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, D
          end
     end
     
-    local VictimClient = Server.GetOwner( Victim )
+    local VictimClient = GetOwner( Victim )
     local victimId = VictimClient:GetUserId() or 0
+    
+    --for bots
     if victimId == 0 then victimId = Plugin:GetIdbyName(Victim:GetName()) or 0 end
+    
     if victimId>0 then
         local vname        
         if Killstreaks[victimId] and Killstreaks[victimId] > 3 then  vname = Victim:GetName() end
         Killstreaks[victimId] = nil 
-        if vname then Shine:NotifyColour(nil,255,0,0,vname .. " has been stopped") end
+        if vname then Shine:NotifyColour(nil,255,0,0,StringFormat("%s has been stopped",vname)) end
     else return end
     
-    local AttackerClient = Server.GetOwner( Attacker )
+    local AttackerClient = GetOwner( Attacker )
     if not AttackerClient then return end
     
     local steamId = AttackerClient:GetUserId() or 0
@@ -71,29 +80,34 @@ end
 --For Bots
 function Plugin:GetIdbyName(Name)
 
-    if not Name then return -1 end
+    if not Name then return end
+    
+    --disable Onlinestats
+    if a then Notify( "NS2Stats won't store game with bots. Disabling online stats now!") a=false 
+    Plugin.Config.Statsonline = false 
+    end
     
     local newId=""
     local letters = " (){}[]/.,+-=?!*1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
     
     --cut the [Bot]
     local input = tostring(Name)
-    input = input:sub(6,#input)
+    input = StringSub(input,6)
     
-    --to differ between e.g. name and name (2)
-    input = string.reverse(input)
+    --to differ between e.g. name and name (2)   
+    input = string.UTF8Reverse(input)
     
     for i=1, #input do
-        local char = input:sub(i,i)
-        local num = string.find(letters,char,nil,true)
-        newId = newId .. tostring(num)
+        local char = StringSub(input,i,i)
+        local num = StringFind(letters,char,nil,true)
+        newId = StringFormat("%s%s",newId,num)        
     end
     
     --fill up the ns2id to 12 numbers
-    while string.len(newId) < 12 do
-        newId = newId .. "0"
-    end
-    newId = string.sub(newId, 1 , 12)
+    while StringLen(newId) < 12 do
+        newId = StringFormat("%s%s",newId, "0")
+    end       
+    newId = StringSub(newId, 1 , 12)
     
     --make a int
     newId = tonumber(newId)
