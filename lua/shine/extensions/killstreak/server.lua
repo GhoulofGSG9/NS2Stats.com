@@ -100,7 +100,7 @@ function Plugin:GetIdbyName(Name)
     
     --fill up the ns2id to 12 numbers
     while StringLen(newId) < 12 do
-        newId = StringFormat("%s%s",newId, "0")
+        newId = StringFormat("%s0",newId)
     end       
     newId = StringSub(newId, 1 , 12)
     
