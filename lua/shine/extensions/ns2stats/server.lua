@@ -219,29 +219,23 @@ function Plugin:ClientDisconnect(Client)
     Plugin:addLog(connect)
 end
 
---Player changes Name
-function Plugin:PlayerNameChange( Player, Name, OldName )
-    if not Player or not Name or not OldName then return end
-    
-    if OldName == "" then return end
-    if Name == kDefaultPlayerName then return end
-    if OldName == kDefaultPlayerName then return end
-   
-    local taulu = Plugin:getPlayerByName(OldName)  
-    if not taulu then return end
-  
-    taulu.name = Name
-end
-
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)
     if not state then return end
- 
-    local name = Player:GetName()
-    if not name then return end  
     
-    local taulu = Plugin:getPlayerByName(name)
+    local Client
+    if Player.GetClient then
+        Client = Player:GetClient()
+    else Client = Server.GetOwner(Player) end
+    if not Client then return end
+    
+    local taulu = Plugin:getPlayerByClient(Client)
     if not taulu then return end
+    
+    --check name
+    if taulu.name ~= Player:GetName() then
+        taulu.name = Player:GetName()
+    end
     
     --check teamchange
     local NewTeam = Player:GetTeamNumber() or 0
