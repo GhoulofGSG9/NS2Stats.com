@@ -82,11 +82,6 @@ function Plugin:GetIdbyName(Name)
 
     if not Name then return end
     
-    --disable Onlinestats
-    if a then Notify( "NS2Stats won't store game with bots. Disabling online stats now!") a=false 
-    Plugin.Config.Statsonline = false 
-    end
-    
     local newId=""
     local letters = " (){}[]/.,+-=?!*1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
     
@@ -119,76 +114,76 @@ function Plugin:checkForMultiKills(name,streak)
     local text = ""
     
     if streak == 3 then
-        text = name .. " is on triple kill!"
+        text = StringFormat("%s is on triple kill!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundTriplekill)
     elseif streak == 5 then
-        text = name .. " is on multikill!"
+        text = StringFormat("%s is on multikill!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundMultikill)
     elseif streak == 6 then
-        text = name .. " is on rampage!"
+        text = StringFormat("%s is on rampage!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundRampage)
     elseif streak == 7 then
-        text = name .. " is on a killing spree!"
+        text = StringFormat("%s is on a killing spree!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundKillingspree)
     elseif streak == 9 then
-        text = name .. " is dominating!"
+        text = StringFormat("%s is dominating!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundDominating)
     elseif streak == 11 then
-        text = name .. " is unstoppable!"
+        text = StringFormat("%s is unstoppable!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundUnstoppable)
     elseif streak == 13 then
-        text = name .. " made a mega kill!"
+        text = StringFormat("%s made a mega kill!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundMegakill)
     elseif streak == 15 then
-        text = name .. " made an ultra kill!"
+        text = StringFormat("%s made an ultra kill!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundUltrakill)
     elseif streak == 17 then
-        text = name .. " owns!"
+        text = StringFormat("%s owns!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundOwnage)
     elseif streak == 18 then
-        text = name .. " made a ludicrouskill!"
+        text = StringFormat("%s made a ludicrouskill!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundLudicrouskill)
     elseif streak == 19 then
-        text = name .. " is a head hunter!"
+        text = StringFormat("%s is a head hunter!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundHeadhunter)
     elseif streak == 20 then
-        text = name .. " is whicked sick!"
+        text = StringFormat("%s is whicked sick!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundWhickedsick)
     elseif streak == 21 then
-        text = name .. " made a monster kill!"
+        text = StringFormat("%s made a monster kill!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundMonsterkill)
     elseif streak == 23 then
-        text = "Holy Shit! " .. name .. " got another one!"
+        text = "Holy Shit! " .. StringFormat("%s got another one!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundHolyshit)
     elseif streak == 25 then
-        text = name .. " is G o d L i k e !!!"
+        text = StringFormat("%s is G o d L i k e !!!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundGodlike)
     elseif streak == 27 then
-        text = name .. " is G o d L i k e !!!"
+        text = StringFormat("%s is G o d L i k e !!!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundGodlike)
     elseif streak == 30 then
-        text = name .. " is G o d L i k e !!!"
+        text = StringFormat("%s is G o d L i k e !!!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundGodlike)
     elseif streak == 34 then
-        text = name .. " is G o d L i k e !!!"
+        text = StringFormat("%s is G o d L i k e !!!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundGodlike)
     elseif streak == 40 then
-        text = name .. " is G o d L i k e !!!"
+        text = StringFormat("%s is G o d L i k e !!!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundGodlike)
     elseif streak == 48 then
-        text = name .. " is G o d L i k e !!!"
+        text = StringFormat("%s is G o d L i k e !!!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundGodlike)
     elseif streak == 58 then
-        text = name .. " is G o d L i k e !!!"
+        text = StringFormat("%s is G o d L i k e !!!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundGodlike)
     elseif streak == 70 then
-        text = name .. " is G o d L i k e !!!"
+        text = StringFormat("%s is G o d L i k e !!!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundGodlike)
     elseif streak == 80 then
-        text = name .. " is G o d L i k e !!!"
+        text = StringFormat("%s is G o d L i k e !!!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundGodlike)
     elseif streak == 100 then
-        text = name .. " is G o d L i k e !!!"
+        text = StringFormat("%s is G o d L i k e !!!", name)
         Plugin:playSoundForEveryPlayer(ShineSoundGodlike)
     end
     Shine:NotifyColour(nil,255,0,0,text)
