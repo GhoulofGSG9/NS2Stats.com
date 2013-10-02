@@ -1504,6 +1504,12 @@ local a = true
 function Plugin:GetIdbyName(Name)
 
     if not Name then return end
+    --disable Onlinestats
+    if a then
+        Notify( "NS2Stats won't store game with bots. Disabling online stats now!")
+        a=false 
+        Plugin.Config.Statsonline = false 
+    end
     
     local NewId=""
     local Letters = " (){}[]/.,+-=?!*1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
