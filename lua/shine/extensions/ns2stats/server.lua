@@ -111,7 +111,7 @@ function Plugin:Initialise()
     Shine.Timer.Create("Devour",0.25,-1, function()
         if GameHasStarted then
             Plugin:createDevourMovementFrame()
-            if devourFrame%20 == 0 then Plugin:createDevourEntityFrame() end
+            if devourFrame % 20 == 0 then Plugin:createDevourEntityFrame() end
             devourFrame = devourFrame + 1
         end 
     end) 
@@ -1997,10 +1997,8 @@ function Plugin:devourSendStatus()
         data = json.encode(dataset)
     }
         
-    --Shared.SendHTTPRequest(   StringFormat("%s/api/sendstatusDevour",self.Config.WebsiteUrl), "POST", params, function(response,status) RBPS:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)
-    Notify("Devour:" .. tostring(params.data))
-    Plugin:devourClearBuffer()
-    
+    Shared.SendHTTPRequest(   StringFormat("%s/api/sendstatusDevour",self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)
+    Plugin:devourClearBuffer()    
 end
 
 function Plugin:createDevourMovementFrame()
