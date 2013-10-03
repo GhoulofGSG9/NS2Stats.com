@@ -107,8 +107,11 @@ function Plugin:Initialise()
     -- every 30 sec send Server Status + Devour   
      Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) Plugin:devourSendStatus() end end)
      
-    -- every 0.25 sec create Devour
-    Shine.Timer.Create("Devour",0.25,-1, function() if GameHasStarted then Plugin:createDevourEntityFrame() devourFrame = devourFrame + 1 end end) 
+    -- every 0.25 sec create Devour Movement datas
+    Shine.Timer.Create("Devour",0.25,-1, function() if GameHasStarted then Plugin:createDevourMovementFrame() devourFrame = devourFrame + 1 end end) 
+    
+    -- every 5 secounds create Devour Entity Datas
+    Shine.Timer.Create("Devour",5,-1, function() if GameHasStarted then Plugin:createDevourEntityFrame() end end) 
 end
 
 -- NS2VanillaStats
@@ -1981,6 +1984,7 @@ function Plugin:devourSendStatus()
     
     local dataset = {
         Entity = devourEntity,
+        Movement =  devourMovement,
         state = state
                }
 
@@ -1996,10 +2000,31 @@ function Plugin:devourSendStatus()
     
 end
 
+function Plugin:createDevourMovementFrame()
+
+    local data = {}
+    
+    for key,taulu in pairs(Shine.GetAllClients()) do
+        local Player = Client:GetPlayer()
+        local PlayerPos = Player:GetOrigin()
+	
+        local movement =
+        {
+            id = Plugin:GetId(Client),
+            x = StringFormat("%.2f",PlayerPos.x),
+            y = StringFormat("%.2f",PlayerPos.y),
+            z = StringFormat("%.2f",PlayerPos.z),
+            wrh = Player:GetDirectionForMinimap(),
+        }
+        table.insert(data, movement)	
+    end
+ 
+    devourMovement[devourFrame] = data
+end
+
 function Plugin:createDevourEntityFrame()
     local devourPlayers = {}
-    local gameTime = Shared.GetTime() - Gamestarted
-
+    
     for key,Client in pairs(Shine.GetAllClients()) do	
         local Player = Client:GetPlayer()
         local PlayerPos = Player:GetOrigin()
@@ -2038,12 +2063,7 @@ function Plugin:createDevourEntityFrame()
         end	
     end
     
-    local frameNumber = StringFormat("f%s",devourFrame)
-    local tableData = {
-        [frameNumber] = devourPlayers
-       }
-    
-    table.insert(devourEntity, tableData)	
+    devourEntity[devourFrame]= devourPlayers	
     
 end
 
