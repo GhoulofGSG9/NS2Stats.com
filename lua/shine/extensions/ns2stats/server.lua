@@ -115,7 +115,8 @@ function Plugin:Initialise()
             devourFrame = devourFrame + 1
         end 
     end) 
-
+    
+    return true
 end
 
 -- NS2VanillaStats
@@ -2013,10 +2014,10 @@ function Plugin:createDevourMovementFrame()
             local movement =
             {
                 id = Plugin:GetId(Client),
-                x = StringFormat("%.2f",PlayerPos.x),
-                y = StringFormat("%.2f",PlayerPos.y),
-                z = StringFormat("%.2f",PlayerPos.z),
-                wrh = Plugin:GetViewAngle(Player),
+                x = Plugin:RoundNumber(PlayerPos.x),
+                y = Plugin:RoundNumber(PlayerPos.y),
+                z = Plugin:RoundNumber(PlayerPos.z),
+                wrh = Plugin:RoundNumber(Plugin:GetViewAngle(Player)),
             }
             table.insert(data, movement)
         end	
@@ -2043,13 +2044,13 @@ function Plugin:createDevourEntityFrame()
                 id = Plugin:GetId(Client),
                 name = Player:GetName(),
                 team = Player:GetTeamNumber(),
-                x = StringFormat("%.2f",PlayerPos.x),
-                y = StringFormat("%.2f",PlayerPos.y),
-                z = StringFormat("%.2f",PlayerPos.z),
-                wrh = Plugin:GetViewAngle(Player),
+                x = Plugin:RoundNumber(PlayerPos.x),
+                y = Plugin:RoundNumber(PlayerPos.y),
+                z = Plugin:RoundNumber(PlayerPos.z),
+                wrh = Plugin:RoundNumber(Plugin:GetViewAngle(Player)),
                 weapon = weapon,
-                health = StringFormat("%.2f",Player:GetHealth()),
-                armor = StringFormat("%.2f",Player:GetArmor()),
+                health = Plugin:RoundNumber(Player:GetHealth()),
+                armor = Plugin:RoundNumber(Player:GetArmor()),
                 pdmg = 0,
                 sdmg = 0,
                 lifeform = Plugin:GetLifeform(Player),
@@ -2057,7 +2058,7 @@ function Plugin:createDevourEntityFrame()
                 kills = Player.kills,
                 deaths = Player.deaths or 0,
                 assists = Player:GetAssistKills(),
-                pres = StringFormat("%.2f",Player:GetResources()),
+                pres = Plugin:RoundNumber(Player:GetResources()),
                 ping = Client:GetPing() or 0,
                 acc = 0,
 
@@ -2074,7 +2075,12 @@ function Plugin:GetViewAngle(Player)
     local angle = Player:GetDirectionForMinimap()/math.pi * 180
     if angle < 0 then angle = 360 + angle end
     if angle > 360 then angle = angle%360 end
-    return StringFormat("%.2f",angle)
+    return angle
+end
+
+function Plugin:RoundNumber(number)
+    local temp = StringFormat("%.2f",number)
+    return tonumber(temp)
 end
 
 --Cleanup
