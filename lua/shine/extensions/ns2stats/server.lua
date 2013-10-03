@@ -215,8 +215,7 @@ function Plugin:ClientConfirmConnect( Client )
     if not taulu then Plugin:addPlayerToTable(Client)  
     else taulu.dc = false end
     
-    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = StringFormat("%s/api",self.Config.WebsiteUrl),SendMapData = self.Config.SendMapData } ,true)
-        
+    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = StringFormat("%s/api",self.Config.WebsiteUrl),SendMapData = self.Config.SendMapData } ,true)   
 end
 
 --PlayerDisconnect
@@ -2019,7 +2018,7 @@ function Plugin:createDevourMovementFrame()
                 x = StringFormat("%.2f",PlayerPos.x),
                 y = StringFormat("%.2f",PlayerPos.y),
                 z = StringFormat("%.2f",PlayerPos.z),
-                wrh = Player:GetDirectionForMinimap(),
+                wrh = Plugin:GetViewAngle(Player),
             }
             table.insert(data, movement)
         end	
@@ -2049,7 +2048,7 @@ function Plugin:createDevourEntityFrame()
                 x = StringFormat("%.2f",PlayerPos.x),
                 y = StringFormat("%.2f",PlayerPos.y),
                 z = StringFormat("%.2f",PlayerPos.z),
-                wrh = Player:GetDirectionForMinimap(),
+                wrh = Plugin:GetViewAngle(Player),
                 weapon = weapon,
                 health = StringFormat("%.2f",Player:GetHealth()),
                 armor = StringFormat("%.2f",Player:GetArmor()),
@@ -2069,8 +2068,15 @@ function Plugin:createDevourEntityFrame()
         end	
     end
     
-    devourEntity[devourFrame]= devourPlayers	
+    devourEntity[devourFrame]= devourPlayers     
+end
+
+function Plugin:GetViewAngle(Player)
     
+    local angle = Player:GetDirectionForMinimap()/math.pi * 180
+    if angle < 0 then angle = 360 + angle end
+    if angle > 360 then angle = angle%360 end
+    return StringFormat("%.2f",angle)
 end
 
 --Cleanup
