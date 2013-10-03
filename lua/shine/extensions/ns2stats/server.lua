@@ -1992,7 +1992,7 @@ function Plugin:devourSendStatus()
     
 end
 
-local function createDevourEntityFrame()
+function Plugin:createDevourEntityFrame()
     local devourPlayers = {}
     local gameTime = Shared.GetTime() - Gamestarted
 
