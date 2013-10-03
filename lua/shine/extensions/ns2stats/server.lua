@@ -74,6 +74,11 @@ GameHasStarted = false
 Currentgamestate = 0
 Buildings = {}
 
+--Devour Values
+local devourFrame = 0
+local devourEntity = {}
+local devourMovement = {}
+
 --avoids overload at gameend
 stoplogging = false
 
@@ -99,9 +104,11 @@ function Plugin:Initialise()
        Plugin:UpdateWeaponTable()
     end)
     
-    -- every 1 min send Server Status    
-     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end)    
-     return true 
+    -- every 30 sec send Server Status + Devour   
+     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) Plugin:devourSendStatus() end end)
+     
+    -- every 0.25 sec create Devour
+    Shine.Timer.Create("Devour",0.25,-1, function() if not GameHasStarted then Plugin:createDevourEntityFrame() devourFrame = devourFrame + 1 end end) 
 end
 
 -- NS2VanillaStats
@@ -128,6 +135,10 @@ function Plugin:OnGameReset()
         Plugin.Log = {}
         Plugin.Players = {}
         Items = {}
+        --Reset Devour
+        devourFrame = 0
+        devourEntity = {}
+        devourMovement = {}
         -- update stats all connected players       
         for _, client in ipairs(Shine.GetAllClients()) do            
             Plugin:addPlayerToTable(client)        
@@ -1508,7 +1519,7 @@ function Plugin:GetIdbyName(Name)
     if a then
         Notify( "NS2Stats won't store game with bots. Disabling online stats now!")
         a=false 
-        Plugin.Config.Statsonline = false 
+        --Plugin.Config.Statsonline = false 
     end
     
     local NewId=""
@@ -1948,10 +1959,90 @@ function Plugin:GetStatsURL()
     return Plugin.Config.WebsiteUrl
 end 
 
+--Devour System Methods (see also Timers)
+
+function Plugin:devourClearBuffer()
+    devourEntity = {}
+    devourMovement = {}
+end
+
+function Plugin:devourSendStatus()
+    local stime = Shared.GetGMTString(false)
+    
+    local state = {
+        time = stime,
+        gametime = Shared.GetTime() - Gamestarted,
+        map = Shared.GetMapName(),
+    }
+    
+    local dataset = {
+        Entity = devourEntity,
+        state = state
+               }
+
+    local params =
+    {
+        key = self.Config.ServerKey,
+        data = json.encode(dataset)
+    }
+        
+    --Shared.SendHTTPRequest(   StringFormat("%s/api/sendstatusDevour",self.Config.WebsiteUrl), "POST", params, function(response,status) RBPS:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)
+    Notify("Devour:" .. tostring(data))
+    Plugin:devourClearBuffer()
+    
+end
+
+local function createDevourEntityFrame()
+    local devourPlayers = {}
+    local gameTime = Shared.GetTime() - Gamestarted
+
+    for key,taulu in pairs(Shine.GetAllClients) do	
+        local Player = Client:GetPlayer()
+        local PlayerPos = Player:GetOrigin()
+        
+        if Player:GetTeamNumber()>0 then
+            local devourPlayer =
+            {
+                id = Plugin:GetId(Client),
+                name = Player:GetName(),
+                team = Player:GetTeamNumber(),
+                x = PlayerPos.x,
+                y = PlayerPos.y,
+                z = PlayerPos.z,
+                wrh = Player:GetDirectionForMinimap(),
+                weapon = Player:GetActiveWeapon():GetMapName() or "none",
+                health = Player:GetHealth(),
+                armor = Player:GetArmor(),
+                pdmg = 0,
+                sdmg = 0,
+                lifeform = Plugin:GetLifeform(Player),
+                score = Player:GetScore(),
+                kills = Player.kills,
+                deaths = Player.deaths or 0,
+                assists = Player:GetAssistKills(),
+                pres = player:GetResources(),
+                ping = Client:GetPing() or 0,
+                acc = 0,
+
+            }
+            table.insert(devourPlayers, devourPlayer)
+        end	
+    end
+    
+    local frameNumber = StringFormat("f%s",devourFrame)
+    local tableData = {
+        [frameNumber] = devourPlayers
+       }
+    
+    table.insert(devourEntity, tableData)	
+    
+end
+
 --Cleanup
 function Plugin:Cleanup()
     self.Enabled = false
     Shine.Timer.Destroy("WeaponUpdate")
     Shine.Timer.Destroy("SendStats")
     Shine.Timer.Destroy("SendStatus")
+    Shine.Timer.Destroy("Devour")
 end
