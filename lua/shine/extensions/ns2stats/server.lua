@@ -107,11 +107,15 @@ function Plugin:Initialise()
     -- every 30 sec send Server Status + Devour   
      Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) Plugin:devourSendStatus() end end)
      
-    -- every 0.25 sec create Devour Movement datas
-    Shine.Timer.Create("DevourMovement",0.25,-1, function() if GameHasStarted then Plugin:createDevourMovementFrame() devourFrame = devourFrame + 1 end end) 
-    
-    -- every 5 secounds create Devour Entity Datas
-    Shine.Timer.Create("DevourEntities",5,-1, function() if GameHasStarted then Plugin:createDevourEntityFrame() end end) 
+    -- every 0.25 sec create Devour datas
+    Shine.Timer.Create("Devour",0.25,-1, function()
+        if GameHasStarted then
+            Plugin:createDevourMovementFrame()
+            if devourFrame%20 == 0 then Plugin:createDevourEntityFrame() end
+            devourFrame = devourFrame + 1
+        end 
+    end) 
+
 end
 
 -- NS2VanillaStats
@@ -2075,6 +2079,5 @@ function Plugin:Cleanup()
     Shine.Timer.Destroy("WeaponUpdate")
     Shine.Timer.Destroy("SendStats")
     Shine.Timer.Destroy("SendStatus")
-    Shine.Timer.Destroy("DevourMovement")
-    Shine.Timer.Destroy("DevourEntities")
+    Shine.Timer.Destroy("Devour")
 end
