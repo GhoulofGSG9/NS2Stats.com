@@ -84,7 +84,7 @@ stoplogging = false
 
 function Plugin:Initialise()
     self.Enabled = true
-    
+
     --create Commands
     Plugin:CreateCommands()
     
@@ -108,7 +108,7 @@ function Plugin:Initialise()
      Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) Plugin:devourSendStatus() end end)
      
     -- every 0.25 sec create Devour
-    Shine.Timer.Create("Devour",0.25,-1, function() if not GameHasStarted then Plugin:createDevourEntityFrame() devourFrame = devourFrame + 1 end end) 
+    Shine.Timer.Create("Devour",0.25,-1, function() if GameHasStarted then Plugin:createDevourEntityFrame() devourFrame = devourFrame + 1 end end) 
 end
 
 -- NS2VanillaStats
@@ -173,9 +173,9 @@ function Plugin:EndGame( Gamerules, WinningTeam )
         end           
         local params =
             {
-                version = ToString(Shared.GetBuildNumber()),
+                version = tostring(Shared.GetBuildNumber()),
                 winner = WinningTeam:GetTeamNumber(),
-                length = string.format("%.2f", Shared.GetTime() - Gamerules.gameStartTime),
+                length = StringFormat("%.2f", Shared.GetTime() - Gamerules.gameStartTime),
                 map = Shared.GetMapName(),
                 start_location1 = Gamerules.startingLocationNameTeam1,
                 start_location2 = Gamerules.startingLocationNameTeam2,
@@ -1523,19 +1523,21 @@ function Plugin:GetIdbyName(Name)
     end
     
     local NewId=""
-    local Letters = " (){}[]/.,+-=?!*1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
+    local Letters = " []+-*/!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
     
     --to differ between e.g. name and name (2)   
     local Input = string.UTF8Reverse(Name)
     
-    for i=1,12 do
-        local Num = 0
+    for i=1,6 do
+        local Num = 99
         if #Input >=i then
             local Char = StringSub(Input,i,i)
-            Num = StringFind(Letters,Char,nil,true) or 1
+            Num = StringFind(Letters,Char,nil,true) or 99
+            if Num < 10 then Num = 80+Num end
         end
         NewId = StringFormat("%s%s",NewId,Num)        
     end
+    
     
     --make a int
     NewId = tonumber(NewId)
@@ -1967,6 +1969,8 @@ function Plugin:devourClearBuffer()
 end
 
 function Plugin:devourSendStatus()
+    if not GameHasStarted then return end
+    
     local stime = Shared.GetGMTString(false)
     
     local state = {
@@ -1987,7 +1991,7 @@ function Plugin:devourSendStatus()
     }
         
     --Shared.SendHTTPRequest(   StringFormat("%s/api/sendstatusDevour",self.Config.WebsiteUrl), "POST", params, function(response,status) RBPS:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)
-    Notify("Devour:" .. tostring(data))
+    Notify("Devour:" .. tostring(params.data))
     Plugin:devourClearBuffer()
     
 end
@@ -1996,9 +2000,14 @@ function Plugin:createDevourEntityFrame()
     local devourPlayers = {}
     local gameTime = Shared.GetTime() - Gamestarted
 
-    for key,taulu in pairs(Shine.GetAllClients) do	
+    for key,Client in pairs(Shine.GetAllClients()) do	
         local Player = Client:GetPlayer()
         local PlayerPos = Player:GetOrigin()
+        
+        local weapon = "none"
+        if Player.GetActiveWeapon and Player:GetActiveWeapon() then
+            weapon=Player:GetActiveWeapon():GetMapName() or "none"
+        end
         
         if Player:GetTeamNumber()>0 then
             local devourPlayer =
@@ -2006,13 +2015,13 @@ function Plugin:createDevourEntityFrame()
                 id = Plugin:GetId(Client),
                 name = Player:GetName(),
                 team = Player:GetTeamNumber(),
-                x = PlayerPos.x,
-                y = PlayerPos.y,
-                z = PlayerPos.z,
+                x = StringFormat("%.2f",PlayerPos.x),
+                y = StringFormat("%.2f",PlayerPos.y),
+                z = StringFormat("%.2f",PlayerPos.z),
                 wrh = Player:GetDirectionForMinimap(),
-                weapon = Player:GetActiveWeapon():GetMapName() or "none",
-                health = Player:GetHealth(),
-                armor = Player:GetArmor(),
+                weapon = weapon,
+                health = StringFormat("%.2f",Player:GetHealth()),
+                armor = StringFormat("%.2f",Player:GetArmor()),
                 pdmg = 0,
                 sdmg = 0,
                 lifeform = Plugin:GetLifeform(Player),
@@ -2020,7 +2029,7 @@ function Plugin:createDevourEntityFrame()
                 kills = Player.kills,
                 deaths = Player.deaths or 0,
                 assists = Player:GetAssistKills(),
-                pres = player:GetResources(),
+                pres = StringFormat("%.2f",Player:GetResources()),
                 ping = Client:GetPing() or 0,
                 acc = 0,
 
