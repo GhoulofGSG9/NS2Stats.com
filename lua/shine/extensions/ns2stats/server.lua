@@ -2007,16 +2007,18 @@ function Plugin:createDevourMovementFrame()
     for key,taulu in pairs(Shine.GetAllClients()) do
         local Player = Client:GetPlayer()
         local PlayerPos = Player:GetOrigin()
-	
-        local movement =
-        {
-            id = Plugin:GetId(Client),
-            x = StringFormat("%.2f",PlayerPos.x),
-            y = StringFormat("%.2f",PlayerPos.y),
-            z = StringFormat("%.2f",PlayerPos.z),
-            wrh = Player:GetDirectionForMinimap(),
-        }
-        table.insert(data, movement)	
+	    
+	    if Player:GetTeamNumber()>0 then
+            local movement =
+            {
+                id = Plugin:GetId(Client),
+                x = StringFormat("%.2f",PlayerPos.x),
+                y = StringFormat("%.2f",PlayerPos.y),
+                z = StringFormat("%.2f",PlayerPos.z),
+                wrh = Player:GetDirectionForMinimap(),
+            }
+            table.insert(data, movement)
+        end	
     end
  
     devourMovement[devourFrame] = data
