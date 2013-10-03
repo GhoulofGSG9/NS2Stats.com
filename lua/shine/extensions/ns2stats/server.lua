@@ -2004,7 +2004,7 @@ function Plugin:createDevourMovementFrame()
 
     local data = {}
     
-    for key,taulu in pairs(Shine.GetAllClients()) do
+    for key,Client in pairs(Shine.GetAllClients()) do
         local Player = Client:GetPlayer()
         local PlayerPos = Player:GetOrigin()
 	    
