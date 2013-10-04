@@ -74,12 +74,17 @@ GameHasStarted = false
 Currentgamestate = 0
 Buildings = {}
 
+--Devour Values
+local devourFrame = 0
+local devourEntity = {}
+local devourMovement = {}
+
 --avoids overload at gameend
 stoplogging = false
 
 function Plugin:Initialise()
     self.Enabled = true
-    
+
     --create Commands
     Plugin:CreateCommands()
     
@@ -99,9 +104,19 @@ function Plugin:Initialise()
        Plugin:UpdateWeaponTable()
     end)
     
-    -- every 1 min send Server Status    
-     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end)    
-     return true 
+    -- every 30 sec send Server Status + Devour   
+     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end) --Plugin:devourSendStatus()
+     
+    -- every 0.25 sec create Devour datas
+    --Shine.Timer.Create("Devour",0.25,-1, function()
+        --if GameHasStarted then
+            --Plugin:createDevourMovementFrame()
+            --if devourFrame % 20 == 0 then Plugin:createDevourEntityFrame() end
+            --devourFrame = devourFrame + 1
+        --end 
+    --end) 
+    
+    return true
 end
 
 -- NS2VanillaStats
@@ -128,6 +143,10 @@ function Plugin:OnGameReset()
         Plugin.Log = {}
         Plugin.Players = {}
         Items = {}
+        --Reset Devour
+        devourFrame = 0
+        devourEntity = {}
+        devourMovement = {}
         -- update stats all connected players       
         for _, client in ipairs(Shine.GetAllClients()) do            
             Plugin:addPlayerToTable(client)        
@@ -152,6 +171,7 @@ end
 
 --Gameend
 function Plugin:EndGame( Gamerules, WinningTeam )
+        GameHasStarted = false
         stoplogging = true     
         if Plugin.Config.Awards then Plugin:sendAwardListToClients() end               
         Buildings = {}
@@ -162,9 +182,9 @@ function Plugin:EndGame( Gamerules, WinningTeam )
         end           
         local params =
             {
-                version = ToString(Shared.GetBuildNumber()),
+                version = tostring(Shared.GetBuildNumber()),
                 winner = WinningTeam:GetTeamNumber(),
-                length = string.format("%.2f", Shared.GetTime() - Gamerules.gameStartTime),
+                length = StringFormat("%.2f", Shared.GetTime() - Gamerules.gameStartTime),
                 map = Shared.GetMapName(),
                 start_location1 = Gamerules.startingLocationNameTeam1,
                 start_location2 = Gamerules.startingLocationNameTeam2,
@@ -197,8 +217,7 @@ function Plugin:ClientConfirmConnect( Client )
     if not taulu then Plugin:addPlayerToTable(Client)  
     else taulu.dc = false end
     
-    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = StringFormat("%s/api",self.Config.WebsiteUrl),SendMapData = self.Config.SendMapData } ,true)
-        
+    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = StringFormat("%s/api",self.Config.WebsiteUrl),SendMapData = self.Config.SendMapData } ,true)   
 end
 
 --PlayerDisconnect
@@ -1512,19 +1531,21 @@ function Plugin:GetIdbyName(Name)
     end
     
     local NewId=""
-    local Letters = " (){}[]/.,+-=?!*1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
+    local Letters = " []+-*/!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
     
     --to differ between e.g. name and name (2)   
     local Input = string.UTF8Reverse(Name)
     
-    for i=1,12 do
-        local Num = 0
+    for i=1,6 do
+        local Num = 99
         if #Input >=i then
             local Char = StringSub(Input,i,i)
-            Num = StringFind(Letters,Char,nil,true) or 1
+            Num = StringFind(Letters,Char,nil,true) or 99
+            if Num < 10 then Num = 80+Num end
         end
         NewId = StringFormat("%s%s",NewId,Num)        
     end
+    
     
     --make a int
     NewId = tonumber(NewId)
@@ -1948,10 +1969,126 @@ function Plugin:GetStatsURL()
     return Plugin.Config.WebsiteUrl
 end 
 
+--Devour System Methods (see also Timers)
+
+function Plugin:devourClearBuffer()
+    devourEntity = {}
+    devourMovement = {}
+end
+
+function Plugin:devourSendStatus()
+    if not GameHasStarted then return end
+    
+    local stime = Shared.GetGMTString(false)
+    
+    local state = {
+        time = stime,
+        gametime = Shared.GetTime() - Gamestarted,
+        map = Shared.GetMapName(),
+    }
+    
+    local dataset = {
+        Entity = devourEntity,
+        Movement =  devourMovement,
+        state = state
+               }
+
+    local params =
+    {
+        key = self.Config.ServerKey,
+        data = json.encode(dataset)
+    }
+        
+    Shared.SendHTTPRequest(   StringFormat("%s/api/sendstatusDevour",self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)
+    Plugin:devourClearBuffer()    
+end
+
+function Plugin:createDevourMovementFrame()
+
+    local data = {}
+    
+    for key,Client in pairs(Shine.GetAllClients()) do
+        local Player = Client:GetPlayer()
+        local PlayerPos = Player:GetOrigin()
+	    
+	    if Player:GetTeamNumber()>0 then
+            local movement =
+            {
+                id = Plugin:GetId(Client),
+                x = Plugin:RoundNumber(PlayerPos.x),
+                y = Plugin:RoundNumber(PlayerPos.y),
+                z = Plugin:RoundNumber(PlayerPos.z),
+                wrh = Plugin:RoundNumber(Plugin:GetViewAngle(Player)),
+            }
+            table.insert(data, movement)
+        end	
+    end
+ 
+    devourMovement[devourFrame] = data
+end
+
+function Plugin:createDevourEntityFrame()
+    local devourPlayers = {}
+    
+    for key,Client in pairs(Shine.GetAllClients()) do	
+        local Player = Client:GetPlayer()
+        local PlayerPos = Player:GetOrigin()
+        
+        local weapon = "none"
+        if Player.GetActiveWeapon and Player:GetActiveWeapon() then
+            weapon=Player:GetActiveWeapon():GetMapName() or "none"
+        end
+        
+        if Player:GetTeamNumber()>0 then
+            local devourPlayer =
+            {
+                id = Plugin:GetId(Client),
+                name = Player:GetName(),
+                team = Player:GetTeamNumber(),
+                x = Plugin:RoundNumber(PlayerPos.x),
+                y = Plugin:RoundNumber(PlayerPos.y),
+                z = Plugin:RoundNumber(PlayerPos.z),
+                wrh = Plugin:RoundNumber(Plugin:GetViewAngle(Player)),
+                weapon = weapon,
+                health = Plugin:RoundNumber(Player:GetHealth()),
+                armor = Plugin:RoundNumber(Player:GetArmor()),
+                pdmg = 0,
+                sdmg = 0,
+                lifeform = Plugin:GetLifeform(Player),
+                score = Player:GetScore(),
+                kills = Player.kills,
+                deaths = Player.deaths or 0,
+                assists = Player:GetAssistKills(),
+                pres = Plugin:RoundNumber(Player:GetResources()),
+                ping = Client:GetPing() or 0,
+                acc = 0,
+
+            }
+            table.insert(devourPlayers, devourPlayer)
+        end	
+    end
+    
+    devourEntity[devourFrame]= devourPlayers     
+end
+
+function Plugin:GetViewAngle(Player)
+    
+    local angle = Player:GetDirectionForMinimap()/math.pi * 180
+    if angle < 0 then angle = 360 + angle end
+    if angle > 360 then angle = angle%360 end
+    return angle
+end
+
+function Plugin:RoundNumber(number)
+    local temp = StringFormat("%.2f",number)
+    return tonumber(temp)
+end
+
 --Cleanup
 function Plugin:Cleanup()
     self.Enabled = false
     Shine.Timer.Destroy("WeaponUpdate")
     Shine.Timer.Destroy("SendStats")
     Shine.Timer.Destroy("SendStatus")
+    Shine.Timer.Destroy("Devour")
 end
