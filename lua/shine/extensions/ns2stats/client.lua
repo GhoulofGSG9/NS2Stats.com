@@ -21,16 +21,12 @@ Shine.Hook.Add( "Think", "MinimapHook", function()
     end
 end )
 
---Startup Message
-Shine.AddStartupMessage("Shine NS2Stats.com Plugin is running. Please use sh_verify to set yourself as server admin at NS2Stats.com")
-
 function Plugin:Initialise()
-   self.Enabled = true    
-   return true 
+    self.Enabled = true
+    Shine.AddStartupMessage("Shine NS2Stats.com Plugin is running. Please use sh_verify to set yourself as server admin at NS2Stats.com")   
+    return true 
 end
 
-
-//get Config
 function Plugin:ReceiveStatsConfig( Message )
      WebsiteApiUrl = Message.WebsiteApiUrl
      SendMapData = Message.SendMapData    
@@ -71,8 +67,7 @@ function Plugin:Mapdata(GUIMinimap)
             mapName = Shared.GetMapName(),
             jsonvalues = json.encode(jsonvalues)
         }
-        Shared.SendHTTPRequest(WebsiteApiUrl .."/updatemapdata", "POST", params, function() end)
-        Notify("[NS2Stats]: MapData send")         
+        Shared.SendHTTPRequest(WebsiteApiUrl .."/updatemapdata", "POST", params, function() end)       
     end
  end
  

@@ -16,7 +16,7 @@ local StringLen = string.len
 local JsonEncode = json.encode
 local JsonDecode = json.decode 
 
-Plugin.Version = "0.42"
+Plugin.Version = "shine"
 
 Plugin.HasConfig = true
 
@@ -91,10 +91,7 @@ function Plugin:Initialise()
     if self.Config.ServerKey == "" then
         Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",Plugin.Config.WebsiteUrl), "GET",
             function(response) Plugin:acceptKey(response) end)
-    end   
-    
-    --getting server id
-    local serverid = Plugin:GetServerId()
+    end
     
     --Timers   
     
@@ -108,7 +105,7 @@ function Plugin:Initialise()
      Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end) --Plugin:devourSendStatus()
      
     -- every 0.25 sec create Devour datas
-    --Shine.Timer.Create("Devour",0.25,-1, function()
+    -- Shine.Timer.Create("Devour",0.25,-1, function()
         --if GameHasStarted then
             --Plugin:createDevourMovementFrame()
             --if devourFrame % 20 == 0 then Plugin:createDevourEntityFrame() end
@@ -130,42 +127,42 @@ end
 
 --Game reset
 function Plugin:OnGameReset()
-        stoplogging = false 
-        --Resets all Stats
-        Plugin.LogPartNumber = 1
-        Plugin.LogPartToSend  = 1
-        Gamestarted = 0
-        Plugin.gameFinished = 0
-        RBPSnextAwardId= 0
-        RBPSawards = {}
-        GameHasStarted = false
-        Currentgamestate = 0
-        Plugin.Log = {}
-        Plugin.Players = {}
-        Items = {}
-        --Reset Devour
-        devourFrame = 0
-        devourEntity = {}
-        devourMovement = {}
-        -- update stats all connected players       
-        for _, client in ipairs(Shine.GetAllClients()) do            
-            Plugin:addPlayerToTable(client)        
-        end        
-        Buildings = {}       
-    
+    stoplogging = false 
+    --Resets all Stats
+    Plugin.LogPartNumber = 1
+    Plugin.LogPartToSend  = 1
+    Gamestarted = 0
+    Plugin.gameFinished = 0
+    RBPSnextAwardId= 0
+    RBPSawards = {}
+    GameHasStarted = false
+    Currentgamestate = 0
+    Plugin.Log = {}
+    Plugin.Players = {}
+    Items = {}
+    --Reset Devour
+    devourFrame = 0
+    devourEntity = {}
+    devourMovement = {}
+    -- update stats all connected players       
+    for _, client in ipairs(Shine.GetAllClients()) do            
+        Plugin:addPlayerToTable(client)        
+    end        
+    Buildings = {}    
     Plugin:addLog({action="game_reset"})
 end
 
 --Gamestart
 function Plugin:SetGameState( Gamerules, NewState, OldState )
     Currentgamestate = NewState    
-    if NewState == kGameState.Started then        
+    if NewState == kGameState.Started then
+              
         GameHasStarted = true             
         Gamestarted = Shared.GetTime()
         Plugin:addLog({action = "game_start"})      
        
-         --send Playerlist            
-         Plugin:addPlayersToLog(0)    
+        --send Playerlist            
+        Plugin:addPlayersToLog(0)    
     end
 end
 
@@ -198,7 +195,7 @@ end
 
 --Player Events
 
---PlayerConnected
+--Player Connected
 function Plugin:ClientConfirmConnect( Client )
     
     if not Client then return end
@@ -220,7 +217,7 @@ function Plugin:ClientConfirmConnect( Client )
     self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = StringFormat("%s/api",self.Config.WebsiteUrl),SendMapData = self.Config.SendMapData } ,true)   
 end
 
---PlayerDisconnect
+--Player Disconnect
 function Plugin:ClientDisconnect(Client)
     if not Client then return end
     
@@ -405,8 +402,7 @@ end
 
 --Add miss
 function Plugin:addMissToLog(attacker)             
-    if attacker and attacker:isa("Player") then
-    
+    if attacker and attacker:isa("Player") then    
         local client = attacker:GetClient()
         if not client then return end
     
@@ -415,26 +411,6 @@ function Plugin:addMissToLog(attacker)
    
         local weapon = attacker:GetActiveWeaponName() or "none"
         
-        --local missLog =
-        --{
-            
-        -- --general
-        -- action = "miss",
-            
-        -- --Attacker
-        -- attacker_steamId = RBPSplayer.steamId,
-        -- attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
-        -- attacker_weapon = attackerWeapon,
-        -- attacker_lifeform = attacker:GetMapName(),
-        -- attacker_hp = attacker:GetHealth(),
-        -- attacker_armor = attacker:GetArmorAmount(),
-        -- attackerx = RBPSplayer.x,
-        -- attackery = RBPSplayer.y,
-        -- attackerz = RBPSplayer.z
-        --}
-        
-        ----Lisätään data json-muodossa logiin.
-        --Plugin:addLog(missLog)
         --gorge fix
         if weapon == "spitspray" then
             weapon = "spit"
@@ -737,7 +713,7 @@ function Plugin:OnConstructInit( Building )
     local techId = Building:GetTechId()
     local name = EnumToString(kTechId, techId)
     
-    if name == "Hydra" or name == "GorgeTunnel" then return end --Gorge Buildings
+    if name == "Hydra" or name == "GorgeTunnel"  or name == "BabblerEgg" then return end --Gorge Buildings
     
     Buildings[Building:GetId()] = true
     
@@ -1190,7 +1166,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long also do resend by this way
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 250000 and not stoplogging then
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and not stoplogging then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1261,7 +1237,7 @@ local working = false
 function Plugin:sendData(force)
     
     if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 250000 and not force then return end
+    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 500000 and not force then return end
     
     if working then return end
     working = true
@@ -1277,8 +1253,6 @@ function Plugin:sendData(force)
     Shared.SendHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
 end
 
-local resendtimes = 0
-
 --Analyze the answer of server
 function Plugin:onHTTPResponseFromSend(client,action,response,status,params)	
     local message = JsonDecode(response)        
@@ -1287,7 +1261,7 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
              if not StringFind(response,"Server log empty",nil, true) then
                  Plugin.Log[Plugin.LogPartToSend ] = nil 
                  Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
-                 RBPSsuccessfulSends = RBPSsuccessfulSends +1
+                 RBPSsuccessfulSends = RBPSsuccessfulSends + 1
                  working = false
                  Plugin:sendData()                                      
             end
@@ -1313,7 +1287,7 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
             if not StringFind(response,"Server log empty",nil, true) then
                  Plugin.Log[Plugin.LogPartToSend] = nil 
                  Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
-                 RBPSsuccessfulSends = RBPSsuccessfulSends +1
+                 RBPSsuccessfulSends = RBPSsuccessfulSends + 1
                  working =  false
                  Plugin:sendData()          
             end
@@ -1322,7 +1296,7 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
     elseif not response then --we couldn't reach the NS2Stats Servers
         if params then
             working = false                                
-            Shine.Timer.Simple(5, function() Plugin:sendData() end)             
+            Shine.Timer.Simple(20, function() Plugin:sendData() end)             
         end              
     end    
 end
