@@ -79,9 +79,6 @@ local devourFrame = 0
 local devourEntity = {}
 local devourMovement = {}
 
---avoids overload at gameend
-stoplogging = false
-
 function Plugin:Initialise()
     self.Enabled = true
 
@@ -127,7 +124,6 @@ end
 
 --Game reset
 function Plugin:OnGameReset()
-    stoplogging = false 
     --Resets all Stats
     Plugin.LogPartNumber = 1
     Plugin.LogPartToSend  = 1
@@ -168,10 +164,8 @@ end
 
 --Gameend
 function Plugin:EndGame( Gamerules, WinningTeam )
-        GameHasStarted = false
-        stoplogging = true     
+        GameHasStarted = false   
         if Plugin.Config.Awards then Plugin:sendAwardListToClients() end               
-        Buildings = {}
         Plugin:addPlayersToLog(1)      
         local initialHiveTechIdString = "None"            
         if Gamerules.initialHiveTechId then
@@ -190,7 +184,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
             }
         Plugin.gameFinished = 1       
         Plugin:AddServerInfos(params)        
-        if Plugin.Config.Statsonline then Plugin:sendData(true)  end --senddata also clears log         
+        if Plugin.Config.Statsonline then Plugin:sendData(true) end
 end
 
 --Player Events
@@ -293,9 +287,9 @@ function Plugin:GetLifeform(Player)
 end
 
 --Player shoots weapon
-function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)
-   
+function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)   
     local attacker = DamageMixin
+    
     if DamageMixin:GetParent() and DamageMixin:GetParent():isa("Player") then
             attacker = DamageMixin:GetParent()
     elseif HasMixin(DamageMixin, "Owner") and DamageMixin:GetOwner() and DamageMixin:GetOwner():isa("Player") then
@@ -304,12 +298,10 @@ function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, sur
     
     if not attacker:isa("Player") then return end 
     
-    if damage == 0 or not target then Plugin:addMissToLog(attacker) return end
-    if target:isa("Ragdoll") then Plugin:addMissToLog(attacker) return end
+    if damage == 0 or not target or target:isa("Ragdoll") then Plugin:addMissToLog(attacker) return end
     
     local damageType = kDamageType.Normal
-    if DamageMixin.GetDamageType then
-            damageType = DamageMixin:GetDamageType() end
+    if DamageMixin.GetDamageType then damageType = DamageMixin:GetDamageType() end
             
     local doer = attacker:GetActiveWeapon() 
     if not doer then doer = attacker end    
@@ -322,9 +314,13 @@ function Plugin:addHitToLog(target, attacker, doer, damage, damageType)
         if target:isa("Player") then
             local attacker_id = Plugin:GetId(attacker:GetClient())
             local target_id = Plugin:GetId(target:GetClient())
-            if not attacker_id or not target_id then return end            
+            
+            if not attacker_id or not target_id then return end
+            
             local aOrigin = attacker:GetOrigin()
             local tOrigin = target:GetOrigin()
+            if not attacker:GetIsAlive() then aOrigin = tOrigin end
+            
             local weapon = "none"
             if target:GetActiveWeapon() then
                 weapon = target:GetActiveWeapon():GetMapName() end        
@@ -1147,8 +1143,6 @@ local TempC = true
 
 --add to log
 function Plugin:addLog(tbl)
-    
-    if stoplogging and tbl.action ~= "game_ended" and tbl.action ~= "player_list_end" then return end
      
     if not Plugin.Log then Plugin.Log = {} end
     if not Plugin.Log[Plugin.LogPartNumber] then Plugin.Log[Plugin.LogPartNumber] = "" end
@@ -1166,7 +1160,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and not stoplogging then
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and Plugin.gameFinished ~= 1 then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1255,14 +1249,12 @@ end
 function Plugin:onHTTPResponseFromSend(client,action,response,status,params)	
     local message = JsonDecode(response)        
     if message then        
-        if StringLen(response)>0 then --if we got somedata, that means send was completed                
-             if not StringFind(response,"Server log empty",nil, true) then
-                 Plugin.Log[Plugin.LogPartToSend ] = nil 
-                 Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
-                 RBPSsuccessfulSends = RBPSsuccessfulSends + 1
-                 working = false
-                 if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end                                      
-            end
+        if StringLen(response)>0 and not StringFind(response,"Server log empty",nil, true) then
+             Plugin.Log[Plugin.LogPartToSend ] = nil 
+             Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
+             RBPSsuccessfulSends = RBPSsuccessfulSends + 1
+             working = false
+             if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end                                      
         end
     
         if message.other then
@@ -1281,14 +1273,12 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
             self:SaveConfig()                
         end	
     elseif response then --if message = nil, json parse failed prob or timeout
-        if StringLen(response)>0 then --if we got somedata, that means send was completed
-            if not StringFind(response,"Server log empty",nil, true) then
-                 Plugin.Log[Plugin.LogPartToSend] = nil 
-                 Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
-                 RBPSsuccessfulSends = RBPSsuccessfulSends + 1
-                 working =  false
-                 if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end          
-            end
+        if StringLen(response)>0 and not StringFind(response,"Server log empty",nil, true) then --if we got somedata, that means send was completed
+             Plugin.Log[Plugin.LogPartToSend] = nil 
+             Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
+             RBPSsuccessfulSends = RBPSsuccessfulSends + 1
+             working =  false
+             if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end          
         end
         Notify(StringFormat("NS2Stats.org: ( %s )", response))
     elseif not response then --we couldn't reach the NS2Stats Servers
@@ -1302,7 +1292,6 @@ end
 --Log end 
 
 --Player table functions
-
     
 --add Player to table
 function Plugin:addPlayerToTable(client)
@@ -1357,6 +1346,7 @@ function Plugin:createPlayerTable(client)
         taulu.ping = client:GetPing()
         taulu.ipaddress = IPAddressToString(Server.GetClientAddress(client))
     end
+    
     return taulu
 end
 
@@ -1404,58 +1394,29 @@ function Plugin:IsClientInTable(client)
     return false
 end
 
-
-function Plugin:getPlayerClientBySteamId(steamId)
-    if not steamId then return end        
-    for list, victim in ientitylist(Shared.GetEntitiesWithClassname("Player")) do            
-        local client = victim:GetClient()
-        if client and Plugin:GetId(client) then
-            if Plugin:GetId(client) == tonumber(steamId) then	
-                return client	
-            end
-        end                
-     end            
-    return nil                            
-end
-
-function Plugin:getPlayerByClientId(client)
-    if not client  then return end
-    local steamId = Plugin:GetId(client)
-    if not steamId then return end
-
-    for key,taulu in pairs(Plugin.Players) do        
-            if taulu["steamId"] == steamId then return taulu end
-    end
-end
-
 function Plugin:getTeamCommanderSteamid(teamNumber)
     for key,taulu in pairs(Plugin.Players) do	
-        if taulu["isCommander"] and taulu["teamnumber"] == teamNumber then
-            return taulu["steamId"]
+        if taulu.isCommander and taulu.teamnumber == teamNumber then
+            return taulu.steamId
         end	
     end
 
     return 0
 end
 
-function Plugin:getPlayerBySteamId(steamId)
-   if not steamId then return end
-   for key,taulu in pairs(Plugin.Players) do         
-            if tostring(taulu.steamId) == tostring(steamId)  then return taulu end
-   end
-end
-
 function Plugin:getPlayerByName(name)
     if not name then return end
     for key,taulu in pairs(Plugin.Players) do        
-        if taulu["name"] == name then return taulu end	
+        if taulu.name == name then return taulu end	
     end
 end
 
 function Plugin:getPlayerByClient(client)
     if not client then return end
+    
     local steamId = nil
     local name = nil
+    
     if client.GetUserId then
         steamId = Plugin:GetId(client)
     elseif client.GetPlayer then
@@ -1467,11 +1428,11 @@ function Plugin:getPlayerByClient(client)
 
     for key,taulu in pairs(Plugin.Players) do	
         if steamId then
-            if taulu["steamId"] == steamId then return taulu end
+            if taulu.steamId == steamId then return taulu end
         end
             
         if name then
-            if taulu["name"] == name then return taulu end
+            if taulu.name == name then return taulu end
         end	
     end
     return nil
@@ -1481,24 +1442,21 @@ end
 
 --GetIds
 
-function Plugin:GetId(client)
-    if client and client.GetUserId then     
-        if client:GetIsVirtual() then return Plugin:GetIdbyName(client:GetPlayer():GetName()) or 0
-        else return client:GetUserId() end
+function Plugin:GetId(Client)
+    if Client and Client.GetUserId then     
+        if Client:GetIsVirtual() then return Plugin:GetIdbyName(Client:GetPlayer():GetName()) or 0
+        else return Client:GetUserId() end
     end 
 end
-
---display warning only once
-local a = true
 
 --For Bots
 function Plugin:GetIdbyName(Name)
 
     if not Name then return end
+    
     --disable Onlinestats
-    if a then
+    if Plugin.Config.Statsonline then
         Notify( "NS2Stats won't store game with bots. Disabling online stats now!")
-        a=false 
         Plugin.Config.Statsonline = false 
     end
     
