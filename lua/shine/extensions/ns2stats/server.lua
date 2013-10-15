@@ -16,7 +16,7 @@ local StringLen = string.len
 local JsonEncode = json.encode
 local JsonDecode = json.decode 
 
-Plugin.Version = "0.42"
+Plugin.Version = "shine"
 
 Plugin.HasConfig = true
 
@@ -74,22 +74,21 @@ GameHasStarted = false
 Currentgamestate = 0
 Buildings = {}
 
---avoids overload at gameend
-stoplogging = false
+--Devour Values
+local devourFrame = 0
+local devourEntity = {}
+local devourMovement = {}
 
 function Plugin:Initialise()
     self.Enabled = true
-    
+
     --create Commands
     Plugin:CreateCommands()
     
     if self.Config.ServerKey == "" then
         Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",Plugin.Config.WebsiteUrl), "GET",
             function(response) Plugin:acceptKey(response) end)
-    end   
-    
-    --getting server id
-    local serverid = Plugin:GetServerId()
+    end
     
     --Timers   
     
@@ -99,9 +98,19 @@ function Plugin:Initialise()
        Plugin:UpdateWeaponTable()
     end)
     
-    -- every 1 min send Server Status    
-     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end)    
-     return true 
+    -- every 30 sec send Server Status + Devour   
+     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end) --Plugin:devourSendStatus()
+     
+    -- every 0.25 sec create Devour datas
+    -- Shine.Timer.Create("Devour",0.25,-1, function()
+        --if GameHasStarted then
+            --Plugin:createDevourMovementFrame()
+            --if devourFrame % 20 == 0 then Plugin:createDevourEntityFrame() end
+            --devourFrame = devourFrame + 1
+        --end 
+    --end) 
+    
+    return true
 end
 
 -- NS2VanillaStats
@@ -115,46 +124,48 @@ end
 
 --Game reset
 function Plugin:OnGameReset()
-        stoplogging = false 
-        --Resets all Stats
-        Plugin.LogPartNumber = 1
-        Plugin.LogPartToSend  = 1
-        Gamestarted = 0
-        Plugin.gameFinished = 0
-        RBPSnextAwardId= 0
-        RBPSawards = {}
-        GameHasStarted = false
-        Currentgamestate = 0
-        Plugin.Log = {}
-        Plugin.Players = {}
-        Items = {}
-        -- update stats all connected players       
-        for _, client in ipairs(Shine.GetAllClients()) do            
-            Plugin:addPlayerToTable(client)        
-        end        
-        Buildings = {}       
-    
+    --Resets all Stats
+    Plugin.LogPartNumber = 1
+    Plugin.LogPartToSend  = 1
+    Gamestarted = 0
+    Plugin.gameFinished = 0
+    RBPSnextAwardId= 0
+    RBPSawards = {}
+    GameHasStarted = false
+    Currentgamestate = 0
+    Plugin.Log = {}
+    Plugin.Players = {}
+    Items = {}
+    --Reset Devour
+    devourFrame = 0
+    devourEntity = {}
+    devourMovement = {}
+    -- update stats all connected players       
+    for _, client in ipairs(Shine.GetAllClients()) do            
+        Plugin:addPlayerToTable(client)        
+    end        
+    Buildings = {}    
     Plugin:addLog({action="game_reset"})
 end
 
 --Gamestart
 function Plugin:SetGameState( Gamerules, NewState, OldState )
     Currentgamestate = NewState    
-    if NewState == kGameState.Started then        
+    if NewState == kGameState.Started then
+              
         GameHasStarted = true             
         Gamestarted = Shared.GetTime()
         Plugin:addLog({action = "game_start"})      
        
-         --send Playerlist            
-         Plugin:addPlayersToLog(0)    
+        --send Playerlist            
+        Plugin:addPlayersToLog(0)    
     end
 end
 
 --Gameend
 function Plugin:EndGame( Gamerules, WinningTeam )
-        stoplogging = true     
+        GameHasStarted = false   
         if Plugin.Config.Awards then Plugin:sendAwardListToClients() end               
-        Buildings = {}
         Plugin:addPlayersToLog(1)      
         local initialHiveTechIdString = "None"            
         if Gamerules.initialHiveTechId then
@@ -162,9 +173,9 @@ function Plugin:EndGame( Gamerules, WinningTeam )
         end           
         local params =
             {
-                version = ToString(Shared.GetBuildNumber()),
+                version = tostring(Shared.GetBuildNumber()),
                 winner = WinningTeam:GetTeamNumber(),
-                length = string.format("%.2f", Shared.GetTime() - Gamerules.gameStartTime),
+                length = StringFormat("%.2f", Shared.GetTime() - Gamerules.gameStartTime),
                 map = Shared.GetMapName(),
                 start_location1 = Gamerules.startingLocationNameTeam1,
                 start_location2 = Gamerules.startingLocationNameTeam2,
@@ -173,12 +184,12 @@ function Plugin:EndGame( Gamerules, WinningTeam )
             }
         Plugin.gameFinished = 1       
         Plugin:AddServerInfos(params)        
-        if Plugin.Config.Statsonline then Plugin:sendData(true)  end --senddata also clears log         
+        if Plugin.Config.Statsonline then Plugin:sendData(true) end
 end
 
 --Player Events
 
---PlayerConnected
+--Player Connected
 function Plugin:ClientConfirmConnect( Client )
     
     if not Client then return end
@@ -197,11 +208,10 @@ function Plugin:ClientConfirmConnect( Client )
     if not taulu then Plugin:addPlayerToTable(Client)  
     else taulu.dc = false end
     
-    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = StringFormat("%s/api",self.Config.WebsiteUrl),SendMapData = self.Config.SendMapData } ,true)
-        
+    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = StringFormat("%s/api",self.Config.WebsiteUrl),SendMapData = self.Config.SendMapData } ,true)   
 end
 
---PlayerDisconnect
+--Player Disconnect
 function Plugin:ClientDisconnect(Client)
     if not Client then return end
     
@@ -277,9 +287,9 @@ function Plugin:GetLifeform(Player)
 end
 
 --Player shoots weapon
-function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)
-   
+function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)   
     local attacker = DamageMixin
+    
     if DamageMixin:GetParent() and DamageMixin:GetParent():isa("Player") then
             attacker = DamageMixin:GetParent()
     elseif HasMixin(DamageMixin, "Owner") and DamageMixin:GetOwner() and DamageMixin:GetOwner():isa("Player") then
@@ -288,12 +298,10 @@ function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, sur
     
     if not attacker:isa("Player") then return end 
     
-    if damage == 0 or not target then Plugin:addMissToLog(attacker) return end
-    if target:isa("Ragdoll") then Plugin:addMissToLog(attacker) return end
+    if damage == 0 or not target or target:isa("Ragdoll") then Plugin:addMissToLog(attacker) return end
     
     local damageType = kDamageType.Normal
-    if DamageMixin.GetDamageType then
-            damageType = DamageMixin:GetDamageType() end
+    if DamageMixin.GetDamageType then damageType = DamageMixin:GetDamageType() end
             
     local doer = attacker:GetActiveWeapon() 
     if not doer then doer = attacker end    
@@ -306,9 +314,13 @@ function Plugin:addHitToLog(target, attacker, doer, damage, damageType)
         if target:isa("Player") then
             local attacker_id = Plugin:GetId(attacker:GetClient())
             local target_id = Plugin:GetId(target:GetClient())
-            if not attacker_id or not target_id then return end            
+            
+            if not attacker_id or not target_id then return end
+            
             local aOrigin = attacker:GetOrigin()
             local tOrigin = target:GetOrigin()
+            if not attacker:GetIsAlive() then aOrigin = tOrigin end
+            
             local weapon = "none"
             if target:GetActiveWeapon() then
                 weapon = target:GetActiveWeapon():GetMapName() end        
@@ -386,8 +398,7 @@ end
 
 --Add miss
 function Plugin:addMissToLog(attacker)             
-    if attacker and attacker:isa("Player") then
-    
+    if attacker and attacker:isa("Player") then    
         local client = attacker:GetClient()
         if not client then return end
     
@@ -396,26 +407,6 @@ function Plugin:addMissToLog(attacker)
    
         local weapon = attacker:GetActiveWeaponName() or "none"
         
-        --local missLog =
-        --{
-            
-        -- --general
-        -- action = "miss",
-            
-        -- --Attacker
-        -- attacker_steamId = RBPSplayer.steamId,
-        -- attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
-        -- attacker_weapon = attackerWeapon,
-        -- attacker_lifeform = attacker:GetMapName(),
-        -- attacker_hp = attacker:GetHealth(),
-        -- attacker_armor = attacker:GetArmorAmount(),
-        -- attackerx = RBPSplayer.x,
-        -- attackery = RBPSplayer.y,
-        -- attackerz = RBPSplayer.z
-        --}
-        
-        ----Lisätään data json-muodossa logiin.
-        --Plugin:addLog(missLog)
         --gorge fix
         if weapon == "spitspray" then
             weapon = "spit"
@@ -718,7 +709,7 @@ function Plugin:OnConstructInit( Building )
     local techId = Building:GetTechId()
     local name = EnumToString(kTechId, techId)
     
-    if name == "Hydra" or name == "GorgeTunnel" then return end --Gorge Buildings
+    if name == "Hydra" or name == "GorgeTunnel"  or name == "BabblerEgg" then return end --Gorge Buildings
     
     Buildings[Building:GetId()] = true
     
@@ -1152,8 +1143,6 @@ local TempC = true
 
 --add to log
 function Plugin:addLog(tbl)
-    
-    if stoplogging and tbl.action ~= "game_ended" and tbl.action ~= "player_list_end" then return end
      
     if not Plugin.Log then Plugin.Log = {} end
     if not Plugin.Log[Plugin.LogPartNumber] then Plugin.Log[Plugin.LogPartNumber] = "" end
@@ -1170,8 +1159,8 @@ function Plugin:addLog(tbl)
     tbl.gametime = Shared.GetTime() - Gamestarted
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
-    --avoid that log gets too long also do resend by this way
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 250000 and not stoplogging then
+    --avoid that log gets too long
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and Plugin.gameFinished ~= 1 then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1240,9 +1229,7 @@ local working = false
 
 --send Log to NS2Stats Server
 function Plugin:sendData(force)
-    
-    if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 250000 and not force then return end
+    if Plugin.LogPartNumber <= Plugin.LogPartToSend and not force then return end
     
     if working then return end
     working = true
@@ -1258,20 +1245,16 @@ function Plugin:sendData(force)
     Shared.SendHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
 end
 
-local resendtimes = 0
-
 --Analyze the answer of server
 function Plugin:onHTTPResponseFromSend(client,action,response,status,params)	
     local message = JsonDecode(response)        
     if message then        
-        if StringLen(response)>0 then --if we got somedata, that means send was completed                
-             if not StringFind(response,"Server log empty",nil, true) then
-                 Plugin.Log[Plugin.LogPartToSend ] = nil 
-                 Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
-                 RBPSsuccessfulSends = RBPSsuccessfulSends +1
-                 working = false
-                 Plugin:sendData()                                      
-            end
+        if StringLen(response)>0 and not StringFind(response,"Server log empty",nil, true) then
+             Plugin.Log[Plugin.LogPartToSend ] = nil 
+             Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
+             RBPSsuccessfulSends = RBPSsuccessfulSends + 1
+             working = false
+             if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end                                      
         end
     
         if message.other then
@@ -1290,14 +1273,12 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
             self:SaveConfig()                
         end	
     elseif response then --if message = nil, json parse failed prob or timeout
-        if StringLen(response)>0 then --if we got somedata, that means send was completed
-            if not StringFind(response,"Server log empty",nil, true) then
-                 Plugin.Log[Plugin.LogPartToSend] = nil 
-                 Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
-                 RBPSsuccessfulSends = RBPSsuccessfulSends +1
-                 working =  false
-                 Plugin:sendData()          
-            end
+        if StringLen(response)>0 and not StringFind(response,"Server log empty",nil, true) then --if we got somedata, that means send was completed
+             Plugin.Log[Plugin.LogPartToSend] = nil 
+             Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
+             RBPSsuccessfulSends = RBPSsuccessfulSends + 1
+             working =  false
+             if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end          
         end
         Notify(StringFormat("NS2Stats.org: ( %s )", response))
     elseif not response then --we couldn't reach the NS2Stats Servers
@@ -1311,7 +1292,6 @@ end
 --Log end 
 
 --Player table functions
-
     
 --add Player to table
 function Plugin:addPlayerToTable(client)
@@ -1366,6 +1346,7 @@ function Plugin:createPlayerTable(client)
         taulu.ping = client:GetPing()
         taulu.ipaddress = IPAddressToString(Server.GetClientAddress(client))
     end
+    
     return taulu
 end
 
@@ -1413,58 +1394,29 @@ function Plugin:IsClientInTable(client)
     return false
 end
 
-
-function Plugin:getPlayerClientBySteamId(steamId)
-    if not steamId then return end        
-    for list, victim in ientitylist(Shared.GetEntitiesWithClassname("Player")) do            
-        local client = victim:GetClient()
-        if client and Plugin:GetId(client) then
-            if Plugin:GetId(client) == tonumber(steamId) then	
-                return client	
-            end
-        end                
-     end            
-    return nil                            
-end
-
-function Plugin:getPlayerByClientId(client)
-    if not client  then return end
-    local steamId = Plugin:GetId(client)
-    if not steamId then return end
-
-    for key,taulu in pairs(Plugin.Players) do        
-            if taulu["steamId"] == steamId then return taulu end
-    end
-end
-
 function Plugin:getTeamCommanderSteamid(teamNumber)
     for key,taulu in pairs(Plugin.Players) do	
-        if taulu["isCommander"] and taulu["teamnumber"] == teamNumber then
-            return taulu["steamId"]
+        if taulu.isCommander and taulu.teamnumber == teamNumber then
+            return taulu.steamId
         end	
     end
 
     return 0
 end
 
-function Plugin:getPlayerBySteamId(steamId)
-   if not steamId then return end
-   for key,taulu in pairs(Plugin.Players) do         
-            if tostring(taulu.steamId) == tostring(steamId)  then return taulu end
-   end
-end
-
 function Plugin:getPlayerByName(name)
     if not name then return end
     for key,taulu in pairs(Plugin.Players) do        
-        if taulu["name"] == name then return taulu end	
+        if taulu.name == name then return taulu end	
     end
 end
 
 function Plugin:getPlayerByClient(client)
     if not client then return end
+    
     local steamId = nil
     local name = nil
+    
     if client.GetUserId then
         steamId = Plugin:GetId(client)
     elseif client.GetPlayer then
@@ -1476,11 +1428,11 @@ function Plugin:getPlayerByClient(client)
 
     for key,taulu in pairs(Plugin.Players) do	
         if steamId then
-            if taulu["steamId"] == steamId then return taulu end
+            if taulu.steamId == steamId then return taulu end
         end
             
         if name then
-            if taulu["name"] == name then return taulu end
+            if taulu.name == name then return taulu end
         end	
     end
     return nil
@@ -1490,41 +1442,40 @@ end
 
 --GetIds
 
-function Plugin:GetId(client)
-    if client and client.GetUserId then     
-        if client:GetIsVirtual() then return Plugin:GetIdbyName(client:GetPlayer():GetName()) or 0
-        else return client:GetUserId() end
+function Plugin:GetId(Client)
+    if Client and Client.GetUserId then     
+        if Client:GetIsVirtual() then return Plugin:GetIdbyName(Client:GetPlayer():GetName()) or 0
+        else return Client:GetUserId() end
     end 
 end
-
---display warning only once
-local a = true
 
 --For Bots
 function Plugin:GetIdbyName(Name)
 
     if not Name then return end
+    
     --disable Onlinestats
-    if a then
+    if Plugin.Config.Statsonline then
         Notify( "NS2Stats won't store game with bots. Disabling online stats now!")
-        a=false 
         Plugin.Config.Statsonline = false 
     end
     
     local NewId=""
-    local Letters = " (){}[]/.,+-=?!*1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
+    local Letters = " []+-*/!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
     
     --to differ between e.g. name and name (2)   
     local Input = string.UTF8Reverse(Name)
     
-    for i=1,12 do
-        local Num = 0
+    for i=1,6 do
+        local Num = 99
         if #Input >=i then
             local Char = StringSub(Input,i,i)
-            Num = StringFind(Letters,Char,nil,true) or 1
+            Num = StringFind(Letters,Char,nil,true) or 99
+            if Num < 10 then Num = 80+Num end
         end
         NewId = StringFormat("%s%s",NewId,Num)        
     end
+    
     
     --make a int
     NewId = tonumber(NewId)
@@ -1948,10 +1899,126 @@ function Plugin:GetStatsURL()
     return Plugin.Config.WebsiteUrl
 end 
 
+--Devour System Methods (see also Timers)
+
+function Plugin:devourClearBuffer()
+    devourEntity = {}
+    devourMovement = {}
+end
+
+function Plugin:devourSendStatus()
+    if not GameHasStarted then return end
+    
+    local stime = Shared.GetGMTString(false)
+    
+    local state = {
+        time = stime,
+        gametime = Shared.GetTime() - Gamestarted,
+        map = Shared.GetMapName(),
+    }
+    
+    local dataset = {
+        Entity = devourEntity,
+        Movement =  devourMovement,
+        state = state
+               }
+
+    local params =
+    {
+        key = self.Config.ServerKey,
+        data = json.encode(dataset)
+    }
+        
+    Shared.SendHTTPRequest(   StringFormat("%s/api/sendstatusDevour",self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)
+    Plugin:devourClearBuffer()    
+end
+
+function Plugin:createDevourMovementFrame()
+
+    local data = {}
+    
+    for key,Client in pairs(Shine.GetAllClients()) do
+        local Player = Client:GetPlayer()
+        local PlayerPos = Player:GetOrigin()
+	    
+	    if Player:GetTeamNumber()>0 then
+            local movement =
+            {
+                id = Plugin:GetId(Client),
+                x = Plugin:RoundNumber(PlayerPos.x),
+                y = Plugin:RoundNumber(PlayerPos.y),
+                z = Plugin:RoundNumber(PlayerPos.z),
+                wrh = Plugin:RoundNumber(Plugin:GetViewAngle(Player)),
+            }
+            table.insert(data, movement)
+        end	
+    end
+ 
+    devourMovement[devourFrame] = data
+end
+
+function Plugin:createDevourEntityFrame()
+    local devourPlayers = {}
+    
+    for key,Client in pairs(Shine.GetAllClients()) do	
+        local Player = Client:GetPlayer()
+        local PlayerPos = Player:GetOrigin()
+        
+        local weapon = "none"
+        if Player.GetActiveWeapon and Player:GetActiveWeapon() then
+            weapon=Player:GetActiveWeapon():GetMapName() or "none"
+        end
+        
+        if Player:GetTeamNumber()>0 then
+            local devourPlayer =
+            {
+                id = Plugin:GetId(Client),
+                name = Player:GetName(),
+                team = Player:GetTeamNumber(),
+                x = Plugin:RoundNumber(PlayerPos.x),
+                y = Plugin:RoundNumber(PlayerPos.y),
+                z = Plugin:RoundNumber(PlayerPos.z),
+                wrh = Plugin:RoundNumber(Plugin:GetViewAngle(Player)),
+                weapon = weapon,
+                health = Plugin:RoundNumber(Player:GetHealth()),
+                armor = Plugin:RoundNumber(Player:GetArmor()),
+                pdmg = 0,
+                sdmg = 0,
+                lifeform = Plugin:GetLifeform(Player),
+                score = Player:GetScore(),
+                kills = Player.kills,
+                deaths = Player.deaths or 0,
+                assists = Player:GetAssistKills(),
+                pres = Plugin:RoundNumber(Player:GetResources()),
+                ping = Client:GetPing() or 0,
+                acc = 0,
+
+            }
+            table.insert(devourPlayers, devourPlayer)
+        end	
+    end
+    
+    devourEntity[devourFrame]= devourPlayers     
+end
+
+function Plugin:GetViewAngle(Player)
+    
+    local angle = Player:GetDirectionForMinimap()/math.pi * 180
+    if angle < 0 then angle = 360 + angle end
+    if angle > 360 then angle = angle%360 end
+    return angle
+end
+
+function Plugin:RoundNumber(number)
+    local temp = StringFormat("%.2f",number)
+    return tonumber(temp)
+end
+
 --Cleanup
 function Plugin:Cleanup()
     self.Enabled = false
     Shine.Timer.Destroy("WeaponUpdate")
     Shine.Timer.Destroy("SendStats")
     Shine.Timer.Destroy("SendStatus")
+    Shine.Timer.Destroy("Devour")
 end
