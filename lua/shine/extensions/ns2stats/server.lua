@@ -1165,7 +1165,7 @@ function Plugin:addLog(tbl)
     tbl.gametime = Shared.GetTime() - Gamestarted
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
-    --avoid that log gets too long also do resend by this way
+    --avoid that log gets too long
     if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and not stoplogging then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
@@ -1235,9 +1235,7 @@ local working = false
 
 --send Log to NS2Stats Server
 function Plugin:sendData(force)
-    
-    if not Plugin.Log[Plugin.LogPartToSend] then return end
-    if StringLen(Plugin.Log[Plugin.LogPartToSend]) < 500000 and not force then return end
+    if Plugin.LogPartNumber <= Plugin.LogPartToSend and not force then return end
     
     if working then return end
     working = true
@@ -1263,7 +1261,7 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
                  Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
                  RBPSsuccessfulSends = RBPSsuccessfulSends + 1
                  working = false
-                 Plugin:sendData()                                      
+                 if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end                                      
             end
         end
     
@@ -1289,14 +1287,14 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
                  Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
                  RBPSsuccessfulSends = RBPSsuccessfulSends + 1
                  working =  false
-                 Plugin:sendData()          
+                 if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end          
             end
         end
         Notify(StringFormat("NS2Stats.org: ( %s )", response))
     elseif not response then --we couldn't reach the NS2Stats Servers
         if params then
             working = false                                
-            Shine.Timer.Simple(20, function() Plugin:sendData() end)             
+            Shine.Timer.Simple(5, function() Plugin:sendData() end)             
         end              
     end    
 end
