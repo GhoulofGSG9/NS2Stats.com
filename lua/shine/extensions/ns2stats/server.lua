@@ -228,6 +228,31 @@ function Plugin:ClientDisconnect(Client)
     Plugin:addLog(connect)
 end
 
+--check teamchange
+function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
+    if not Player then return end
+
+    local Client = Server.GetOwner( Player )
+
+    if not Client then return end
+    
+    local taulu = Plugin:getPlayerByClient(Client)
+    
+    if not taulu then return end
+    
+    taulu.teamnumber = NewTeam
+    
+    local playerJoin =
+    {
+        action="player_join_team",
+        name = taulu.name,
+        team = taulu.teamnumber,
+        steamId = taulu.steamId,
+        score = taulu.score
+    }
+    Plugin:addLog(playerJoin)   
+end
+
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)
     if not state then return end
@@ -241,21 +266,6 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     --check name
     if taulu.name ~= Player:GetName() then
         taulu.name = Player:GetName()
-    end
-    
-    --check teamchange
-    local NewTeam = Player:GetTeamNumber() or 0
-    if taulu.teamnumber ~= NewTeam and NewTeam ~= -1 then
-        local playerJoin =
-        {
-            action="player_join_team",
-            name = taulu.name,
-            team = taulu.teamnumber,
-            steamId = taulu.steamId,
-            score = taulu.score
-        }
-        Plugin:addLog(playerJoin)
-        taulu.teamnumber = NewTeam
     end    
         
     --check if lifeform changed
@@ -1309,7 +1319,7 @@ function Plugin:createPlayerTable(client)
     if not player then return end
     local taulu= {}
        
-    taulu.teamnumber = 0
+    taulu.teamnumber = player:GetTeamNumber() or 0
     taulu.lifeform = Plugin:GetLifeform(player)
     taulu.score = 0
     taulu.assists = 0
