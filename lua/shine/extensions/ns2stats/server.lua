@@ -61,7 +61,6 @@ Shine.Hook.SetupGlobalHook("DestroyEntity","OnEntityDestroyed","PassivePre")
 Plugin.Players = {}
 
 --values needed by NS2Stats
-
 Plugin.Log = {}
 Plugin.LogPartNumber = 1
 Plugin.LogPartToSend = 1
@@ -233,10 +232,7 @@ end
 function Plugin:OnPlayerScoreChanged(Player,state)
     if not state then return end
     
-    local Client
-    if Player.GetClient then
-        Client = Player:GetClient()
-    else Client = Server.GetOwner(Player) end
+    local Client = Server.GetOwner(Player)
     if not Client then return end
     
     local taulu = Plugin:getPlayerByClient(Client)
@@ -250,7 +246,6 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     --check teamchange
     local NewTeam = Player:GetTeamNumber() or 0
     if taulu.teamnumber ~= NewTeam and NewTeam ~= -1 then
-        taulu.teamnumber = NewTeam
         local playerJoin =
         {
             action="player_join_team",
@@ -260,6 +255,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
             score = taulu.score
         }
         Plugin:addLog(playerJoin)
+        taulu.teamnumber = NewTeam
     end    
         
     --check if lifeform changed
@@ -1313,7 +1309,7 @@ function Plugin:createPlayerTable(client)
     if not player then return end
     local taulu= {}
        
-    taulu.teamnumber = player:GetTeamNumber() or 0
+    taulu.teamnumber = 0
     taulu.lifeform = Plugin:GetLifeform(player)
     taulu.score = 0
     taulu.assists = 0
