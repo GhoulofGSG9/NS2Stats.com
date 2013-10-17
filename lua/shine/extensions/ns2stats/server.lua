@@ -13,6 +13,8 @@ local StringFormat = string.format
 local StringSub = string.UTF8Sub
 local StringLen = string.len
 
+local GetOwner = Server.GetOwner
+
 local JsonEncode = json.encode
 local JsonDecode = json.decode 
 
@@ -228,11 +230,26 @@ function Plugin:ClientDisconnect(Client)
     Plugin:addLog(connect)
 end
 
+--check name
+function Plugin:PlayerNameChange( Player, Name, OldName )
+        if not Player or not Name then return end
+
+        if Name == kDefaultPlayerName then return end
+
+        local Client = Server.GetOwner( Player )
+        if Client and Client:GetIsVirtual() then return end
+        
+        local taulu = lugin:getPlayerByClient(Client)
+        taulu.name = Name        
+end
+
 --check teamchange
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
     if not Player then return end
-
-    local Client = Server.GetOwner( Player )
+    
+    if OldTeam == NewTeam then return end
+    
+    local Client = GetOwner( Player )
 
     if not Client then return end
     
@@ -257,20 +274,16 @@ end
 function Plugin:OnPlayerScoreChanged(Player,state)
     if not state then return end
     
-    local Client = Server.GetOwner(Player)
+    local Client = GetOwner(Player)
     if not Client then return end
     
     local taulu = Plugin:getPlayerByClient(Client)
     if not taulu then return end
-    
-    --check name
-    if taulu.name ~= Player:GetName() then
-        taulu.name = Player:GetName()
-    end    
         
     --check if lifeform changed
-    if taulu.lifeform ~= Plugin:GetLifeform(Player) then
-        taulu.lifeform = Plugin:GetLifeform(Player)
+    local lifeform = Plugin:GetLifeform(Player)
+    if taulu.lifeform ~= lifeform then
+        taulu.lifeform = lifeform
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})      
     end
     
@@ -949,7 +962,7 @@ function Plugin:OnStructureKilled(structure, attacker , doer)
             local steamId = -1
             
             local player = attacker                 
-            local client = Server.GetOwner(player)
+            local client = GetOwner(player)
             if client then steamId = Plugin:GetId(client) end
             
             local weapon = ""        
