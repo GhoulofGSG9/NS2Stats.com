@@ -240,7 +240,7 @@ function Plugin:PlayerNameChange( Player, Name, OldName )
     if Client and Client:GetIsVirtual() then return end
     
     local taulu = Plugin:getPlayerByClient(Client)
-    taulu.name = Name        
+    if taulu then taulu.name = Name end       
 end
 
 --Player switchs team
