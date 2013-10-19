@@ -243,7 +243,7 @@ function Plugin:PlayerNameChange( Player, Name, OldName )
     taulu.name = Name        
 end
 
----Player switchs team
+--Player switchs team
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
     if not Player then return end
     
