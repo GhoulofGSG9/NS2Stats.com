@@ -230,20 +230,20 @@ function Plugin:ClientDisconnect(Client)
     Plugin:addLog(connect)
 end
 
---check name
+--Player changes Name
 function Plugin:PlayerNameChange( Player, Name, OldName )
-        if not Player or not Name then return end
+    if not Player or not Name then return end
 
-        if Name == kDefaultPlayerName then return end
+    if Name == kDefaultPlayerName then return end
 
-        local Client = Server.GetOwner( Player )
-        if Client and Client:GetIsVirtual() then return end
-        
-        local taulu = lugin:getPlayerByClient(Client)
-        taulu.name = Name        
+    local Client = GetOwner( Player )
+    if Client and Client:GetIsVirtual() then return end
+    
+    local taulu = lugin:getPlayerByClient(Client)
+    taulu.name = Name        
 end
 
---check teamchange
+--Player switchs team
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
     if not Player then return end
     
@@ -917,7 +917,7 @@ function Plugin:OnBuildingRecycled( Building, ResearchID )
         if structure.GetUpgradeLevel then
             upgradeLevel = structure:GetUpgradeLevel()
         end        
-        local amount = GetRecycleAmount(techId, upgradeLevel)
+        local amount = GetRecycleAmount(techId, upgradeLevel) or 0
         -- returns a scalar from 0-1 depending on health the structure has (at the present moment)
         local scalar = structure:GetRecycleScalar() * kRecyclePaybackScalar
         
