@@ -243,7 +243,7 @@ function Plugin:PlayerNameChange( Player, Name, OldName )
     taulu.name = Name        
 end
 
---Player switchs team
+---Player switchs team
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
     if not Player then return end
     
@@ -279,7 +279,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     
     local taulu = Plugin:getPlayerByClient(Client)
     if not taulu then return end
-        
+    
     --check if lifeform changed
     local lifeform = Plugin:GetLifeform(Player)
     if taulu.lifeform ~= lifeform then
@@ -1179,7 +1179,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and Plugin.gameFinished ~= 1 then
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 250000 and Plugin.gameFinished ~= 1 then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1212,17 +1212,19 @@ end
 
 --Add server infos
 function Plugin:AddServerInfos(params)
+
     local mods = {}
-    local GetMod = Server.GetActiveModId
+    local getMod = Server.GetActiveModId
     for i = 1, Server.GetNumActiveMods() do
-        local Mod = GetMod( i )
+        local Mod = getMod( i )
         for j = 1, Server.GetNumMods() do
             if Server.GetModId(j) == Mod then
                 mods[i] = Server.GetModTitle(j)
                 break
             end
         end 
-    end 
+    end
+    
     params.action = "game_ended"
     params.statsVersion = Plugin.Version
     params.serverName = Server.GetName()
@@ -1241,6 +1243,7 @@ function Plugin:AddServerInfos(params)
         IP = ip,
         count = 30 --servertick?
     }
+    
     Plugin:addLog(params)
 end
 
