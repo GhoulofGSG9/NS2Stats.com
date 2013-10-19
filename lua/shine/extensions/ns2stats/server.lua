@@ -13,6 +13,8 @@ local StringFormat = string.format
 local StringSub = string.UTF8Sub
 local StringLen = string.len
 
+local GetOwner = Server.GetOwner
+
 local JsonEncode = json.encode
 local JsonDecode = json.decode 
 
@@ -61,7 +63,6 @@ Shine.Hook.SetupGlobalHook("DestroyEntity","OnEntityDestroyed","PassivePre")
 Plugin.Players = {}
 
 --values needed by NS2Stats
-
 Plugin.Log = {}
 Plugin.LogPartNumber = 1
 Plugin.LogPartToSend = 1
@@ -229,42 +230,60 @@ function Plugin:ClientDisconnect(Client)
     Plugin:addLog(connect)
 end
 
+--Player changes Name
+function Plugin:PlayerNameChange( Player, Name, OldName )
+    if not Player or not Name then return end
+
+    if Name == kDefaultPlayerName then return end
+
+    local Client = GetOwner( Player )
+    if Client and Client:GetIsVirtual() then return end
+    
+    local taulu = Plugin:getPlayerByClient(Client)
+    if taulu then taulu.name = Name end       
+end
+
+--Player switchs team
+function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
+    if not Player then return end
+    
+    if OldTeam == NewTeam then return end
+    
+    local Client = GetOwner( Player )
+
+    if not Client then return end
+    
+    local taulu = Plugin:getPlayerByClient(Client)
+    
+    if not taulu then return end
+    
+    taulu.teamnumber = NewTeam
+    
+    local playerJoin =
+    {
+        action="player_join_team",
+        name = taulu.name,
+        team = taulu.teamnumber,
+        steamId = taulu.steamId,
+        score = taulu.score
+    }
+    Plugin:addLog(playerJoin)   
+end
+
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)
     if not state then return end
     
-    local Client
-    if Player.GetClient then
-        Client = Player:GetClient()
-    else Client = Server.GetOwner(Player) end
+    local Client = GetOwner(Player)
     if not Client then return end
     
     local taulu = Plugin:getPlayerByClient(Client)
     if not taulu then return end
     
-    --check name
-    if taulu.name ~= Player:GetName() then
-        taulu.name = Player:GetName()
-    end
-    
-    --check teamchange
-    local NewTeam = Player:GetTeamNumber() or 0
-    if taulu.teamnumber ~= NewTeam and NewTeam ~= -1 then
-        taulu.teamnumber = NewTeam
-        local playerJoin =
-        {
-            action="player_join_team",
-            name = taulu.name,
-            team = taulu.teamnumber,
-            steamId = taulu.steamId,
-            score = taulu.score
-        }
-        Plugin:addLog(playerJoin)
-    end    
-        
     --check if lifeform changed
-    if taulu.lifeform ~= Plugin:GetLifeform(Player) then
-        taulu.lifeform = Plugin:GetLifeform(Player)
+    local lifeform = Plugin:GetLifeform(Player)
+    if taulu.lifeform ~= lifeform then
+        taulu.lifeform = lifeform
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})      
     end
     
@@ -898,7 +917,7 @@ function Plugin:OnBuildingRecycled( Building, ResearchID )
         if structure.GetUpgradeLevel then
             upgradeLevel = structure:GetUpgradeLevel()
         end        
-        local amount = GetRecycleAmount(techId, upgradeLevel)
+        local amount = GetRecycleAmount(techId, upgradeLevel) or 0
         -- returns a scalar from 0-1 depending on health the structure has (at the present moment)
         local scalar = structure:GetRecycleScalar() * kRecyclePaybackScalar
         
@@ -943,7 +962,7 @@ function Plugin:OnStructureKilled(structure, attacker , doer)
             local steamId = -1
             
             local player = attacker                 
-            local client = Server.GetOwner(player)
+            local client = GetOwner(player)
             if client then steamId = Plugin:GetId(client) end
             
             local weapon = ""        
@@ -1160,7 +1179,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and Plugin.gameFinished ~= 1 then
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 250000 and Plugin.gameFinished ~= 1 then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1193,17 +1212,19 @@ end
 
 --Add server infos
 function Plugin:AddServerInfos(params)
+
     local mods = {}
-    local GetMod = Server.GetActiveModId
+    local getMod = Server.GetActiveModId
     for i = 1, Server.GetNumActiveMods() do
-        local Mod = GetMod( i )
+        local Mod = getMod( i )
         for j = 1, Server.GetNumMods() do
             if Server.GetModId(j) == Mod then
                 mods[i] = Server.GetModTitle(j)
                 break
             end
         end 
-    end 
+    end
+    
     params.action = "game_ended"
     params.statsVersion = Plugin.Version
     params.serverName = Server.GetName()
@@ -1222,6 +1243,7 @@ function Plugin:AddServerInfos(params)
         IP = ip,
         count = 30 --servertick?
     }
+    
     Plugin:addLog(params)
 end
 
