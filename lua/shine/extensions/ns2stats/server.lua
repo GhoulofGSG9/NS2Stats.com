@@ -239,7 +239,7 @@ function Plugin:PlayerNameChange( Player, Name, OldName )
     local Client = GetOwner( Player )
     if Client and Client:GetIsVirtual() then return end
     
-    local taulu = lugin:getPlayerByClient(Client)
+    local taulu = Plugin:getPlayerByClient(Client)
     taulu.name = Name        
 end
 
