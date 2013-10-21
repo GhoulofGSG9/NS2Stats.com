@@ -12,6 +12,7 @@ local StringFind = string.find
 local StringFormat = string.format
 local StringSub = string.UTF8Sub
 local StringLen = string.len
+local StringLower = string.lower
 
 local GetOwner = Server.GetOwner
 
@@ -43,7 +44,7 @@ Plugin.CheckConfig = true
 
 --All needed Hooks
 
-Shine.Hook.SetupClassHook( "DamageMixin", "DoDamage", "OnDamageDealt", "PassivePost" )
+Shine.Hook.SetupClassHook( "DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
 Shine.Hook.SetupClassHook("ResearchMixin","TechResearched","OnTechResearched","PassivePost")
 Shine.Hook.SetupClassHook("ResearchMixin","SetResearching","OnTechStartResearch","PassivePre")
 Shine.Hook.SetupClassHook("ConstructMixin","SetConstructionComplete","OnFinishedBuilt","PassivePost")
@@ -315,136 +316,141 @@ function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, sur
             attacker = DamageMixin:GetOwner()
     end
     
-    if not attacker:isa("Player") then return end 
-    
-    if damage == 0 or not target or target:isa("Ragdoll") then Plugin:addMissToLog(attacker) return end
+    if not attacker:isa("Player") then return end
     
     local damageType = kDamageType.Normal
     if DamageMixin.GetDamageType then damageType = DamageMixin:GetDamageType() end
             
-    local doer = attacker:GetActiveWeapon() 
-    if not doer then doer = attacker end    
-    Plugin:addHitToLog(target, attacker, doer, damage, damageType)
+    local doer = attacker:GetActiveWeapon() or attacker
+    
+    local hit = false
+    if target and HasMixin(target, "Live") and damage > 0 then
+    
+        local armorUsed = 0
+        local healthUsed = 0        
+        damage, armorUsed, healthUsed = GetDamageByType(target, attacker, doer, damage, damageType, point)
+        
+        if damage > 0 then
+            Plugin:addHitToLog(target, attacker, doer, damage, damageType)
+            hit = true
+        end            
+    end
+    
+    if not hit then Plugin:addMissToLog(attacker) end 
 end
 
 --add Hit
 function Plugin:addHitToLog(target, attacker, doer, damage, damageType)
-    if attacker:isa("Player") then
-        if target:isa("Player") then
-            local attacker_id = Plugin:GetId(attacker:GetClient())
-            local target_id = Plugin:GetId(target:GetClient())
-            
-            if not attacker_id or not target_id then return end
-            
-            local aOrigin = attacker:GetOrigin()
-            local tOrigin = target:GetOrigin()
-            if not attacker:GetIsAlive() then aOrigin = tOrigin end
-            
-            local weapon = "none"
-            if target:GetActiveWeapon() then
-                weapon = target:GetActiveWeapon():GetMapName() end        
-            local hitLog =
-            {
-                --general
-                action = "hit_player",	
-                
-                --Attacker
-                attacker_steamId = attacker_id,
-                attacker_team = attacker:GetTeamNumber(),
-                attacker_weapon = string.lower(doer:GetMapName()),
-                attacker_lifeform =  string.lower(attacker:GetMapName()),
-                attacker_hp = attacker:GetHealth(),
-                attacker_armor = attacker:GetArmorAmount(),
-                attackerx = string.format("%.4f", aOrigin.x),
-                attackery = string.format("%.4f", aOrigin.y),
-                attackerz = string.format("%.4f", aOrigin.z),
-                
-                --Target
-                target_steamId = target_id,
-                target_team = target:GetTeamNumber(),
-                target_weapon = string.lower(weapon),
-                target_lifeform = string.lower(target:GetMapName()),
-                target_hp = target:GetHealth(),
-                target_armor = target:GetArmorAmount(),
-                targetx = string.format("%.4f", tOrigin.x),
-                targety = string.format("%.4f", tOrigin.y),
-                targetz = string.format("%.4f", tOrigin.z),
-                
-                damageType = damageType,
-                damage = damage
-                
-            }
-
-            Plugin:addLog(hitLog)
-            Plugin:weaponsAddHit(attacker, string.lower(doer:GetMapName()), damage)                
-            
-        else --target is a structure
-            local structureOrigin = target:GetOrigin()
-            local aOrigin = attacker:GetOrigin()
-            local hitLog =
-            {
-                
-                --general
-                action = "hit_structure",	
-                
-                --Attacker
-                attacker_steamId =  attacker_id,
-                attacker_team = attacker:GetTeamNumber(),
-                attacker_weapon = string.lower(doer:GetMapName()),
-                attacker_lifeform = string.lower(attacker:GetMapName()),
-                attacker_hp = attacker:GetHealth(),
-                attacker_armor = attacker:GetArmorAmount(),
-                attackerx = string.format("%.4f",  aOrigin.x),
-                attackery = string.format("%.4f",  aOrigin.y),
-                attackerz = string.format("%.4f",  aOrigin.z),
-                            
-                structure_id = target:GetId(),
-                structure_name = string.lower(target:GetMapName()),	
-                structure_x = string.format("%.4f", structureOrigin.x),
-                structure_y = string.format("%.4f", structureOrigin.y),
-                structure_z = string.format("%.4f", structureOrigin.z),	
-
-                damageType = damageType,
-                damage = damage
-            }
-            
-            Plugin:addLog(hitLog)
-            Plugin:weaponsAddStructureHit(attacker, string.lower(doer:GetMapName()), damage)
-            
-        end
-    end         
-end
-
---Add miss
-function Plugin:addMissToLog(attacker)             
-    if attacker and attacker:isa("Player") then    
-        local client = attacker:GetClient()
-        if not client then return end
-    
-        local RBPSplayer = Plugin:getPlayerByClient(client)
-        if not RBPSplayer then return end
-   
-        local weapon = attacker:GetActiveWeaponName() or "none"
+    if target:isa("Player") then
+        local attacker_id = Plugin:GetId(attacker:GetClient())
+        local target_id = Plugin:GetId(target:GetClient())
         
-        --gorge fix
-        if weapon == "spitspray" then
-            weapon = "spit"
-        end
+        if not attacker_id or not target_id then return end
         
-        Plugin:weaponsAddMiss(attacker,string.lower(weapon))
+        local aOrigin = attacker:GetOrigin()
+        local tOrigin = target:GetOrigin()
+        if not attacker:GetIsAlive() then aOrigin = tOrigin end
+        
+        local weapon = "none"
+        if target:GetActiveWeapon() then
+            weapon = StringLower(target:GetActiveWeapon():GetMapName()) end        
+        local hitLog =
+        {
+            --general
+            action = "hit_player",	
+            
+            --Attacker
+            attacker_steamId = attacker_id,
+            attacker_team = attacker:GetTeamNumber(),
+            attacker_weapon = StringLower(doer:GetMapName()),
+            attacker_lifeform =  StringLower(attacker:GetMapName()),
+            attacker_hp = attacker:GetHealth(),
+            attacker_armor = attacker:GetArmorAmount(),
+            attackerx = StringFormat("%.4f", aOrigin.x),
+            attackery = StringFormat("%.4f", aOrigin.y),
+            attackerz = StringFormat("%.4f", aOrigin.z),
+            
+            --Target
+            target_steamId = target_id,
+            target_team = target:GetTeamNumber(),
+            target_weapon = weapon,
+            target_lifeform = StringLower(target:GetMapName()),
+            target_hp = target:GetHealth(),
+            target_armor = target:GetArmorAmount(),
+            targetx = StringFormat("%.4f", tOrigin.x),
+            targety = StringFormat("%.4f", tOrigin.y),
+            targetz = StringFormat("%.4f", tOrigin.z),
+            
+            damageType = damageType,
+            damage = damage
+            
+        }
+
+        Plugin:addLog(hitLog)
+        Plugin:weaponsAddHit(attacker, StringLower(doer:GetMapName()), damage)                
+        
+    else --target is a structure
+        local structureOrigin = target:GetOrigin()
+        local aOrigin = attacker:GetOrigin()
+        local hitLog =
+        {
+            
+            --general
+            action = "hit_structure",	
+            
+            --Attacker
+            attacker_steamId =  attacker_id,
+            attacker_team = attacker:GetTeamNumber(),
+            attacker_weapon = StringLower(doer:GetMapName()),
+            attacker_lifeform = StringLower(attacker:GetMapName()),
+            attacker_hp = attacker:GetHealth(),
+            attacker_armor = attacker:GetArmorAmount(),
+            attackerx = StringFormat("%.4f",  aOrigin.x),
+            attackery = StringFormat("%.4f",  aOrigin.y),
+            attackerz = StringFormat("%.4f",  aOrigin.z),
+                        
+            structure_id = target:GetId(),
+            structure_name = StringLower(target:GetMapName()),	
+            structure_x = StringFormat("%.4f", structureOrigin.x),
+            structure_y = StringFormat("%.4f", structureOrigin.y),
+            structure_z = StringFormat("%.4f", structureOrigin.z),	
+
+            damageType = damageType,
+            damage = damage
+        }
+        
+        Plugin:addLog(hitLog)
+        Plugin:weaponsAddStructureHit(attacker, StringLower(doer:GetMapName()), damage)
+        
     end
 end
 
---weapon add miss
-function Plugin:weaponsAddMiss(player,weapon)
-        
-   local client = player:GetClient()
+--Add miss
+function Plugin:addMissToLog(attacker)                
+    local client = attacker:GetClient()
     if not client then return end
+
+    local RBPSplayer = Plugin:getPlayerByClient(client)
+    if not RBPSplayer then return end
+
+    local weapon = StringLower(attacker:GetActiveWeaponName()) or "none"
+    
+    --gorge fix
+    if weapon == "spitspray" then
+        weapon = "spit"
+    end
+    
+    Plugin:weaponsAddMiss(client,weapon)
+end
+
+--weapon add miss
+function Plugin:weaponsAddMiss(client,weapon)
     
     local RBPSplayer = Plugin:getPlayerByClient(client)
-            
-    local foundId = false
-      
+    
+    if not RBPSplayer then return end
+     
+    local foundId = false      
     for i=1, #RBPSplayer.weapons do
         if RBPSplayer.weapons[i].name == weapon then
             foundId=i
@@ -591,9 +597,9 @@ function Plugin:OnPickableItemCreated(item, player)
         team = item:GetTeamNumber(),
         name = itemname,
         action = "pickable_item_dropped",
-        x = string.format("%.4f", itemOrigin.x),
-        y = string.format("%.4f", itemOrigin.y),
-        z = string.format("%.4f", itemOrigin.z)
+        x = StringFormat("%.4f", itemOrigin.x),
+        y = StringFormat("%.4f", itemOrigin.y),
+        z = StringFormat("%.4f", itemOrigin.z)
     }
 
     Plugin:addLog(newItem)
@@ -667,9 +673,9 @@ function Plugin:OnPickableItemPicked(item,deltaTime)
         team = player:GetTeamNumber(),
         name = itemname,
         action = "pickable_item_picked",
-        x = string.format("%.4f", itemOrigin.x),
-        y = string.format("%.4f", itemOrigin.y),
-        z = string.format("%.4f", itemOrigin.z)
+        x = StringFormat("%.4f", itemOrigin.x),
+        y = StringFormat("%.4f", itemOrigin.y),
+        z = StringFormat("%.4f", itemOrigin.z)
     }
 
     Plugin:addLog(newItem)	
@@ -695,9 +701,9 @@ function Plugin:OnPickableItemDestroyed(item)
         team = item:GetTeamNumber(),
         name = EnumToString(kTechId, techId),
         action = "pickable_item_destroyed",
-        x = string.format("%.4f", structureOrigin.x),
-        y = string.format("%.4f", structureOrigin.y),
-        z = string.format("%.4f", structureOrigin.z)
+        x = StringFormat("%.4f", structureOrigin.x),
+        y = StringFormat("%.4f", structureOrigin.y),
+        z = StringFormat("%.4f", structureOrigin.z)
     }
 
     Plugin:addLog(newItem)	
@@ -741,9 +747,9 @@ function Plugin:OnConstructInit( Building )
         team = Building:GetTeamNumber(),        
         structure_cost = GetCostForTech(techId),
         structure_name = name,
-        structure_x = string.format("%.4f",strloc.x),
-        structure_y = string.format("%.4f",strloc.y),
-        structure_z = string.format("%.4f",strloc.z),
+        structure_x = StringFormat("%.4f",strloc.x),
+        structure_y = StringFormat("%.4f",strloc.y),
+        structure_z = StringFormat("%.4f",strloc.z),
     }
     Plugin:addLog(build)
     if Building.isGhostStructure then Plugin:OnGhostCreated(Building) end
@@ -779,9 +785,9 @@ function  Plugin:OnFinishedBuilt(ConstructMixin, builder)
         structure_cost = GetCostForTech(techId),
         team = team,
         structure_name = EnumToString(kTechId, techId),
-        structure_x = string.format("%.4f",strloc.x),
-        structure_y = string.format("%.4f",strloc.y),
-        structure_z = string.format("%.4f",strloc.z),
+        structure_x = StringFormat("%.4f",strloc.x),
+        structure_y = StringFormat("%.4f",strloc.y),
+        structure_z = StringFormat("%.4f",strloc.z),
     }
     Plugin:addLog(build)
 end
@@ -813,9 +819,9 @@ function Plugin:ghostStructureAction(action,structure,doer)
         structure_name = EnumToString(kTechId, techId),
         team = structure:GetTeamNumber(),
         id = structure:GetId(),
-        structure_x = string.format("%.4f", structureOrigin.x),
-        structure_y = string.format("%.4f", structureOrigin.y),
-        structure_z = string.format("%.4f", structureOrigin.z)
+        structure_x = StringFormat("%.4f", structureOrigin.x),
+        structure_y = StringFormat("%.4f", structureOrigin.y),
+        structure_z = StringFormat("%.4f", structureOrigin.z)
     }
     
     if action == "ghost_remove" then
@@ -934,9 +940,9 @@ function Plugin:OnBuildingRecycled( Building, ResearchID )
         givenback = finalRecycleAmount,
         structure_name = EnumToString(kTechId, techId),
         action = "structure_recycled",
-        structure_x = string.format("%.4f", structureOrigin.x),
-        structure_y = string.format("%.4f", structureOrigin.y),
-        structure_z = string.format("%.4f", structureOrigin.z)
+        structure_x = StringFormat("%.4f", structureOrigin.x),
+        structure_y = StringFormat("%.4f", structureOrigin.y),
+        structure_z = StringFormat("%.4f", structureOrigin.z)
     }
 
     Plugin:addLog(newUpgrade)
@@ -982,9 +988,9 @@ function Plugin:OnStructureKilled(structure, attacker , doer)
                 structure_cost = GetCostForTech(techId),
                 structure_name = EnumToString(kTechId, techId),
                 action = "structure_killed",
-                structure_x = string.format("%.4f", structureOrigin.x),
-                structure_y = string.format("%.4f", structureOrigin.y),
-                structure_z = string.format("%.4f", structureOrigin.z)
+                structure_x = StringFormat("%.4f", structureOrigin.x),
+                structure_y = StringFormat("%.4f", structureOrigin.y),
+                structure_z = StringFormat("%.4f", structureOrigin.z)
             }
             Plugin:addLog(newStructure)
                 
@@ -997,9 +1003,9 @@ function Plugin:OnStructureKilled(structure, attacker , doer)
                 structure_cost = GetCostForTech(techId),
                 structure_name = EnumToString(kTechId, techId),
                 action = "structure_suicide",
-                structure_x = string.format("%.4f", structureOrigin.x),
-                structure_y = string.format("%.4f", structureOrigin.y),
-                structure_z = string.format("%.4f", structureOrigin.z)
+                structure_x = StringFormat("%.4f", structureOrigin.x),
+                structure_y = StringFormat("%.4f", structureOrigin.y),
+                structure_z = StringFormat("%.4f", structureOrigin.z)
             }
             Plugin:addLog(newStructure)
         end 
@@ -1046,25 +1052,25 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 --Attacker
                 attacker_steamId = Plugin:GetId(attacker_client) or 0,
                 attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
-                attacker_weapon = string.lower(doer:GetMapName()),
-                attacker_lifeform = string.lower(attacker:GetMapName()), 
+                attacker_weapon = StringLower(doer:GetMapName()),
+                attacker_lifeform = StringLower(attacker:GetMapName()), 
                 attacker_hp = attacker:GetHealth(),
                 attacker_armor = attacker:GetArmorAmount(),
-                attackerx = string.format("%.4f", attackerOrigin.x),
-                attackery = string.format("%.4f", attackerOrigin.y),
-                attackerz = string.format("%.4f", attackerOrigin.z),
+                attackerx = StringFormat("%.4f", attackerOrigin.x),
+                attackery = StringFormat("%.4f", attackerOrigin.y),
+                attackerz = StringFormat("%.4f", attackerOrigin.z),
                 
                 --Target
                 target_steamId = Plugin:GetId(target_client) or 0,
                 target_team = target:GetTeamType(),
-                target_weapon = string.lower(targetWeapon),
-                target_lifeform = string.lower(target:GetMapName()), 
+                target_weapon = StringLower(targetWeapon),
+                target_lifeform = StringLower(target:GetMapName()), 
                 target_hp = target:GetHealth(),
                 target_armor = target:GetArmorAmount(),
-                targetx = string.format("%.4f", targetOrigin.x),
-                targety = string.format("%.4f", targetOrigin.y),
-                targetz = string.format("%.4f", targetOrigin.z),
-                target_lifetime = string.format("%.4f", Shared.GetTime() - target:GetCreationTime())
+                targetx = StringFormat("%.4f", targetOrigin.x),
+                targety = StringFormat("%.4f", targetOrigin.y),
+                targetz = StringFormat("%.4f", targetOrigin.z),
+                target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
             }
             
                 --Lis‰t‰‰n data json-muodossa logiin.
@@ -1092,10 +1098,10 @@ function Plugin:addDeathToLog(target, attacker, doer)
                     target_lifeform = target:GetMapName(), --target:GetPlayerStatusDesc(),
                     target_hp = target:GetHealth(),
                     target_armor = target:GetArmorAmount(),
-                    targetx = string.format("%.4f", targetOrigin.x),
-                    targety = string.format("%.4f", targetOrigin.y),
-                    targetz = string.format("%.4f", targetOrigin.z),
-                    target_lifetime = string.format("%.4f", Shared.GetTime() - target:GetCreationTime())	
+                    targetx = StringFormat("%.4f", targetOrigin.x),
+                    targety = StringFormat("%.4f", targetOrigin.y),
+                    targetz = StringFormat("%.4f", targetOrigin.z),
+                    target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())	
                 }
                 Plugin:addLog(deathLog)       
     end
@@ -1120,9 +1126,9 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
                 attacker_hp = attacker:GetHealth(),
                 attacker_armor = attacker:GetArmorAmount(),
-                attackerx = string.format("%.4f", attackerOrigin.x),
-                attackery = string.format("%.4f", attackerOrigin.y),
-                attackerz = string.format("%.4f", attackerOrigin.z),
+                attackerx = StringFormat("%.4f", attackerOrigin.x),
+                attackery = StringFormat("%.4f", attackerOrigin.y),
+                attackerz = StringFormat("%.4f", attackerOrigin.z),
                 
                 --Target
                 target_steamId = Plugin:GetId(target_client),
@@ -1131,10 +1137,10 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 target_lifeform = target:GetMapName(),
                 target_hp = target:GetHealth(),
                 target_armor = target:GetArmorAmount(),
-                targetx = string.format("%.4f", targetOrigin.x),
-                targety = string.format("%.4f", targetOrigin.y),
-                targetz = string.format("%.4f", targetOrigin.z),
-                target_lifetime = string.format("%.4f", Shared.GetTime() - target:GetCreationTime())
+                targetx = StringFormat("%.4f", targetOrigin.x),
+                targety = StringFormat("%.4f", targetOrigin.y),
+                targetz = StringFormat("%.4f", targetOrigin.z),
+                target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
             }
             
             Plugin:addLog(deathLog)  
@@ -1529,7 +1535,7 @@ function Plugin:updateWeaponData(client)
     if not player then return end
    
     local weapon = player.GetActiveWeaponName and player:GetActiveWeaponName() or "none"
-    weapon = string.lower(weapon)
+    weapon = StringLower(weapon)
     
     local foundId
     for i=1, #RBPSplayer.weapons do
