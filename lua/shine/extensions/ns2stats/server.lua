@@ -310,13 +310,11 @@ end
 function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)   
     local attacker = DamageMixin
     
-    if DamageMixin:GetParent() and DamageMixin:GetParent():isa("Player") then
+    if not not attacker:isa("Player") and DamageMixin:GetParent() and DamageMixin:GetParent():isa("Player") then
             attacker = DamageMixin:GetParent()
     elseif HasMixin(DamageMixin, "Owner") and DamageMixin:GetOwner() and DamageMixin:GetOwner():isa("Player") then
             attacker = DamageMixin:GetOwner()
-    end
-    
-    if not attacker:isa("Player") then return end
+    else return end
     
     local damageType = kDamageType.Normal
     if DamageMixin.GetDamageType then damageType = DamageMixin:GetDamageType() end
@@ -1530,7 +1528,7 @@ function Plugin:updateWeaponData(client)
     
     if not RBPSplayer then return end
     
-    local player = Client:GetControllingPlayer()
+    local player = client:GetControllingPlayer()
     
     if not player then return end
    
