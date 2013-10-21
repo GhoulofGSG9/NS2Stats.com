@@ -308,12 +308,14 @@ end
 
 --Player shoots weapon
 function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)   
-    local attacker = DamageMixin
     
-    if not not attacker:isa("Player") and DamageMixin:GetParent() and DamageMixin:GetParent():isa("Player") then
-            attacker = DamageMixin:GetParent()
+    local attacker 
+    if DamageMixinisa("Player") then
+        attacker = DamageMixin
+    elseif DamageMixin:GetParent() and DamageMixin:GetParent():isa("Player") then
+        attacker = DamageMixin:GetParent()
     elseif HasMixin(DamageMixin, "Owner") and DamageMixin:GetOwner() and DamageMixin:GetOwner():isa("Player") then
-            attacker = DamageMixin:GetOwner()
+        attacker = DamageMixin:GetOwner()
     else return end
     
     local damageType = kDamageType.Normal
