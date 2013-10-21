@@ -557,7 +557,7 @@ function Plugin:PlayerSay( Client, Message )
     
     Plugin:addLog({
         action = "chat_message",
-        team = Client:GetPlayer():GetTeamNumber(),
+        team = Client:GetControllingPlayer():GetTeamNumber(),
         steamid = Plugin:GetId(Client),
         name = Client:GetPlayer():GetName(),
         message = Message.message,
@@ -1523,10 +1523,12 @@ function Plugin:updateWeaponData(client)
     local RBPSplayer = Plugin:getPlayerByClient(client)    
     
     if not RBPSplayer then return end
-    if not client.GetPlayer or not client:GetPlayer() then return end
+    
+    local player = Client:GetControllingPlayer()
+    
+    if not player then return end
    
-    local weapon = client:GetPlayer():GetActiveWeaponName() or "none"
-    if weapon == "" then weapon = "none" end
+    local weapon = player.GetActiveWeaponName and player:GetActiveWeaponName() or "none"
     weapon = string.lower(weapon)
     
     local foundId
@@ -1983,7 +1985,10 @@ function Plugin:createDevourEntityFrame()
     local devourPlayers = {}
     
     for key,Client in pairs(Shine.GetAllClients()) do	
-        local Player = Client:GetPlayer()
+        local Player = Client:GetControllingPlayer()
+        
+        if not Player then return end
+        
         local PlayerPos = Player:GetOrigin()
         
         local weapon = "none"
