@@ -171,7 +171,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
         Plugin:addPlayersToLog(1)      
         local initialHiveTechIdString = "None"            
         if Gamerules.initialHiveTechId then
-                initialHiveTechIdString = EnumToString(kTechId, Gamerules.initialHiveTechId)
+        	initialHiveTechIdString = EnumToString(kTechId, Gamerules.initialHiveTechId)
         end           
         local params =
             {
@@ -288,7 +288,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})      
     end
     
-    Plugin:UpdatePlayerInTable(Player)
+    Plugin:UpdatePlayerInTable(Client,Player,taulu)
 end
 
 function Plugin:GetLifeform(Player)
@@ -799,7 +799,7 @@ function Plugin:OnGhostCreated(GhostStructureMixin)
 end
 
 function Plugin:OnGhostDestroyed(GhostStructureMixin)
-    Buildings[GhostStructureMixin:GetId()] = nil
+   Buildings[GhostStructureMixin:GetId()] = nil
    Plugin:ghostStructureAction("ghost_destroy",GhostStructureMixin,nil)
 end
 
@@ -841,12 +841,12 @@ function Plugin:OnTechStartResearch(ResearchMixin, researchNode, player)
 
         local newUpgrade =
         {
-        structure_id = ResearchMixin:GetId(),
-        commander_steamid = steamId or 0,
-        team = player:GetTeamNumber(),
-        cost = GetCostForTech(techId),
-        upgrade_name = EnumToString(kTechId, techId),
-        action = "upgrade_started"
+	        structure_id = ResearchMixin:GetId(),
+	        commander_steamid = steamId or 0,
+	        team = player:GetTeamNumber(),
+	        cost = GetCostForTech(techId),
+	        upgrade_name = EnumToString(kTechId, techId),
+	        action = "upgrade_started"
         }
 
         Plugin:addLog(newUpgrade)
@@ -1038,7 +1038,7 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 targetWeapon = target:GetActiveWeapon():GetMapName()
         end
 
-        --Jos on quitannu servulta justiin ennen tjsp niin ei ole clienttiä ja erroria pukkaa. (uwelta kopsasin)
+        --Jos on quitannu servulta justiin ennen tjsp niin ei ole clienttiï¿½ ja erroria pukkaa. (uwelta kopsasin)
         if attacker:isa("Player") then
             
             local attacker_client = attacker:GetClient()                
@@ -1073,7 +1073,7 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
             }
             
-                --Lisätään data json-muodossa logiin.
+                --Lisï¿½tï¿½ï¿½n data json-muodossa logiin.
                 Plugin:addLog(deathLog)
             
                 if attacker:GetTeamNumber() ~= target:GetTeamNumber() then                   
@@ -1379,10 +1379,8 @@ function Plugin:createPlayerTable(client)
 end
 
 --Update Player Entry
-function Plugin:UpdatePlayerInTable(player)   
-    
-    local taulu = Plugin:getPlayerByName(player.name)
-    if not taulu then return end
+function Plugin:UpdatePlayerInTable(client,player,taulu)
+
     if taulu.dc then return end
     
     taulu.score = player.score or 0
@@ -1398,30 +1396,13 @@ function Plugin:UpdatePlayerInTable(player)
     taulu.playerLevel = player.playerLevel or 0
     taulu.isCommander = player:GetIsCommander() or false    
     --if player is dead
-    if player:GetIsAlive() == false then
+    if not player:GetIsAlive() then
         taulu.killstreak = 0        
     end
-    if not taulu.isbot and player.GetClient and player:GetClient() then taulu.ping = player:GetClient():GetPing() or 0 end        
+    if not taulu.isbot then taulu.ping = client:GetPing() end        
 end
 
 --All search functions
-function Plugin:IsClientInTable(client)
-
-    if not client then return false end
-    local steamId = Plugin:GetId(client)
-    if not steamId then return false end
-    
-    for p = 1, #Plugin.Players do	
-        local player = Plugin.Players[p]	
-
-        if player.steamId == steamId then
-            return true
-        end	
-    end
-        
-    return false
-end
-
 function Plugin:getTeamCommanderSteamid(teamNumber)
     for key,taulu in pairs(Plugin.Players) do	
         if taulu.isCommander and taulu.teamnumber == teamNumber then
