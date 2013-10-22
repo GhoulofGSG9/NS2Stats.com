@@ -101,7 +101,9 @@ function Plugin:Initialise()
     end)
     
     -- every 30 sec send Server Status + Devour   
-     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end) --Plugin:devourSendStatus()
+    if Plugin.Config.Statusreport then
+       Shine.Timer.Create("SendStatus" , 30, -1, function() Plugin:sendServerStatus(Currentgamestate) end) --Plugin:devourSendStatus()
+    end
      
     -- every 0.25 sec create Devour datas
     -- Shine.Timer.Create("Devour",0.25,-1, function()
@@ -1038,73 +1040,70 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 targetWeapon = target:GetActiveWeapon():GetMapName()
         end
 
-        --Jos on quitannu servulta justiin ennen tjsp niin ei ole clientti� ja erroria pukkaa. (uwelta kopsasin)
         if attacker:isa("Player") then
             
-            local attacker_client = attacker:GetClient()                
-            if not attacker_client then return end
+		local attacker_client = attacker:GetClient()                
+		if not attacker_client then return end
+		
+		local deathLog =
+		{                
+		--general
+		action = "death",	
+		
+		--Attacker
+		attacker_steamId = Plugin:GetId(attacker_client) or 0,
+		attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
+		attacker_weapon = StringLower(doer:GetMapName()),
+		attacker_lifeform = StringLower(attacker:GetMapName()), 
+		attacker_hp = attacker:GetHealth(),
+		attacker_armor = attacker:GetArmorAmount(),
+		attackerx = StringFormat("%.4f", attackerOrigin.x),
+		attackery = StringFormat("%.4f", attackerOrigin.y),
+		attackerz = StringFormat("%.4f", attackerOrigin.z),
+		
+		--Target
+		target_steamId = Plugin:GetId(target_client) or 0,
+		target_team = target:GetTeamType(),
+		target_weapon = StringLower(targetWeapon),
+		target_lifeform = StringLower(target:GetMapName()), 
+		target_hp = target:GetHealth(),
+		target_armor = target:GetArmorAmount(),
+		targetx = StringFormat("%.4f", targetOrigin.x),
+		targety = StringFormat("%.4f", targetOrigin.y),
+		targetz = StringFormat("%.4f", targetOrigin.z),
+		target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
+		}
+		Plugin:addLog(deathLog)
             
-            local deathLog =
-            {                
-                --general
-                action = "death",	
-                
-                --Attacker
-                attacker_steamId = Plugin:GetId(attacker_client) or 0,
-                attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
-                attacker_weapon = StringLower(doer:GetMapName()),
-                attacker_lifeform = StringLower(attacker:GetMapName()), 
-                attacker_hp = attacker:GetHealth(),
-                attacker_armor = attacker:GetArmorAmount(),
-                attackerx = StringFormat("%.4f", attackerOrigin.x),
-                attackery = StringFormat("%.4f", attackerOrigin.y),
-                attackerz = StringFormat("%.4f", attackerOrigin.z),
-                
-                --Target
-                target_steamId = Plugin:GetId(target_client) or 0,
-                target_team = target:GetTeamType(),
-                target_weapon = StringLower(targetWeapon),
-                target_lifeform = StringLower(target:GetMapName()), 
-                target_hp = target:GetHealth(),
-                target_armor = target:GetArmorAmount(),
-                targetx = StringFormat("%.4f", targetOrigin.x),
-                targety = StringFormat("%.4f", targetOrigin.y),
-                targetz = StringFormat("%.4f", targetOrigin.z),
-                target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
-            }
+		if attacker:GetTeamNumber() ~= target:GetTeamNumber() then                   
+		    --addkill
+		    Plugin:addKill(Plugin:GetId(attacker_client), Plugin:GetId(target_client))                  
+		end
             
-                --Lis�t��n data json-muodossa logiin.
-                Plugin:addLog(deathLog)
-            
-                if attacker:GetTeamNumber() ~= target:GetTeamNumber() then                   
-                    --addkill
-                    Plugin:addKill(Plugin:GetId(attacker_client), Plugin:GetId(target_client))                  
-                end
-            
-            else
-                --natural causes death
-                local deathLog =
-                {
-                    --general
-                    action = "death",
-
-                    --Attacker
-                    attacker_weapon	= "natural causes",
-
-                    --Target
-                    target_steamId = Plugin:GetId(target_client),
-                    target_team = target:GetTeamType(),
-                    target_weapon = targetWeapon,
-                    target_lifeform = target:GetMapName(), --target:GetPlayerStatusDesc(),
-                    target_hp = target:GetHealth(),
-                    target_armor = target:GetArmorAmount(),
-                    targetx = StringFormat("%.4f", targetOrigin.x),
-                    targety = StringFormat("%.4f", targetOrigin.y),
-                    targetz = StringFormat("%.4f", targetOrigin.z),
-                    target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())	
-                }
-                Plugin:addLog(deathLog)       
-    end
+	    else
+	        --natural causes death
+	        local deathLog =
+	        {
+	            --general
+	            action = "death",
+	
+	            --Attacker
+	            attacker_weapon	= "natural causes",
+	
+	            --Target
+	            target_steamId = Plugin:GetId(target_client),
+	            target_team = target:GetTeamType(),
+	            target_weapon = targetWeapon,
+	            target_lifeform = target:GetMapName(), --target:GetPlayerStatusDesc(),
+	            target_hp = target:GetHealth(),
+	            target_armor = target:GetArmorAmount(),
+	            targetx = StringFormat("%.4f", targetOrigin.x),
+	            targety = StringFormat("%.4f", targetOrigin.y),
+	            targetz = StringFormat("%.4f", targetOrigin.z),
+	            target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())	
+	        }
+	        Plugin:addLog(deathLog)       
+	    end
     elseif target then --suicide
         local target_client = target:GetClient()       
         local targetWeapon = "none"
