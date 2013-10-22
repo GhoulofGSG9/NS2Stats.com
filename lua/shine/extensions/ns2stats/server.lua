@@ -100,8 +100,10 @@ function Plugin:Initialise()
        Plugin:UpdateWeaponTable()
     end)
     
-    -- every 30 sec send Server Status + Devour   
-     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end) --Plugin:devourSendStatus()
+    -- every 30 sec send Server Status + Devour 
+     if Plugin.Config.Statusreport then
+     	Shine.Timer.Create("SendStatus" , 30, -1, function() Plugin:sendServerStatus(Currentgamestate) end) --Plugin:devourSendStatus()
+     end
      
     -- every 0.25 sec create Devour datas
     -- Shine.Timer.Create("Devour",0.25,-1, function()
@@ -1038,7 +1040,6 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 targetWeapon = target:GetActiveWeapon():GetMapName()
         end
 
-        --Jos on quitannu servulta justiin ennen tjsp niin ei ole clientti‰ ja erroria pukkaa. (uwelta kopsasin)
         if attacker:isa("Player") then
             
             local attacker_client = attacker:GetClient()                
@@ -1073,7 +1074,6 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
             }
             
-                --Lis‰t‰‰n data json-muodossa logiin.
                 Plugin:addLog(deathLog)
             
                 if attacker:GetTeamNumber() ~= target:GetTeamNumber() then                   
