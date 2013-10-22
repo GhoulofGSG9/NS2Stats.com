@@ -310,7 +310,7 @@ end
 function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)   
     
     local attacker 
-    if DamageMixinisa("Player") then
+    if DamageMixin:isa("Player") then
         attacker = DamageMixin
     elseif DamageMixin:GetParent() and DamageMixin:GetParent():isa("Player") then
         attacker = DamageMixin:GetParent()
