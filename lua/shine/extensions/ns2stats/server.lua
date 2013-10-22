@@ -101,7 +101,9 @@ function Plugin:Initialise()
     end)
     
     -- every 30 sec send Server Status + Devour   
-     Shine.Timer.Create("SendStatus" , 30, -1, function() if Plugin.Config.Statusreport then Plugin:sendServerStatus(Currentgamestate) end end) --Plugin:devourSendStatus()
+    if Plugin.Config.Statusreport then
+       Shine.Timer.Create("SendStatus" , 30, -1, function() Plugin:sendServerStatus(Currentgamestate) end) --Plugin:devourSendStatus()
+    end
      
     -- every 0.25 sec create Devour datas
     -- Shine.Timer.Create("Devour",0.25,-1, function()
@@ -171,7 +173,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
         Plugin:addPlayersToLog(1)      
         local initialHiveTechIdString = "None"            
         if Gamerules.initialHiveTechId then
-                initialHiveTechIdString = EnumToString(kTechId, Gamerules.initialHiveTechId)
+        	initialHiveTechIdString = EnumToString(kTechId, Gamerules.initialHiveTechId)
         end           
         local params =
             {
@@ -288,7 +290,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})      
     end
     
-    Plugin:UpdatePlayerInTable(Player)
+    Plugin:UpdatePlayerInTable(Client,Player,taulu)
 end
 
 function Plugin:GetLifeform(Player)
@@ -310,7 +312,7 @@ end
 function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)   
     
     local attacker 
-    if DamageMixinisa("Player") then
+    if DamageMixin:isa("Player") then
         attacker = DamageMixin
     elseif DamageMixin:GetParent() and DamageMixin:GetParent():isa("Player") then
         attacker = DamageMixin:GetParent()
@@ -799,7 +801,7 @@ function Plugin:OnGhostCreated(GhostStructureMixin)
 end
 
 function Plugin:OnGhostDestroyed(GhostStructureMixin)
-    Buildings[GhostStructureMixin:GetId()] = nil
+   Buildings[GhostStructureMixin:GetId()] = nil
    Plugin:ghostStructureAction("ghost_destroy",GhostStructureMixin,nil)
 end
 
@@ -841,12 +843,12 @@ function Plugin:OnTechStartResearch(ResearchMixin, researchNode, player)
 
         local newUpgrade =
         {
-        structure_id = ResearchMixin:GetId(),
-        commander_steamid = steamId or 0,
-        team = player:GetTeamNumber(),
-        cost = GetCostForTech(techId),
-        upgrade_name = EnumToString(kTechId, techId),
-        action = "upgrade_started"
+	        structure_id = ResearchMixin:GetId(),
+	        commander_steamid = steamId or 0,
+	        team = player:GetTeamNumber(),
+	        cost = GetCostForTech(techId),
+	        upgrade_name = EnumToString(kTechId, techId),
+	        action = "upgrade_started"
         }
 
         Plugin:addLog(newUpgrade)
@@ -1038,73 +1040,70 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 targetWeapon = target:GetActiveWeapon():GetMapName()
         end
 
-        --Jos on quitannu servulta justiin ennen tjsp niin ei ole clientti‰ ja erroria pukkaa. (uwelta kopsasin)
         if attacker:isa("Player") then
             
-            local attacker_client = attacker:GetClient()                
-            if not attacker_client then return end
+		local attacker_client = attacker:GetClient()                
+		if not attacker_client then return end
+		
+		local deathLog =
+		{                
+		--general
+		action = "death",	
+		
+		--Attacker
+		attacker_steamId = Plugin:GetId(attacker_client) or 0,
+		attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
+		attacker_weapon = StringLower(doer:GetMapName()),
+		attacker_lifeform = StringLower(attacker:GetMapName()), 
+		attacker_hp = attacker:GetHealth(),
+		attacker_armor = attacker:GetArmorAmount(),
+		attackerx = StringFormat("%.4f", attackerOrigin.x),
+		attackery = StringFormat("%.4f", attackerOrigin.y),
+		attackerz = StringFormat("%.4f", attackerOrigin.z),
+		
+		--Target
+		target_steamId = Plugin:GetId(target_client) or 0,
+		target_team = target:GetTeamType(),
+		target_weapon = StringLower(targetWeapon),
+		target_lifeform = StringLower(target:GetMapName()), 
+		target_hp = target:GetHealth(),
+		target_armor = target:GetArmorAmount(),
+		targetx = StringFormat("%.4f", targetOrigin.x),
+		targety = StringFormat("%.4f", targetOrigin.y),
+		targetz = StringFormat("%.4f", targetOrigin.z),
+		target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
+		}
+		Plugin:addLog(deathLog)
             
-            local deathLog =
-            {                
-                --general
-                action = "death",	
-                
-                --Attacker
-                attacker_steamId = Plugin:GetId(attacker_client) or 0,
-                attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
-                attacker_weapon = StringLower(doer:GetMapName()),
-                attacker_lifeform = StringLower(attacker:GetMapName()), 
-                attacker_hp = attacker:GetHealth(),
-                attacker_armor = attacker:GetArmorAmount(),
-                attackerx = StringFormat("%.4f", attackerOrigin.x),
-                attackery = StringFormat("%.4f", attackerOrigin.y),
-                attackerz = StringFormat("%.4f", attackerOrigin.z),
-                
-                --Target
-                target_steamId = Plugin:GetId(target_client) or 0,
-                target_team = target:GetTeamType(),
-                target_weapon = StringLower(targetWeapon),
-                target_lifeform = StringLower(target:GetMapName()), 
-                target_hp = target:GetHealth(),
-                target_armor = target:GetArmorAmount(),
-                targetx = StringFormat("%.4f", targetOrigin.x),
-                targety = StringFormat("%.4f", targetOrigin.y),
-                targetz = StringFormat("%.4f", targetOrigin.z),
-                target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
-            }
+		if attacker:GetTeamNumber() ~= target:GetTeamNumber() then                   
+		    --addkill
+		    Plugin:addKill(Plugin:GetId(attacker_client), Plugin:GetId(target_client))                  
+		end
             
-                --Lis‰t‰‰n data json-muodossa logiin.
-                Plugin:addLog(deathLog)
-            
-                if attacker:GetTeamNumber() ~= target:GetTeamNumber() then                   
-                    --addkill
-                    Plugin:addKill(Plugin:GetId(attacker_client), Plugin:GetId(target_client))                  
-                end
-            
-            else
-                --natural causes death
-                local deathLog =
-                {
-                    --general
-                    action = "death",
-
-                    --Attacker
-                    attacker_weapon	= "natural causes",
-
-                    --Target
-                    target_steamId = Plugin:GetId(target_client),
-                    target_team = target:GetTeamType(),
-                    target_weapon = targetWeapon,
-                    target_lifeform = target:GetMapName(), --target:GetPlayerStatusDesc(),
-                    target_hp = target:GetHealth(),
-                    target_armor = target:GetArmorAmount(),
-                    targetx = StringFormat("%.4f", targetOrigin.x),
-                    targety = StringFormat("%.4f", targetOrigin.y),
-                    targetz = StringFormat("%.4f", targetOrigin.z),
-                    target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())	
-                }
-                Plugin:addLog(deathLog)       
-    end
+	    else
+	        --natural causes death
+	        local deathLog =
+	        {
+	            --general
+	            action = "death",
+	
+	            --Attacker
+	            attacker_weapon	= "natural causes",
+	
+	            --Target
+	            target_steamId = Plugin:GetId(target_client),
+	            target_team = target:GetTeamType(),
+	            target_weapon = targetWeapon,
+	            target_lifeform = target:GetMapName(), --target:GetPlayerStatusDesc(),
+	            target_hp = target:GetHealth(),
+	            target_armor = target:GetArmorAmount(),
+	            targetx = StringFormat("%.4f", targetOrigin.x),
+	            targety = StringFormat("%.4f", targetOrigin.y),
+	            targetz = StringFormat("%.4f", targetOrigin.z),
+	            target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())	
+	        }
+	        Plugin:addLog(deathLog)       
+	    end
     elseif target then --suicide
         local target_client = target:GetClient()       
         local targetWeapon = "none"
@@ -1379,10 +1378,8 @@ function Plugin:createPlayerTable(client)
 end
 
 --Update Player Entry
-function Plugin:UpdatePlayerInTable(player)   
-    
-    local taulu = Plugin:getPlayerByName(player.name)
-    if not taulu then return end
+function Plugin:UpdatePlayerInTable(client,player,taulu)
+
     if taulu.dc then return end
     
     taulu.score = player.score or 0
@@ -1398,30 +1395,13 @@ function Plugin:UpdatePlayerInTable(player)
     taulu.playerLevel = player.playerLevel or 0
     taulu.isCommander = player:GetIsCommander() or false    
     --if player is dead
-    if player:GetIsAlive() == false then
+    if not player:GetIsAlive() then
         taulu.killstreak = 0        
     end
-    if not taulu.isbot and player.GetClient and player:GetClient() then taulu.ping = player:GetClient():GetPing() or 0 end        
+    if not taulu.isbot then taulu.ping = client:GetPing() end        
 end
 
 --All search functions
-function Plugin:IsClientInTable(client)
-
-    if not client then return false end
-    local steamId = Plugin:GetId(client)
-    if not steamId then return false end
-    
-    for p = 1, #Plugin.Players do	
-        local player = Plugin.Players[p]	
-
-        if player.steamId == steamId then
-            return true
-        end	
-    end
-        
-    return false
-end
-
 function Plugin:getTeamCommanderSteamid(teamNumber)
     for key,taulu in pairs(Plugin.Players) do	
         if taulu.isCommander and taulu.teamnumber == teamNumber then
