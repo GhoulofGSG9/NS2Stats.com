@@ -246,33 +246,6 @@ function Plugin:PlayerNameChange( Player, Name, OldName )
     if taulu then taulu.name = Name end       
 end
 
---Player switchs team
-function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force )
-    if not Player then return end
-    
-    if OldTeam == NewTeam then return end
-    
-    local Client = GetOwner( Player )
-
-    if not Client then return end
-    
-    local taulu = Plugin:getPlayerByClient(Client)
-    
-    if not taulu then return end
-    
-    taulu.teamnumber = NewTeam
-    
-    local playerJoin =
-    {
-        action="player_join_team",
-        name = taulu.name,
-        team = taulu.teamnumber,
-        steamId = taulu.steamId,
-        score = taulu.score
-    }
-    Plugin:addLog(playerJoin)   
-end
-
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)
     if not state then return end
@@ -282,6 +255,22 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     
     local taulu = Plugin:getPlayerByClient(Client)
     if not taulu then return end
+    
+    --check team
+    local team = Player:GetTeamNumber()
+    if taulu.teamnumber ~= team then
+        taulu.teamnumber = team
+    
+        local playerJoin =
+        {
+            action="player_join_team",
+            name = taulu.name,
+            team = taulu.teamnumber,
+            steamId = taulu.steamId,
+            score = taulu.score
+        }
+        Plugin:addLog(playerJoin) 
+    end
     
     --check if lifeform changed
     local lifeform = Plugin:GetLifeform(Player)
