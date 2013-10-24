@@ -248,8 +248,7 @@ end
 
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)
-    if not state then return end
-    
+
     local Client = GetOwner(Player)
     if not Client then return end
     
@@ -257,7 +256,9 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     if not taulu then return end
     
     --check team
-    local team = Player:GetTeamNumber()
+    local team = Player:GetTeamNumber() or 0    
+    if team < 0 then team = 0 end
+    
     if taulu.teamnumber ~= team then
         taulu.teamnumber = team
     
@@ -298,7 +299,11 @@ function Plugin:GetLifeform(Player)
 end
 
 --Player shoots weapon
-function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)   
+function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)    
+    
+    if target and target:isa("Ragdoll") then
+        return false
+    end
     
     local attacker 
     if DamageMixin:isa("Player") then
@@ -310,9 +315,10 @@ function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, sur
     else return end
     
     local damageType = kDamageType.Normal
-    if DamageMixin.GetDamageType then damageType = DamageMixin:GetDamageType() end
+    if DamageMixin.GetDamageType then damageType = DamageMixin:GetDamageType()
+    elseif HasMixin(DamageMixin, "Tech") then damageType = LookupTechData(DamageMixin:GetTechId(), kTechDataDamageType, kDamageType.Normal) end
             
-    local doer = attacker:GetActiveWeapon() or attacker
+    local doer = DamageMixin
     
     local hit = false
     if target and HasMixin(target, "Live") and damage > 0 then
@@ -321,7 +327,7 @@ function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, sur
         local healthUsed = 0        
         damage, armorUsed, healthUsed = GetDamageByType(target, attacker, doer, damage, damageType, point)
         
-        if damage > 0 then
+        if damage > 0 and attacker:isa("Player")then
             Plugin:addHitToLog(target, attacker, doer, damage, damageType)
             hit = true
         end            
@@ -1505,6 +1511,8 @@ function Plugin:updateWeaponData(client)
    
     local weapon = player.GetActiveWeaponName and player:GetActiveWeaponName() or "none"
     weapon = StringLower(weapon)
+    
+    if weapon == "" then weapon = "none" end
     
     local foundId
     for i=1, #RBPSplayer.weapons do
