@@ -274,28 +274,13 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     end
     
     --check if lifeform changed
-    local lifeform = Plugin:GetLifeform(Player)
+    local lifeform = Player:GetMapName()
     if taulu.lifeform ~= lifeform then
         taulu.lifeform = lifeform
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})      
     end
     
     Plugin:UpdatePlayerInTable(Client,Player,taulu)
-end
-
-function Plugin:GetLifeform(Player)
-    if not Player then return end
-    local Currentlifeform = Player:GetMapName()
-    local teamnumber = Player:GetTeamNumber()
-    if not teamnumber then teamnumber = 0 end
-    if not Player:GetIsAlive() then Currentlifeform = "dead" end
-    if teamnumber == 0 then Currentlifeform = "spectator" end
-    if Player:GetIsCommander() then
-        if teamnumber == 1 then
-            Currentlifeform = "marine_commander"
-        elseif teamnumber == 2 then Currentlifeform = "alien_commander" end
-    end
-    return Currentlifeform
 end
 
 --Player shoots weapon
@@ -1336,7 +1321,7 @@ function Plugin:createPlayerTable(client)
     local taulu= {}
        
     taulu.teamnumber = player:GetTeamNumber() or 0
-    taulu.lifeform = Plugin:GetLifeform(player)
+    taulu.lifeform = player:GetMapName()
     taulu.score = 0
     taulu.assists = 0
     taulu.deaths = 0
@@ -1994,7 +1979,7 @@ function Plugin:createDevourEntityFrame()
                 armor = Plugin:RoundNumber(Player:GetArmor()),
                 pdmg = 0,
                 sdmg = 0,
-                lifeform = Plugin:GetLifeform(Player),
+                lifeform = Player:GetMapName(),
                 score = Player:GetScore(),
                 kills = Player.kills,
                 deaths = Player.deaths or 0,
