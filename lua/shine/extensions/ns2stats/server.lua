@@ -33,10 +33,11 @@ Plugin.DefaultConfig =
     Awards = true, --show award
     ShowNumAwards = 4, --how many awards should be shown at the end of the game?
     AwardMsgTime = 20, -- secs to show awards
+    AwardMsgColour = {255,215,0},
     LogChat = false, --log the chat?
     ServerKey = "", -- Serverkey given by ns2stats.com
     Tags = {}, --Tags added to log 
-    Competitive = false, -- tag round as Competitive
+    Competitive = false, -- tag rounds as Competitive
     Lastroundlink = "" --Link of last round
 }
 
@@ -256,10 +257,9 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     if not taulu then return end
     
     --check team
-    local team = Player:GetTeamNumber() or 0    
-    if team < 0 then team = 0 end
+    local team = Player:GetTeamNumber() or 0 --can return temp team "-1"
     
-    if taulu.teamnumber ~= team then
+    if team>= 0 and taulu.teamnumber ~= team then
         taulu.teamnumber = team
     
         local playerJoin =
@@ -274,28 +274,13 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     end
     
     --check if lifeform changed
-    local lifeform = Plugin:GetLifeform(Player)
+    local lifeform = Player:GetMapName()
     if taulu.lifeform ~= lifeform then
         taulu.lifeform = lifeform
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})      
     end
     
     Plugin:UpdatePlayerInTable(Client,Player,taulu)
-end
-
-function Plugin:GetLifeform(Player)
-    if not Player then return end
-    local Currentlifeform = Player:GetMapName()
-    local teamnumber = Player:GetTeamNumber()
-    if not teamnumber then teamnumber = 0 end
-    if not Player:GetIsAlive() then Currentlifeform = "dead" end
-    if teamnumber == 0 then Currentlifeform = "spectator" end
-    if Player:GetIsCommander() then
-        if teamnumber == 1 then
-            Currentlifeform = "marine_commander"
-        elseif teamnumber == 2 then Currentlifeform = "alien_commander" end
-    end
-    return Currentlifeform
 end
 
 --Player shoots weapon
@@ -577,9 +562,12 @@ local Items = {}
 function Plugin:OnPickableItemCreated(item, player)
     if not item then return end    
     local techId = item:GetTechId()
+    
     local itemname = EnumToString(kTechId, techId)
     if not itemname or itemname == "None" then return end 
+    
     local itemOrigin = item:GetOrigin()
+    
     local steamid = Plugin:getTeamCommanderSteamid(item:GetTeamNumber()) or 0
     
     local ihit = false
@@ -1336,7 +1324,7 @@ function Plugin:createPlayerTable(client)
     local taulu= {}
        
     taulu.teamnumber = player:GetTeamNumber() or 0
-    taulu.lifeform = Plugin:GetLifeform(player)
+    taulu.lifeform = player:GetMapName()
     taulu.score = 0
     taulu.assists = 0
     taulu.deaths = 0
@@ -1677,6 +1665,9 @@ function Plugin:sendAwardListToClients()
     local AwardMessage = {}
     AwardMessage.message = ""    
     AwardMessage.duration = Plugin.Config.AwardMsgTime
+    AwardMessage.colourr = Plugin.Config.AwardMsgColour[1]
+    AwardMessage.colourg = Plugin.Config.AwardMsgColour[2]
+    AwardMessage.colourb = Plugin.Config.AwardMsgColour[3]
     
     for i=1,Plugin.Config.ShowNumAwards do
         if i > #RBPSawards then break end
@@ -1994,7 +1985,7 @@ function Plugin:createDevourEntityFrame()
                 armor = Plugin:RoundNumber(Player:GetArmor()),
                 pdmg = 0,
                 sdmg = 0,
-                lifeform = Plugin:GetLifeform(Player),
+                lifeform = Player:GetMapName(),
                 score = Player:GetScore(),
                 kills = Player.kills,
                 deaths = Player.deaths or 0,
