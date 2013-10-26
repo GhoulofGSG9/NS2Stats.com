@@ -10,7 +10,10 @@ function Plugin:SetupDataTable()
 
     local AwardMessage = {
     message = "string (255)",
-    duration = "integer (0 to 1800)"
+    duration = "integer (0 to 1800)",
+    colourr = "integer (0 to 255)",
+    colourg = "integer (0 to 255)",
+    colourb = "integer (0 to 255)",
     }
 
    self:AddNetworkMessage("StatsAwards", AwardMessage, "Client" )

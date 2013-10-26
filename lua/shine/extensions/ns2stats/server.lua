@@ -33,10 +33,11 @@ Plugin.DefaultConfig =
     Awards = true, --show award
     ShowNumAwards = 4, --how many awards should be shown at the end of the game?
     AwardMsgTime = 20, -- secs to show awards
+    AwardMsgColour = {255,215,0},
     LogChat = false, --log the chat?
     ServerKey = "", -- Serverkey given by ns2stats.com
     Tags = {}, --Tags added to log 
-    Competitive = false, -- tag round as Competitive
+    Competitive = false, -- tag rounds as Competitive
     Lastroundlink = "" --Link of last round
 }
 
@@ -256,10 +257,9 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     if not taulu then return end
     
     --check team
-    local team = Player:GetTeamNumber() or 0    
-    if team < 0 then team = 0 end
+    local team = Player:GetTeamNumber() or 0 --can return temp team "-1"
     
-    if taulu.teamnumber ~= team then
+    if team>= 0 and taulu.teamnumber ~= team then
         taulu.teamnumber = team
     
         local playerJoin =
@@ -562,9 +562,12 @@ local Items = {}
 function Plugin:OnPickableItemCreated(item, player)
     if not item then return end    
     local techId = item:GetTechId()
+    
     local itemname = EnumToString(kTechId, techId)
     if not itemname or itemname == "None" then return end 
+    
     local itemOrigin = item:GetOrigin()
+    
     local steamid = Plugin:getTeamCommanderSteamid(item:GetTeamNumber()) or 0
     
     local ihit = false
@@ -1662,6 +1665,9 @@ function Plugin:sendAwardListToClients()
     local AwardMessage = {}
     AwardMessage.message = ""    
     AwardMessage.duration = Plugin.Config.AwardMsgTime
+    AwardMessage.colourr = Plugin.Config.AwardMsgColour[1]
+    AwardMessage.colourg = Plugin.Config.AwardMsgColour[2]
+    AwardMessage.colourb = Plugin.Config.AwardMsgColour[3]
     
     for i=1,Plugin.Config.ShowNumAwards do
         if i > #RBPSawards then break end
