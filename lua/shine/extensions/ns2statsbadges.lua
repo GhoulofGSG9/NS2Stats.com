@@ -1,5 +1,5 @@
 --[[
-    Shine Ns2Stats Bagdes
+    Shine Ns2Stats Badges
 ]]
 
 local Shine = Shine
@@ -29,7 +29,7 @@ function Plugin:ClientConnect(Client)
         if not nationality then return end        
         nationality = nationality:upper()
         
-        --set bagde at server
+        --set badge at server
         if not GiveBadge or not kBadges then return end
         local setbagde = GiveBadge(ClientId,nationality)
         if not setbagde then return end
@@ -43,4 +43,4 @@ function Plugin:Cleanup()
     self.Enabled = false
 end
 
-Shine:RegisterExtension( "ns2statsbagdes", Plugin )
+Shine:RegisterExtension( "ns2statsbadges", Plugin )
