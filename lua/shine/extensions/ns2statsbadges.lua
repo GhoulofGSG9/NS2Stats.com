@@ -16,27 +16,29 @@ function Plugin:Initialise()
     return true
 end
 
-function Plugin:ClientConnect(Client)   
+function Plugin:ClientConfirmConnect(Client)
+    if not GiveBadge or not kBadges then return end
+ 
     local ClientId = Client:GetUserId()
     if ClientId <= 0 then return end
-    
-    Shared.SendHTTPRequest( StringFormat("http://ns2stats.com/api/player?ns2_id=%s", ClientId), "GET",function(response)  
-        local Data = JsonDecode(response)
+        
+    Shared.SendHTTPRequest( StringFormat("http://ns2stats.com/api/player?ns2_id=%s", ClientId), "GET", function(response) 
+        
+        local Data = JsonDecode(response)            
+        if not Data then return end
         
         --get players nationality
-        local nationality            
-        if Data then nationality = Data[1].nationality end        
+        local nationality  = Data[1].nationality        
         if not nationality then return end        
         nationality = nationality:upper()
         
-        --set badge at server
-        if not GiveBadge or not kBadges then return end
+        --set badge at server        
         local setbagde = GiveBadge(ClientId,nationality)
         if not setbagde then return end
         
         -- send bagde to Playerclient
         Server.SendNetworkMessage(Client, "Badge", {clientIndex = -1, badge = kBadges[nationality]}, true)                     
-    end)    
+    end)  
 end
 
 function Plugin:Cleanup()
