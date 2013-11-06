@@ -1,12 +1,15 @@
 --[[
-    Shine Ns2Stats Badges -Server
+    Shine Ns2Stats Badges
 ]]
 
 local Shine = Shine
 local StringFormat = string.format
 local JsonDecode = json.decode 
 
-local Plugin = Plugin
+local Plugin = {}
+
+Plugin.Version = "1.0"
+Plugin.DefaultState = false
 
 function Plugin:Initialise()    
     self.Enabled = true
@@ -29,17 +32,21 @@ function Plugin:ClientConnect(Client)
         if not nationality then return end        
         nationality = nationality:upper()
         
-        --set badge at server        
+        --set badge at server       
         local setbagde = GiveBadge(ClientId,nationality)
         if not setbagde then return end  
         
-        -- send bagde to Clients
-        setClientBadgeEnum(Client,kBadges[nationality])
+        -- send bagde to Clients        
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[nationality]), true)
-        Plugin:SendNetworkMessage(Client,"Ns2statsBagdes",{Name = nationality } ,true)                        
+        
+        -- give default badge (disabled)
+        GiveBadge(ClientId,"disabled")
+        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges["disabled"]), true)                             
     end)  
 end
 
 function Plugin:Cleanup()
     self.Enabled = false
 end
+
+Shine:RegisterExtension( "ns2statsbadges", Plugin )
