@@ -54,7 +54,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         if Mapvote.Enabled then if Mapvote:VoteStarted() then return end end
     end
     
-    local client = Player:GetClient()
+    local client = Player and Player.GetClient and Player:GetClient()
     if not client then return end
     
     local steamid = client:GetUserId()
@@ -153,13 +153,13 @@ end
 function Plugin:Notify( Player, Message, Format, ... )
    local a = false    
    repeat 
-   local m = Message
-   if m:len() > kMaxChatLength then
-        m = m:sub( 1, kMaxChatLength-2 )
-        m = m .."-"
-        Message = Message:sub(kMaxChatLength-1)
-   else a= true end
-   Shine:NotifyDualColour( Player, 100, 255, 100, "[Elo Restriction]", 255, 255, 255,m, Format, ... )  
+       local m = Message
+       if m:len() > kMaxChatLength then
+            m = m:sub( 1, kMaxChatLength-2 )
+            m = m .."-"
+            Message = Message:sub(kMaxChatLength-1)
+       else a= true end
+       Shine:NotifyDualColour( Player, 100, 255, 100, "[Elo Restriction]", 255, 255, 255,m, Format, ... )  
    until a
 end
 
