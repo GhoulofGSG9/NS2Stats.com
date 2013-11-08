@@ -1216,6 +1216,7 @@ function Plugin:AddServerInfos(params)
     params.action = "game_ended"
     params.statsVersion = Plugin.Version
     params.serverName = Server.GetName()
+    params.gamemode = Shine.GetGamemode()
     params.successfulSends = RBPSsuccessfulSends
     params.resendCount = RBPSresendCount
     params.mods = mods

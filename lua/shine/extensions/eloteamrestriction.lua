@@ -36,6 +36,10 @@ Plugin.DefaultConfig = {
 Plugin.CheckConfig = true
 
 function Plugin:Initialise()
+    local Gamemode = Shine.GetGamemode()
+    if Gamemode ~= "ns2" then        
+        return false, StringFormat( "The eloteamrestriction plugin does not work with %s.", Gamemode )
+    end    
     self.Enabled = true
     return true
 end

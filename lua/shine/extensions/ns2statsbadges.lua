@@ -46,7 +46,7 @@ function Plugin:SetFlagBadge(Client,trynr)
         -- send bagde to Clients        
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[nationality]), true)
         
-        -- give default badge (nil)
+        -- give default badge (disabled)
         GiveBadge(ClientId,"disabled")
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges["disabled"]), true)                     
     end)
