@@ -3,6 +3,7 @@
 ]]
 
 local Shine = Shine
+local Notify = Shared.Message
 local StringFormat = string.format
 local JsonDecode = json.decode 
 
@@ -17,27 +18,20 @@ function Plugin:Initialise()
 end
 
 function Plugin:ClientConnect(Client)
-   Plugin:SetFlagBadge(Client)    
-end
-
-function Plugin:SetFlagBadge(Client,trynr)    
-    if not GiveBadge or not kBadges then return end
-    
-    local ClientId = Client:GetUserId()    
-    if ClientId<=0 then return end
-    
-    if not trynr then trynr = 0 end
-    if trynr > 5 then return end
-    
-    Shared.SendHTTPRequest( StringFormat("http://ns2stats.com/api/player?ns2_id=%s", ClientId), "GET", function(response) 
-
-        local Data = JsonDecode(response)            
-        if not Data then Shine.Timer.Simple(5,Plugin:SetFlagBadge(Client,trynr+1)) return end
+    if not GiveBadge or not kBadges or not Client then return end
+ 
+    local ClientId = Client:GetUserId()
+    if ClientId <= 0 then return end
         
-        --get players nationality
-        local nationality  = Data[1].nationality        
-        if not nationality then return end        
-        nationality = nationality:upper()
+    Shared.SendHTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)        
+        --everyone is a member of the UN
+        local nationality  = "UNO"        
+        
+        --get players nationality from ns2stats.com
+        local Data = JsonDecode(response)
+        if Data and Data.country and Data.country ~= "null" and Data.country ~= "-" and Data.country ~= "" then                         
+            nationality  = Data.country
+        end
         
         --set badge at server       
         local setbagde = GiveBadge(ClientId,nationality)
@@ -48,10 +42,9 @@ function Plugin:SetFlagBadge(Client,trynr)
         
         -- give default badge (disabled)
         GiveBadge(ClientId,"disabled")
-        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges["disabled"]), true)                     
-    end)
-    end  
-
+        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges["disabled"]), true)                             
+    end)  
+end
 
 function Plugin:Cleanup()
     self.Enabled = false

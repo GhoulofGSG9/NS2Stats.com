@@ -93,6 +93,9 @@ function Plugin:Initialise()
             function(response) Plugin:acceptKey(response) end)
     end
     
+    --get Serverid
+    Plugin:GetServerId()
+    
     --Timers   
     
     --every 1 sec
@@ -1588,10 +1591,10 @@ end
 function Plugin:CreateCommands()
     
     local ShowPStats = self:BindCommand( "sh_showplayerstats", {"showplayerstats","showstats" }, function(Client)
-        Shared.SendHTTPRequest( StringFormat("%s/api/player?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET",function(response)   
+        Shared.SendHTTPRequest( StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET",function(response)   
             local Data = JsonDecode(response)
             local playerid = ""
-            if Data then playerid = Data[1].player_page_id or "" end
+            if Data then playerid = Data.id or "" end
             local url = StringFormat( "%s/player/player/%s", self.Config.WebsiteUrl, playerid)
             Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )            
             end)     

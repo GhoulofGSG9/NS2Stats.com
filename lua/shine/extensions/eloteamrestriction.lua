@@ -83,7 +83,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     elseif RBPS then
         URL = RBPS.websiteUrl
     end
-    URL = URL .. "/api/player?ns2_id=" .. steamid
+    URL = URL .. "/api/oneplayer?ns2_id=" .. steamid
    
     Shared.SendHTTPRequest( URL, "GET",function(response)           
         if not response then Gamerules:JoinTeam(Player,NewTeam,nil,true) end 
