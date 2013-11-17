@@ -1170,7 +1170,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 250000 and Plugin.gameFinished ~= 1 then
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and Plugin.gameFinished ~= 1 then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1256,21 +1256,21 @@ function Plugin:sendData(force)
         last_part = Plugin.gameFinished,
         map = Shared.GetMapName(),
     }
-    Shared.SendHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
+    Shared.SendHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end)
 end
 
 --Analyze the answer of server
-function Plugin:onHTTPResponseFromSend(client,action,response,status,params)	
-    local message = JsonDecode(response)        
-    if message then        
-        if StringLen(response)>0 and not StringFind(response,"Server log empty",nil, true) then
-             Plugin.Log[Plugin.LogPartToSend ] = nil 
-             Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
-             RBPSsuccessfulSends = RBPSsuccessfulSends + 1
-             working = false
-             if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end                                      
-        end
-    
+function Plugin:onHTTPResponseFromSend(response)	
+    local message = JsonDecode(response)               
+    if StringLen(response)>1 and StringFind(response,"LOG_RECEIVED_OK",nil, true) then
+         Plugin.Log[Plugin.LogPartToSend ] = nil 
+         Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
+         RBPSsuccessfulSends = RBPSsuccessfulSends + 1
+         working = false
+         if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end
+                                      
+    elseif message then
+        
         if message.other then
             Notify("[NSStats]: ".. message.other)
         end
@@ -1284,22 +1284,13 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
             local link = StringFormat("%s%s",Plugin.Config.WebsiteUrl, message.link)
             Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
             Plugin.Config.Lastroundlink = link
-            self:SaveConfig()                
-        end	
-    elseif response then --if message = nil, json parse failed prob or timeout
-        if StringLen(response)>0 and not StringFind(response,"Server log empty",nil, true) then --if we got somedata, that means send was completed
-             Plugin.Log[Plugin.LogPartToSend] = nil 
-             Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
-             RBPSsuccessfulSends = RBPSsuccessfulSends + 1
-             working =  false
-             if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end          
+            self:SaveConfig()
+            working = false                
         end
-        Notify(StringFormat("NS2Stats.org: ( %s )", response))
-    elseif not response then --we couldn't reach the NS2Stats Servers
-        if params then
-            working = false                                
-            Shine.Timer.Simple(5, function() Plugin:sendData() end)             
-        end              
+        
+    elseif working then --we couldn't reach the NS2Stats Servers
+        working = false                                
+        Shine.Timer.Simple(5, function() Plugin:sendData() end)             
     end    
 end
 
