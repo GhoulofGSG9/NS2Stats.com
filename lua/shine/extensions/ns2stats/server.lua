@@ -45,7 +45,7 @@ Plugin.CheckConfig = true
 
 --All needed Hooks
 
-Shine.Hook.SetupClassHook( "DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
+Shine.Hook.SetupClassHook("DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
 Shine.Hook.SetupClassHook("ResearchMixin","TechResearched","OnTechResearched","PassivePost")
 Shine.Hook.SetupClassHook("ResearchMixin","SetResearching","OnTechStartResearch","PassivePre")
 Shine.Hook.SetupClassHook("ConstructMixin","SetConstructionComplete","OnFinishedBuilt","PassivePost")
@@ -55,6 +55,7 @@ Shine.Hook.SetupClassHook("ResourceTower","CollectResources","OnTeamGetResources
 Shine.Hook.SetupClassHook("DropPack","OnUpdate","OnPickableItemDropped","PassivePre")
 Shine.Hook.SetupClassHook("Player","OnJump","OnPlayerJump","PassivePost")
 Shine.Hook.SetupClassHook("Player","SetScoreboardChanged","OnPlayerScoreChanged","PassivePost")
+Shine.Hook.SetupClassHook("PlayerBot","UpdateNameAndGender","OnBotRenamed","PassivePost")
 --NS2Ranking
 Shine.Hook.SetupClassHook("PlayerRanking","GetTrackServer","EnableNS2Ranking","ActivePre")
 --Global hooks
@@ -123,7 +124,7 @@ end
 
 -- NS2VanillaStats
 function Plugin:EnableNS2Ranking()
-    return Plugin.Config.Statsonline
+    return Plugin.Config.Statsonline and Shine.GetGamemode() == "ns2"
 end
 
 -- Events
@@ -237,19 +238,6 @@ function Plugin:ClientDisconnect(Client)
     Plugin:addLog(connect)
 end
 
---Player changes Name
-function Plugin:PlayerNameChange( Player, Name, OldName )
-    if not Player or not Name then return end
-
-    if Name == kDefaultPlayerName then return end
-
-    local Client = GetOwner( Player )
-    if Client and Client:GetIsVirtual() then return end
-    
-    local taulu = Plugin:getPlayerByClient(Client)
-    if taulu then taulu.name = Name end       
-end
-
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)
 
@@ -262,7 +250,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     --check team
     local team = Player:GetTeamNumber() or 0 --can return temp team "-1"
     
-    if team>= 0 and taulu.teamnumber ~= team then
+    if team >= 0 and taulu.teamnumber ~= team then
         taulu.teamnumber = team
     
         local playerJoin =
@@ -284,6 +272,34 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     end
     
     Plugin:UpdatePlayerInTable(Client,Player,taulu)
+end
+
+--Bots renamed
+function Plugin:OnBotRenamed(Bot)
+    local player = Bot:GetPlayer()
+    local name = player:GetName()
+    if not name then return end
+    if not string.find(name, "[BOT]",nil,true) then return end
+    
+    local client = player:GetClient()
+    if not client then return end
+        
+    local taulu = Plugin:getPlayerByClient(client)
+    if not taulu then
+        Plugin:addPlayerToTable(client)
+        taulu = Plugin:getPlayerByClient(client)
+    else
+        taulu.dc = false
+        return
+    end
+    
+    --Bot connects
+    local connect={
+            action = "connect",
+            steamId = taulu.steamId
+    }
+    
+    Plugin:addLog(connect)        
 end
 
 --Player shoots weapon
@@ -1002,10 +1018,9 @@ end
 --Mixed Events 
 
 --Entity Killed
-function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor, Point, Direction)    
-    
+function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor, Point, Direction)   
     if TargetEntity:isa("Player") then Plugin:addDeathToLog(TargetEntity, Attacker, Inflictor)     
-    elseif Buildings[TargetEntity:GetId()] then if TargetEntity.isGhostStructure then Plugin:OnGhostDestroyed(TargetEntity) else Plugin:OnStructureKilled(TargetEntity, Attacker, Inflictor) end       
+    elseif Buildings[TargetEntity:GetId()] and not TargetEntity.isGhostStructure then Plugin:OnStructureKilled(TargetEntity, Attacker, Inflictor)      
     end   
 end
 
@@ -1360,6 +1375,7 @@ function Plugin:UpdatePlayerInTable(client,player,taulu)
 
     if taulu.dc then return end
     
+    taulu.name = player:GetName()
     taulu.score = player.score or 0
     taulu.assists = player.assistkills or 0
     taulu.deaths = player.deaths or 0
