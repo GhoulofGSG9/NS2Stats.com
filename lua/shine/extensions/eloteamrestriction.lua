@@ -36,6 +36,10 @@ Plugin.DefaultConfig = {
 Plugin.CheckConfig = true
 
 function Plugin:Initialise()
+    local Gamemode = Shine.GetGamemode()
+    if Gamemode ~= "ns2" then        
+        return false, StringFormat( "The eloteamrestriction plugin does not work with %s.", Gamemode )
+    end    
     self.Enabled = true
     return true
 end
@@ -54,7 +58,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         if Mapvote.Enabled then if Mapvote:VoteStarted() then return end end
     end
     
-    local client = Player:GetClient()
+    local client = Player and Player.GetClient and Player:GetClient()
     if not client then return end
     
     local steamid = client:GetUserId()
@@ -79,7 +83,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     elseif RBPS then
         URL = RBPS.websiteUrl
     end
-    URL = URL .. "/api/player?ns2_id=" .. steamid
+    URL = URL .. "/api/oneplayer?ns2_id=" .. steamid
    
     Shared.SendHTTPRequest( URL, "GET",function(response)           
         if not response then Gamerules:JoinTeam(Player,NewTeam,nil,true) end 
@@ -153,13 +157,13 @@ end
 function Plugin:Notify( Player, Message, Format, ... )
    local a = false    
    repeat 
-   local m = Message
-   if m:len() > kMaxChatLength then
-        m = m:sub( 1, kMaxChatLength-2 )
-        m = m .."-"
-        Message = Message:sub(kMaxChatLength-1)
-   else a= true end
-   Shine:NotifyDualColour( Player, 100, 255, 100, "[Elo Restriction]", 255, 255, 255,m, Format, ... )  
+       local m = Message
+       if m:len() > kMaxChatLength then
+            m = m:sub( 1, kMaxChatLength-2 )
+            m = m .."-"
+            Message = Message:sub(kMaxChatLength-1)
+       else a= true end
+       Shine:NotifyDualColour( Player, 100, 255, 100, "[Elo Restriction]", 255, 255, 255,m, Format, ... )  
    until a
 end
 

@@ -45,21 +45,22 @@ Plugin.CheckConfig = true
 
 --All needed Hooks
 
-Shine.Hook.SetupClassHook( "DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
+Shine.Hook.SetupClassHook("DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
 Shine.Hook.SetupClassHook("ResearchMixin","TechResearched","OnTechResearched","PassivePost")
 Shine.Hook.SetupClassHook("ResearchMixin","SetResearching","OnTechStartResearch","PassivePre")
 Shine.Hook.SetupClassHook("ConstructMixin","SetConstructionComplete","OnFinishedBuilt","PassivePost")
 Shine.Hook.SetupClassHook("ResearchMixin","OnResearchCancel","addUpgradeAbortedToLog","PassivePost")
 Shine.Hook.SetupClassHook("UpgradableMixin","RemoveUpgrade","addUpgradeLostToLog","PassivePost")
 Shine.Hook.SetupClassHook("ResourceTower","CollectResources","OnTeamGetResources","PassivePost")  
-Shine.Hook.SetupClassHook("DropPack","OnUpdate","OnPickableItemPicked","PassivePre")
+Shine.Hook.SetupClassHook("DropPack","OnUpdate","OnPickableItemDropped","PassivePre")
 Shine.Hook.SetupClassHook("Player","OnJump","OnPlayerJump","PassivePost")
 Shine.Hook.SetupClassHook("Player","SetScoreboardChanged","OnPlayerScoreChanged","PassivePost")
+Shine.Hook.SetupClassHook("PlayerBot","UpdateNameAndGender","OnBotRenamed","PassivePost")
 --NS2Ranking
 Shine.Hook.SetupClassHook("PlayerRanking","GetTrackServer","EnableNS2Ranking","ActivePre")
 --Global hooks
 Shine.Hook.SetupGlobalHook("RemoveAllObstacles","OnGameReset","PassivePost") 
-Shine.Hook.SetupGlobalHook("DestroyEntity","OnEntityDestroyed","PassivePre")  
+Shine.Hook.SetupGlobalHook("DestroyEntity","OnEntityDestroyed","PassivePost")  
    
 --Score datatable 
 Plugin.Players = {}
@@ -93,6 +94,9 @@ function Plugin:Initialise()
             function(response) Plugin:acceptKey(response) end)
     end
     
+    --get Serverid
+    Plugin:GetServerId()
+    
     --Timers   
     
     --every 1 sec
@@ -120,7 +124,7 @@ end
 
 -- NS2VanillaStats
 function Plugin:EnableNS2Ranking()
-    return Plugin.Config.Statsonline
+    return Plugin.Config.Statsonline and Shine.GetGamemode() == "ns2"
 end
 
 -- Events
@@ -234,19 +238,6 @@ function Plugin:ClientDisconnect(Client)
     Plugin:addLog(connect)
 end
 
---Player changes Name
-function Plugin:PlayerNameChange( Player, Name, OldName )
-    if not Player or not Name then return end
-
-    if Name == kDefaultPlayerName then return end
-
-    local Client = GetOwner( Player )
-    if Client and Client:GetIsVirtual() then return end
-    
-    local taulu = Plugin:getPlayerByClient(Client)
-    if taulu then taulu.name = Name end       
-end
-
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)
 
@@ -259,7 +250,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     --check team
     local team = Player:GetTeamNumber() or 0 --can return temp team "-1"
     
-    if team>= 0 and taulu.teamnumber ~= team then
+    if team >= 0 and taulu.teamnumber ~= team then
         taulu.teamnumber = team
     
         local playerJoin =
@@ -281,6 +272,34 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     end
     
     Plugin:UpdatePlayerInTable(Client,Player,taulu)
+end
+
+--Bots renamed
+function Plugin:OnBotRenamed(Bot)
+    local player = Bot:GetPlayer()
+    local name = player:GetName()
+    if not name then return end
+    if not string.find(name, "[BOT]",nil,true) then return end
+    
+    local client = player:GetClient()
+    if not client then return end
+        
+    local taulu = Plugin:getPlayerByClient(client)
+    if not taulu then
+        Plugin:addPlayerToTable(client)
+        taulu = Plugin:getPlayerByClient(client)
+    else
+        taulu.dc = false
+        return
+    end
+    
+    --Bot connects
+    local connect={
+            action = "connect",
+            steamId = taulu.steamId
+    }
+    
+    Plugin:addLog(connect)        
 end
 
 --Player shoots weapon
@@ -559,9 +578,7 @@ end
 local Items = {}
 
 --Item is dropped
-function Plugin:OnPickableItemCreated(item, player)
-    if not item then return end    
-    local techId = item:GetTechId()
+function Plugin:OnPickableItemCreated(item, techId, player) 
     
     local itemname = EnumToString(kTechId, techId)
     if not itemname or itemname == "None" then return end 
@@ -569,9 +586,6 @@ function Plugin:OnPickableItemCreated(item, player)
     local itemOrigin = item:GetOrigin()
     
     local steamid = Plugin:getTeamCommanderSteamid(item:GetTeamNumber()) or 0
-    
-    local ihit = false
-    if player then ihit = true end
           
     local newItem =
     {
@@ -590,7 +604,7 @@ function Plugin:OnPickableItemCreated(item, player)
     Plugin:addLog(newItem)
 	
 	--istanthit pick
-    if ihit then     
+    if player then     
         local client = player:GetClient()
         local steamId = 0
 
@@ -608,31 +622,11 @@ function Plugin:OnPickableItemCreated(item, player)
 end
 
 --Item is picked
-function Plugin:OnPickableItemPicked(item,deltaTime)
-    if not item then return end
-     
-    --from dropack.lua
-    local marinesNearby = GetEntitiesForTeamWithinRange("Marine", item:GetTeamNumber(), item:GetOrigin(), item.pickupRange)
-    Shared.SortEntitiesByDistance(item:GetOrigin(), marinesNearby)
+function Plugin:OnPickableItemPicked(item,player)
+    if not item or not player then return end
     
-    local player
-    for _, marine in ipairs(marinesNearby) do    
-        if item:GetIsValidRecipient(marine) then
-            player = marine
-            break
-        end
-    end    
-    
-    --check if droppack is new
-    if deltaTime==0 then 
-            if player then Plugin:OnPickableItemCreated(item, player)       
-            else Plugin:OnPickableItemCreated(item, nil) end
-            return            
-    end
-    
-    if not player then return end
-    
-    if not Items[item:GetId()] then return end
+    local techId = item:GetTechId()    
+    if not techId or not Items[item:GetId()] then return end
     
     Items[item:GetId()] = nil
     
@@ -667,32 +661,57 @@ function Plugin:OnPickableItemPicked(item,deltaTime)
 
 end
 
---Item gets destroyed
-function Plugin:OnPickableItemDestroyed(item)
-    
-    if not item then return end
-    
-    if not Items[item:GetId()] then return end  
-    
-    Items[item:GetId()] = nil
+function Plugin:OnPickableItemDropped(item,deltaTime)
+    if not item then return end    
     
     local techId = item:GetTechId()
-    local structureOrigin = item:GetOrigin()
+    if not techId or techId < 180 then return end
+    
+    --from dropack.lua
+    local marinesNearby = GetEntitiesForTeamWithinRange("Marine", item:GetTeamNumber(), item:GetOrigin(), item.pickupRange)
+    Shared.SortEntitiesByDistance(item:GetOrigin(), marinesNearby)
+    
+    local player
+    for _, marine in ipairs(marinesNearby) do    
+        if item:GetIsValidRecipient(marine) then
+            player = marine
+            break
+        end
+    end    
+    
+    --check if droppack is new
+    if deltaTime == 0 then
+        if player then Plugin:OnPickableItemCreated(item, techId, player)       
+        else Plugin:OnPickableItemCreated(item, techId, nil) end
+        return
+    end
+    
+    if player then Plugin:OnPickableItemPicked(item,player) end        
+end
 
-    local newItem =
-    {
-        id = item:GetId(),
-        cost = GetCostForTech(techId),
-        team = item:GetTeamNumber(),
-        name = EnumToString(kTechId, techId),
-        action = "pickable_item_destroyed",
-        x = StringFormat("%.4f", structureOrigin.x),
-        y = StringFormat("%.4f", structureOrigin.y),
-        z = StringFormat("%.4f", structureOrigin.z)
-    }
+--Item gets destroyed
+function Plugin:OnPickableItemDestroyed(item)  
+    if item and item.GetId and item:GetId() and Items[item:GetId()] then    
+        Items[item:GetId()] = nil
+        
+        local techId = item:GetTechId()
+        
+        local structureOrigin = item:GetOrigin()
 
-    Plugin:addLog(newItem)	
+        local newItem =
+        {
+            id = item:GetId(),
+            cost = GetCostForTech(techId),
+            team = item:GetTeamNumber(),
+            name = EnumToString(kTechId, techId),
+            action = "pickable_item_destroyed",
+            x = StringFormat("%.4f", structureOrigin.x),
+            y = StringFormat("%.4f", structureOrigin.y),
+            z = StringFormat("%.4f", structureOrigin.z)
+        }
 
+        Plugin:addLog(newItem)	
+    end
 end
 
 --Pickable Stuff end
@@ -999,15 +1018,14 @@ end
 --Mixed Events 
 
 --Entity Killed
-function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor, Point, Direction)    
-    
+function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor, Point, Direction)   
     if TargetEntity:isa("Player") then Plugin:addDeathToLog(TargetEntity, Attacker, Inflictor)     
-    elseif Buildings[TargetEntity:GetId()] then if TargetEntity.isGhostStructure then Plugin:OnGhostDestroyed(TargetEntity) else Plugin:OnStructureKilled(TargetEntity, Attacker, Inflictor) end       
+    elseif Buildings[TargetEntity:GetId()] and not TargetEntity.isGhostStructure then Plugin:OnStructureKilled(TargetEntity, Attacker, Inflictor)      
     end   
 end
 
 function Plugin:OnEntityDestroyed(entity)
-    if entity:isa("DropPack") then  Plugin:OnPickableItemDestroyed(entity) end
+    if entity:isa("DropPack") and entity:GetTechId() > 180 then  Plugin:OnPickableItemDestroyed(entity) end
     if Buildings[entity:GetId()] then if entity.isGhostStructure then Plugin:OnGhostDestroyed(entity) end end
 end
 
@@ -1167,7 +1185,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 250000 and Plugin.gameFinished ~= 1 then
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and Plugin.gameFinished ~= 1 then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1216,6 +1234,7 @@ function Plugin:AddServerInfos(params)
     params.action = "game_ended"
     params.statsVersion = Plugin.Version
     params.serverName = Server.GetName()
+    params.gamemode = Shine.GetGamemode()
     params.successfulSends = RBPSsuccessfulSends
     params.resendCount = RBPSresendCount
     params.mods = mods
@@ -1252,21 +1271,21 @@ function Plugin:sendData(force)
         last_part = Plugin.gameFinished,
         map = Shared.GetMapName(),
     }
-    Shared.SendHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSend(client,"send",response,status,params) end)
+    Shared.SendHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end)
 end
 
 --Analyze the answer of server
-function Plugin:onHTTPResponseFromSend(client,action,response,status,params)	
-    local message = JsonDecode(response)        
-    if message then        
-        if StringLen(response)>0 and not StringFind(response,"Server log empty",nil, true) then
-             Plugin.Log[Plugin.LogPartToSend ] = nil 
-             Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
-             RBPSsuccessfulSends = RBPSsuccessfulSends + 1
-             working = false
-             if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end                                      
-        end
-    
+function Plugin:onHTTPResponseFromSend(response)	
+    local message = JsonDecode(response)               
+    if StringLen(response)>1 and StringFind(response,"LOG_RECEIVED_OK",nil, true) then
+         Plugin.Log[Plugin.LogPartToSend ] = nil 
+         Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
+         RBPSsuccessfulSends = RBPSsuccessfulSends + 1
+         working = false
+         if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end
+                                      
+    elseif message then
+        
         if message.other then
             Notify("[NSStats]: ".. message.other)
         end
@@ -1280,22 +1299,13 @@ function Plugin:onHTTPResponseFromSend(client,action,response,status,params)
             local link = StringFormat("%s%s",Plugin.Config.WebsiteUrl, message.link)
             Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
             Plugin.Config.Lastroundlink = link
-            self:SaveConfig()                
-        end	
-    elseif response then --if message = nil, json parse failed prob or timeout
-        if StringLen(response)>0 and not StringFind(response,"Server log empty",nil, true) then --if we got somedata, that means send was completed
-             Plugin.Log[Plugin.LogPartToSend] = nil 
-             Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
-             RBPSsuccessfulSends = RBPSsuccessfulSends + 1
-             working =  false
-             if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end          
+            self:SaveConfig()
+            working = false                
         end
-        Notify(StringFormat("NS2Stats.org: ( %s )", response))
-    elseif not response then --we couldn't reach the NS2Stats Servers
-        if params then
-            working = false                                
-            Shine.Timer.Simple(5, function() Plugin:sendData() end)             
-        end              
+        
+    elseif working then --we couldn't reach the NS2Stats Servers
+        working = false                                
+        Shine.Timer.Simple(5, function() Plugin:sendData() end)             
     end    
 end
 
@@ -1365,6 +1375,7 @@ function Plugin:UpdatePlayerInTable(client,player,taulu)
 
     if taulu.dc then return end
     
+    taulu.name = player:GetName()
     taulu.score = player.score or 0
     taulu.assists = player.assistkills or 0
     taulu.deaths = player.deaths or 0
@@ -1587,10 +1598,10 @@ end
 function Plugin:CreateCommands()
     
     local ShowPStats = self:BindCommand( "sh_showplayerstats", {"showplayerstats","showstats" }, function(Client)
-        Shared.SendHTTPRequest( StringFormat("%s/api/player?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET",function(response)   
+        Shared.SendHTTPRequest( StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET",function(response)   
             local Data = JsonDecode(response)
             local playerid = ""
-            if Data then playerid = Data[1].player_page_id or "" end
+            if Data then playerid = Data.id or "" end
             local url = StringFormat( "%s/player/player/%s", self.Config.WebsiteUrl, playerid)
             Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )            
             end)     
