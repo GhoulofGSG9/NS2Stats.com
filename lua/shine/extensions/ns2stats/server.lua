@@ -249,7 +249,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     --check team
     local team = Player:GetTeamNumber() or 0 --can return temp team "-1"
     
-    if taulu.team == 3 and team ~= 0 then return end --only "real" change a spectator can do
+    if taulu.teamnumber == 3 and team ~= 0 then return end --only "real" change a spectator can do
     
     if team >= 0 and taulu.teamnumber ~= team then
         taulu.teamnumber = team
