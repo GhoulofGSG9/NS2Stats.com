@@ -193,7 +193,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
             }
         Plugin.gameFinished = 1       
         Plugin:AddServerInfos(params)        
-        if Plugin.Config.Statsonline then Plugin:sendData(true) end
+        if Plugin.Config.Statsonline then Plugin:sendData() end
 end
 
 --Player Events
@@ -240,7 +240,6 @@ end
 
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)
-
     local Client = GetOwner(Player)
     if not Client then return end
     
@@ -249,6 +248,8 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     
     --check team
     local team = Player:GetTeamNumber() or 0 --can return temp team "-1"
+    
+    if taulu.teamnumber == 3 and team ~= 0 then return end --only "real" change a spectator can do
     
     if team >= 0 and taulu.teamnumber ~= team then
         taulu.teamnumber = team
@@ -266,6 +267,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     
     --check if lifeform changed
     local lifeform = Player:GetMapName()
+    if not Player:GetIsAlive() and (team == 1 or team == 2) then lifeform = "dead" end
     if taulu.lifeform ~= lifeform then
         taulu.lifeform = lifeform
         Plugin:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})      
@@ -431,8 +433,8 @@ function Plugin:addMissToLog(attacker)
     local client = attacker:GetClient()
     if not client then return end
 
-    local RBPSplayer = Plugin:getPlayerByClient(client)
-    if not RBPSplayer then return end
+    local player = Plugin:getPlayerByClient(client)
+    if not player then return end
 
     local weapon = StringLower(attacker:GetActiveWeaponName()) or "none"
     
@@ -447,22 +449,22 @@ end
 --weapon add miss
 function Plugin:weaponsAddMiss(client,weapon)
     
-    local RBPSplayer = Plugin:getPlayerByClient(client)
+    local player = Plugin:getPlayerByClient(client)
     
-    if not RBPSplayer then return end
+    if not player then return end
      
     local foundId = false      
-    for i=1, #RBPSplayer.weapons do
-        if RBPSplayer.weapons[i].name == weapon then
+    for i=1, #player.weapons do
+        if player.weapons[i].name == weapon then
             foundId=i
             break
         end
     end
 
     if foundId then
-        RBPSplayer.weapons[foundId].miss = RBPSplayer.weapons[foundId].miss + 1
+        player.weapons[foundId].miss = player.weapons[foundId].miss + 1
     else --add new weapon
-        table.insert(RBPSplayer.weapons,
+        table.insert(player.weapons,
         {
             name = weapon,
             time = 0,
@@ -481,24 +483,24 @@ function Plugin:weaponsAddHit(player, weapon, damage)
     local client = player:GetClient()
     if not client then return end
     
-    local RBPSplayer = Plugin:getPlayerByClient(client)
-    if not RBPSplayer then return end
+    local taulu = Plugin:getPlayerByClient(client)
+    if not taulu then return end
     
     local foundId = false
       
-    for i=1, #RBPSplayer.weapons do
-        if RBPSplayer.weapons[i].name == weapon then
+    for i=1, #taulu.weapons do
+        if taulu.weapons[i].name == weapon then
             foundId=i
             break
         end
     end
 
     if foundId then
-        RBPSplayer.weapons[foundId].player_hit = RBPSplayer.weapons[foundId].player_hit + 1
-        RBPSplayer.weapons[foundId].player_damage = RBPSplayer.weapons[foundId].player_damage + damage
+        taulu.weapons[foundId].player_hit = taulu.weapons[foundId].player_hit + 1
+        taulu.weapons[foundId].player_damage = taulu.weapons[foundId].player_damage + damage
         
     else --add new weapon
-        table.insert(RBPSplayer.weapons,
+        table.insert(taulu.weapons,
         {
             name = weapon,
             time = 0,
@@ -517,24 +519,24 @@ function Plugin:weaponsAddStructureHit(player,weapon, damage)
     local client = player:GetClient()
     if not client then return end
     
-    local RBPSplayer = Plugin:getPlayerByClient(client)
-    if not RBPSplayer then return end
+    local taulu = Plugin:getPlayerByClient(client)
+    if not player then return end
     
     local foundId = false
       
-    for i=1, #RBPSplayer.weapons do
-        if RBPSplayer.weapons[i].name == weapon then
+    for i=1, #taulu.weapons do
+        if taulu.weapons[i].name == weapon then
             foundId=i
             break
         end
     end
 
     if foundId then
-        RBPSplayer.weapons[foundId].structure_hit = RBPSplayer.weapons[foundId].structure_hit + 1
-        RBPSplayer.weapons[foundId].structure_damage = RBPSplayer.weapons[foundId].structure_damage + damage
+        taulu.weapons[foundId].structure_hit = taulu.weapons[foundId].structure_hit + 1
+        taulu.weapons[foundId].structure_damage = taulu.weapons[foundId].structure_damage + damage
 
     else --add new weapon
-        table.insert(RBPSplayer.weapons,
+        table.insert(taulu.weapons,
         {
             name = weapon,
             time = 0,
@@ -1257,8 +1259,8 @@ end
 local working = false
 
 --send Log to NS2Stats Server
-function Plugin:sendData(force)
-    if Plugin.LogPartNumber <= Plugin.LogPartToSend and not force then return end
+function Plugin:sendData()
+    if Plugin.LogPartNumber <= Plugin.LogPartToSend and Plugin.gameFinished ~= 1 then return end
     
     if working then return end
     working = true
@@ -1282,7 +1284,9 @@ function Plugin:onHTTPResponseFromSend(response)
          Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
          RBPSsuccessfulSends = RBPSsuccessfulSends + 1
          working = false
-         if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end
+         if Plugin.LogPartNumber > Plugin.LogPartToSend or Plugin.LogPartNumber == Plugin.LogPartToSend and Plugin.gameFinished == 1 then
+            Shine.Timer.Simple(1, function() Plugin:sendData() end)
+         end
                                       
     elseif message then
         
@@ -1500,9 +1504,9 @@ end
 function Plugin:updateWeaponData(client) 
     if not client then return end
     
-    local RBPSplayer = Plugin:getPlayerByClient(client)    
+    local taulu = Plugin:getPlayerByClient(client)    
     
-    if not RBPSplayer then return end
+    if not taulu then return end
     
     local player = client:GetControllingPlayer()
     
@@ -1514,14 +1518,14 @@ function Plugin:updateWeaponData(client)
     if weapon == "" then weapon = "none" end
     
     local foundId
-    for i=1, #RBPSplayer.weapons do
-        if RBPSplayer.weapons[i].name == weapon then foundId=i end
+    for i=1, #taulu.weapons do
+        if taulu.weapons[i].name == weapon then foundId=i end
     end
     
     if foundId then
-        RBPSplayer.weapons[foundId].time = RBPSplayer.weapons[foundId].time + 1
+        taulu.weapons[foundId].time = taulu.weapons[foundId].time + 1
     else --add new weapon
-        table.insert(RBPSplayer.weapons,
+        table.insert(taulu.weapons,
         {
             name = weapon,
             time = 1,
