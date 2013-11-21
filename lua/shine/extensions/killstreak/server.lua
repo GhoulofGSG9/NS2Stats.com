@@ -15,8 +15,8 @@ Plugin.ConfigName = "Killstreak.json"
 Plugin.DefaultConfig =
 {
     SendSounds = false,
-    AlienColour = {255,0,0},
-    MarineColour = {0,0,255},
+    AlienColour = {255,125,0},
+    MarineColour = {0,125,255},
     KillstreakMinValue = 3,
     StoppedValue = 5,
     StoppedMsg = "%s has been stopped by %s " -- first victim then killer

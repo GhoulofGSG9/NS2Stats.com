@@ -193,7 +193,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
             }
         Plugin.gameFinished = 1       
         Plugin:AddServerInfos(params)        
-        if Plugin.Config.Statsonline then Plugin:sendData(true) end
+        if Plugin.Config.Statsonline then Plugin:sendData() end
 end
 
 --Player Events
@@ -1259,8 +1259,8 @@ end
 local working = false
 
 --send Log to NS2Stats Server
-function Plugin:sendData(force)
-    if Plugin.LogPartNumber <= Plugin.LogPartToSend and not force then return end
+function Plugin:sendData()
+    if Plugin.LogPartNumber <= Plugin.LogPartToSend and Plugin.gameFinished ~= 1 then return end
     
     if working then return end
     working = true
@@ -1284,7 +1284,9 @@ function Plugin:onHTTPResponseFromSend(response)
          Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
          RBPSsuccessfulSends = RBPSsuccessfulSends + 1
          working = false
-         if Plugin.LogPartNumber > Plugin.LogPartToSend then Plugin:sendData() end
+         if Plugin.LogPartNumber > Plugin.LogPartToSend or Plugin.LogPartNumber == Plugin.LogPartToSend and Plugin.gameFinished == 1 then
+            Shine.Timer.Simple(1, function() Plugin:sendData() end)
+         end
                                       
     elseif message then
         
