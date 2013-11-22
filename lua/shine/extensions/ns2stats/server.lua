@@ -60,7 +60,7 @@ Shine.Hook.SetupClassHook("PlayerBot","UpdateNameAndGender","OnBotRenamed","Pass
 Shine.Hook.SetupClassHook("PlayerRanking","GetTrackServer","EnableNS2Ranking","ActivePre")
 --Global hooks
 Shine.Hook.SetupGlobalHook("RemoveAllObstacles","OnGameReset","PassivePost") 
-Shine.Hook.SetupGlobalHook("DestroyEntity","OnEntityDestroyed","PassivePost")  
+Shine.Hook.SetupGlobalHook("DestroyEntity","OnEntityDestroyed","PassivePre")  
    
 --Score datatable 
 Plugin.Players = {}
@@ -520,7 +520,7 @@ function Plugin:weaponsAddStructureHit(player,weapon, damage)
     if not client then return end
     
     local taulu = Plugin:getPlayerByClient(client)
-    if not player then return end
+    if not taulu then return end
     
     local foundId = false
       
