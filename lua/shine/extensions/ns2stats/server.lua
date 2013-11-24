@@ -57,7 +57,7 @@ Shine.Hook.SetupClassHook("Player","OnJump","OnPlayerJump","PassivePost")
 Shine.Hook.SetupClassHook("Player","SetScoreboardChanged","OnPlayerScoreChanged","PassivePost")
 Shine.Hook.SetupClassHook("PlayerBot","UpdateNameAndGender","OnBotRenamed","PassivePost")
 Shine.Hook.SetupClassHook("NS2Gamerules","OnEntityDestroy","OnEntityDestroy","PassivePre")
-Shine.Hook.SetupClassHook("NS2Gamerules","ResetGame","OnGameReset","PassivePost")
+Shine.Hook.SetupClassHook("NS2Gamerules","ResetGame","OnGameReset","PassivePre")
 --NS2Ranking
 Shine.Hook.SetupClassHook("PlayerRanking","GetTrackServer","EnableNS2Ranking","ActivePre")
    
@@ -76,6 +76,7 @@ RBPSawards = {}
 GameHasStarted = false
 Currentgamestate = 0
 Buildings = {}
+working = true
 
 --Devour Values
 local devourFrame = 0
@@ -159,7 +160,8 @@ end
 --Gamestart
 function Plugin:SetGameState( Gamerules, NewState, OldState )
     Currentgamestate = NewState
-    if NewState == kGameState.Started then              
+    if NewState == kGameState.Started then
+        working= false             
         GameHasStarted = true
         Gamestarted = Shared.GetTime()
         Plugin:addLog({action = "game_start"})
@@ -1246,11 +1248,9 @@ function Plugin:AddServerInfos(params)
     Plugin:addLog(params)
 end
 
-local working = false
-
 --send Log to NS2Stats Server
 function Plugin:sendData()
-    if Plugin.LogPartNumber <= Plugin.LogPartToSend and Plugin.gameFinished ~= 1 or working or not GameHasStarted then return end
+    if Plugin.LogPartNumber <= Plugin.LogPartToSend and Plugin.gameFinished ~= 1 or working then return end
     
     working = true
     
@@ -1267,33 +1267,33 @@ end
 
 --Analyze the answer of server
 function Plugin:onHTTPResponseFromSend(response)	
-    local message = JsonDecode(response)               
-    if StringLen(response)>1 and StringFind(response,"LOG_RECEIVED_OK",nil, true) then
-         Plugin.Log[Plugin.LogPartToSend ] = nil 
-         Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
-         RBPSsuccessfulSends = RBPSsuccessfulSends + 1
-         working = false
-         Plugin:sendData()                                      
-    elseif message then
-        
+    local message = JsonDecode(response)
+    
+    if message then        
         if message.other then
             Notify("[NSStats]: ".. message.other)
         end
     
         if message.error == "NOT_ENOUGH_PLAYERS" then
             Notify("[NS2Stats]: Send failed because of too less players ")
-            return
         end	
 
         if message.link then
             local link = StringFormat("%s%s",Plugin.Config.WebsiteUrl, message.link)
             Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
             Plugin.Config.Lastroundlink = link
-            self:SaveConfig()
-            working = false              
+            self:SaveConfig()        
         end
-        
-    elseif working then --we couldn't reach the NS2Stats Servers
+        return
+    end
+    
+    if StringLen(response)>1 and StringFind(response,"LOG_RECEIVED_OK",nil, true) then
+         Plugin.Log[Plugin.LogPartToSend ] = nil
+         Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
+         RBPSsuccessfulSends = RBPSsuccessfulSends + 1
+         working = false
+         Plugin:sendData()
+    else --we couldn't reach the NS2Stats Servers
         working = false                                
         Shine.Timer.Simple(5, function() Plugin:sendData() end)             
     end    
