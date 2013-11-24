@@ -18,14 +18,14 @@ Plugin.ConfigName = "eloteamrestriction.json"
 Plugin.DefaultConfig = {
     RestrictionMode = 0,
     TeamStats = true,
-    MinElo = 0, 
-    MaxElo = 3000,
+    MinElo = 1300, 
+    MaxElo = 2000,
     MinKD = 0.5,
-    MaxKD = 2,
+    MaxKD = 3,
     showinform = true,
-    InformMessage = "This Server is ELO restricted",
-    BlockMessage = "You don't fit to the elo restrictions of this server. Your ELO: %s Server: Min %s , Max %s",
-    WaitMessage = "Getting your NS2 ELO now, please wait",
+    InformMessage = "This Server is Elo rating restricted",
+    BlockMessage = "You don't fit to the Elo rating limit on this server. Your ELO: %s Server: Min %s , Max %s",
+    WaitMessage = "Getting your NS2 Elo rating now, please wait",
     KickMessage = "You will be kicked in %s min",
     BlockNewPlayers = false,
     MinPlayTime = 10,
@@ -44,32 +44,36 @@ function Plugin:Initialise()
     return true
 end
 
-function Plugin:ClientConfirmConnect(Client)
-    if self.Config.showinform then self:Notify(Client:GetControllingPlayer(), self.Config.InformMessage) end
-end
-
 local JoinTime= {}
 local Kicktimes = {}
-function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 
-    -- check if mapvote is running
-    local Mapvote = Shine.Plugins.mapvote    
-    if Mapvote then
-        if Mapvote.Enabled then if Mapvote:VoteStarted() then return end end
-    end
+function Plugin:ClientConfirmConnect(Client)
+    local player = Client:GetControllingPlayer()
+    if self.Config.showinform and player then self:Notify( player, self.Config.InformMessage) end
+end
+
+function Plugin:ClientDisconnect(Client)
+    local steamid = client:GetUserId()
+    if not steamid or steamid <= 0 then return end
     
-    local client = Player and Player.GetClient and Player:GetClient()
-    if not client then return end
+    Shine.Timer.Destroy("Player_" .. tostring(steamid))
+    JoinTime[steamid] = nil
+    Kicktimes[steamid] = nil
+end
+function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
+    if not (RPBS or Shine.Plugins.ns2stats) then return end
+    
+    -- check if mapvote is running
+    local Mapvote = Shine.Plugins.mapvote
+    if Mapvote and Mapvote.Enabled and Mapvote:VoteStarted() then return end
+    
+    local client = Server.GetOwner(Player)
+    if not Shine:IsValidClient(client) or Shine:HasAccess(client, "sh_ignoreelo" ) then return end
     
     local steamid = client:GetUserId()
-    if not steamid then return
-    elseif steamid <= 0 then return end
+    if not steamid or steamid <= 0 then return end
     
-    if ShineForce or NewTeam == 0 or NewTeam > 2 then if JoinTime[steamid] then JoinTime[steamid]= nil end Shine.Timer.Destroy("Player_" .. tostring(client:GetUserId())) return end    
-    
-    if Shine:HasAccess( client, "sh_ignoreelo" ) then return end 
-    
-    if not RPBS and not Shine.Plugins.ns2stats then return end
+    if ShineForce or NewTeam == 0 or NewTeam > 2 then JoinTime[steamid]= nil Shine.Timer.Destroy("Player_" .. tostring(client:GetUserId())) return end
     
     if not JoinTime[steamid] then JoinTime[steamid] = {} end
     if not JoinTime[steamid][NewTeam] then JoinTime[steamid][NewTeam] = Shared.GetTime()
@@ -85,23 +89,23 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     end
     URL = URL .. "/api/oneplayer?ns2_id=" .. steamid
    
-    Shared.SendHTTPRequest( URL, "GET",function(response)           
-        if not response then Gamerules:JoinTeam(Player,NewTeam,nil,true) end 
+    Shared.SendHTTPRequest( URL, "GET",function(response)
+        if not response then Gamerules:JoinTeam(Player,NewTeam,nil,true) end
         local Data = json.decode(response)
         local elo = 1500
         local kd = 1
         
         local playerdata
-        if Data then playerdata = Data[1] end 
+        if Data then playerdata = Data[1] end
         if  playerdata then
             --check if player fits to MinPlayTime
-            if self.Config.BlockNewPlayers and playerdata.time_played / 60 < self.Config.MinPlayTime then 
+            if self.Config.BlockNewPlayers and playerdata.time_played / 60 < self.Config.MinPlayTime then
                 self:Notify( Player, self.Config.BlockMessage )
                 JoinTime[steamid][NewTeam]= -1 -- -1 = banned
                 self:Kick(Player)
                 return
             end
-            if self.Config.TeamStats then    
+            if self.Config.TeamStats then
                 if NewTeam == 1 then
                     elo = playerdata.marine.elo.rating
                     local deaths = tonumber(playerdata.marine.deaths)
@@ -146,41 +150,46 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         elseif self.Config.RestrictionMode == 2 and (kd< self.Config.MinKD or kd > self.Config.MaxKD) and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
             self:Notify(Player, StringFormat(self.Config.BlockMessage,elo,kd,self.Config.MinElo,self.Config.MaxElo,self.Config.MinKD,self.Config.MaxKD) )
             JoinTime[steamid][NewTeam]= -1 -- -1 = banned
-            self:Kick(Player)    
+            self:Kick(Player)
         else Gamerules:JoinTeam(Player,NewTeam,nil,true) end
     end)
     
-    self:Notify( Player, self.Config.WaitMessage )    
-    return false   
+    self:Notify( Player, self.Config.WaitMessage )
+    return false
 end
 
 function Plugin:Notify( Player, Message, Format, ... )
-   local a = false    
-   repeat 
+   local a = false
+   repeat
        local m = Message
        if m:len() > kMaxChatLength then
             m = m:sub( 1, kMaxChatLength-2 )
             m = m .."-"
             Message = Message:sub(kMaxChatLength-1)
        else a= true end
-       Shine:NotifyDualColour( Player, 100, 255, 100, "[Elo Restriction]", 255, 255, 255,m, Format, ... )  
+       Shine:NotifyDualColour( Player, 100, 255, 100, "[Elo Restriction]", 255, 255, 255,m, Format, ... )
    until a
 end
 
 function Plugin:Kick(player)
     if not self.Config.KickBlockedPlayers then return end
+    
     local client = player:GetClient()
-    if not client then return end
-    Shine.Timer.Destroy("Player_" .. tostring(client:GetUserId()))
+    if not Shine:IsValidClient(client) then return end
+    
+    local steamid = client:GetUserId() or 0
+    if steamid<= 0 then return end
+    
+    Shine.Timer.Destroy("Player_" .. tostring(steamid))
     self:Notify(player, StringFormat(self.Config.KickMessage,self.Config.Kicktime/60))
-    Kicktimes[client:GetUserId()] = self.Config.Kicktime
-    Shine.Timer.Create("Player_" .. tostring(client:GetUserId()),1, self.Config.Kicktime, function()        
-        Kicktimes[client:GetUserId()] = Kicktimes[client:GetUserId()]-1
-        if Kicktimes[client:GetUserId()] == 10 then self:Notify(player, "You will be kicked in 10 secounds.") end
-        if Kicktimes[client:GetUserId()] <= 5 then self:Notify(player, "You will be kicked in "..tostring(Kicktimes[client:GetUserId()]).. " secounds.")
-            Shine:Print( "Client %s[%s] was kicked by Elorestriction. Kicking...", true, player:GetName(), client:GetUserId())
+    Kicktimes[steamid] = self.Config.Kicktime
+    Shine.Timer.Create("Player_" .. tostring(steamid),1, self.Config.Kicktime, function()        
+        Kicktimes[steamid] = Kicktimes[steamid]-1
+        if Kicktimes[steamid] == 10 then self:Notify(player, "You will be kicked in 10 secounds.") end
+        if Kicktimes[steamid] <= 5 then self:Notify(player, "You will be kicked in "..tostring(Kicktimes[steamid]).. " secounds.")
+            Shine:Print( "Client %s[%s] was kicked by Elorestriction. Kicking...", true, player:GetName(), steamid)
         end        
-        if Kicktimes[client:GetUserId()] <= 0 then
+        if Kicktimes[steamid] <= 0 then
             client.DisconnectReason = "You didn't fit to the set skill level"
             Server.DisconnectClient( client )
         end    

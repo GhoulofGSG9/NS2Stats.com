@@ -1,5 +1,5 @@
 --[[
-Shine ns2stats plugin. - Server 
+Shine ns2stats plugin. - Server
 ]]
 
 local Shine = Shine
@@ -17,7 +17,7 @@ local StringLower = string.lower
 local GetOwner = Server.GetOwner
 
 local JsonEncode = json.encode
-local JsonDecode = json.decode 
+local JsonDecode = json.decode
 
 Plugin.Version = "shine"
 
@@ -36,7 +36,7 @@ Plugin.DefaultConfig =
     AwardMsgColour = {255,215,0},
     LogChat = false, --log the chat?
     ServerKey = "", -- Serverkey given by ns2stats.com
-    Tags = {}, --Tags added to log 
+    Tags = {}, --Tags added to log
     Competitive = false, -- tag rounds as Competitive
     Lastroundlink = "" --Link of last round
 }
@@ -51,16 +51,15 @@ Shine.Hook.SetupClassHook("ResearchMixin","SetResearching","OnTechStartResearch"
 Shine.Hook.SetupClassHook("ConstructMixin","SetConstructionComplete","OnFinishedBuilt","PassivePost")
 Shine.Hook.SetupClassHook("ResearchMixin","OnResearchCancel","addUpgradeAbortedToLog","PassivePost")
 Shine.Hook.SetupClassHook("UpgradableMixin","RemoveUpgrade","addUpgradeLostToLog","PassivePost")
-Shine.Hook.SetupClassHook("ResourceTower","CollectResources","OnTeamGetResources","PassivePost")  
+Shine.Hook.SetupClassHook("ResourceTower","CollectResources","OnTeamGetResources","PassivePost")
 Shine.Hook.SetupClassHook("DropPack","OnUpdate","OnPickableItemDropped","PassivePre")
 Shine.Hook.SetupClassHook("Player","OnJump","OnPlayerJump","PassivePost")
 Shine.Hook.SetupClassHook("Player","SetScoreboardChanged","OnPlayerScoreChanged","PassivePost")
 Shine.Hook.SetupClassHook("PlayerBot","UpdateNameAndGender","OnBotRenamed","PassivePost")
+Shine.Hook.SetupClassHook("NS2Gamerules","OnEntityDestroy","OnEntityDestroy","PassivePre")
+Shine.Hook.SetupClassHook("NS2Gamerules","ResetGame","OnGameReset","PassivePre")
 --NS2Ranking
 Shine.Hook.SetupClassHook("PlayerRanking","GetTrackServer","EnableNS2Ranking","ActivePre")
---Global hooks
-Shine.Hook.SetupGlobalHook("RemoveAllObstacles","OnGameReset","PassivePost") 
-Shine.Hook.SetupGlobalHook("DestroyEntity","OnEntityDestroyed","PassivePost")  
    
 --Score datatable 
 Plugin.Players = {}
@@ -77,6 +76,7 @@ RBPSawards = {}
 GameHasStarted = false
 Currentgamestate = 0
 Buildings = {}
+working = true
 
 --Devour Values
 local devourFrame = 0
@@ -97,7 +97,7 @@ function Plugin:Initialise()
     --get Serverid
     Plugin:GetServerId()
     
-    --Timers   
+    --Timers
     
     --every 1 sec
     --to update Weapondatas
@@ -149,31 +149,30 @@ function Plugin:OnGameReset()
     devourFrame = 0
     devourEntity = {}
     devourMovement = {}
-    -- update stats all connected players       
-    for _, client in ipairs(Shine.GetAllClients()) do            
-        Plugin:addPlayerToTable(client)        
+    -- update stats all connected players
+    for _, client in ipairs(Shine.GetAllClients()) do
+        Plugin:addPlayerToTable(client)
     end        
-    Buildings = {}    
+    Buildings = {}
     Plugin:addLog({action="game_reset"})
 end
 
 --Gamestart
 function Plugin:SetGameState( Gamerules, NewState, OldState )
-    Currentgamestate = NewState    
+    Currentgamestate = NewState
     if NewState == kGameState.Started then
-              
-        GameHasStarted = true             
+        working= false             
+        GameHasStarted = true
         Gamestarted = Shared.GetTime()
-        Plugin:addLog({action = "game_start"})      
+        Plugin:addLog({action = "game_start"})
        
         --send Playerlist            
-        Plugin:addPlayersToLog(0)    
+        Plugin:addPlayersToLog(0)
     end
 end
 
 --Gameend
-function Plugin:EndGame( Gamerules, WinningTeam )
-        GameHasStarted = false   
+function Plugin:EndGame( Gamerules, WinningTeam )         
         if Plugin.Config.Awards then Plugin:sendAwardListToClients() end               
         Plugin:addPlayersToLog(1)      
         local initialHiveTechIdString = "None"            
@@ -191,18 +190,17 @@ function Plugin:EndGame( Gamerules, WinningTeam )
                 start_path_distance = Gamerules.startingLocationsPathDistance,
                 start_hive_tech = initialHiveTechIdString,
             }
-        Plugin.gameFinished = 1       
-        Plugin:AddServerInfos(params)        
+        Plugin:AddServerInfos(params)
+        Plugin.gameFinished = 1
         if Plugin.Config.Statsonline then Plugin:sendData() end
+        GameHasStarted = false
 end
 
 --Player Events
 
 --Player Connected
 function Plugin:ClientConfirmConnect( Client )
-    
-    if not Client then return end
-    if Client:GetIsVirtual() then return end
+    if not Client or Client:GetIsVirtual() then return end
     
     local connect=
     {
@@ -239,17 +237,22 @@ function Plugin:ClientDisconnect(Client)
 end
 
 --score changed
-function Plugin:OnPlayerScoreChanged(Player,state)
+function Plugin:OnPlayerScoreChanged(Player,state)    
+    if not state then return end
+    
     local Client = GetOwner(Player)
     if not Client then return end
     
     local taulu = Plugin:getPlayerByClient(Client)
     if not taulu then return end
     
-    --check team
-    local team = Player:GetTeamNumber() or 0 --can return temp team "-1"
+    local lifeform = Player:GetMapName()    
+    if StringFind(taulu.lifeform,"spectator",nil,true) and StringFind(lifeform,"spectator",nil,true) then return end
     
-    if taulu.teamnumber == 3 and team ~= 0 then return end --only "real" change a spectator can do
+    --check team
+    local team = Player:GetTeamNumber() or 0
+    
+    if team < 0 then return end
     
     if team >= 0 and taulu.teamnumber ~= team then
         taulu.teamnumber = team
@@ -265,8 +268,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
         Plugin:addLog(playerJoin) 
     end
     
-    --check if lifeform changed
-    local lifeform = Player:GetMapName()
+    --check if lifeform changed    
     if not Player:GetIsAlive() and (team == 1 or team == 2) then lifeform = "dead" end
     if taulu.lifeform ~= lifeform then
         taulu.lifeform = lifeform
@@ -306,10 +308,7 @@ end
 
 --Player shoots weapon
 function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)    
-    
-    if target and target:isa("Ragdoll") then
-        return false
-    end
+    if not target or target:isa("Ragdoll") then return end
     
     local attacker 
     if DamageMixin:isa("Player") then
@@ -520,7 +519,7 @@ function Plugin:weaponsAddStructureHit(player,weapon, damage)
     if not client then return end
     
     local taulu = Plugin:getPlayerByClient(client)
-    if not player then return end
+    if not taulu then return end
     
     local foundId = false
       
@@ -1026,7 +1025,7 @@ function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor, Poi
     end   
 end
 
-function Plugin:OnEntityDestroyed(entity)
+function Plugin:OnEntityDestroy(entity)
     if entity:isa("DropPack") and entity:GetTechId() > 180 then  Plugin:OnPickableItemDestroyed(entity) end
     if Buildings[entity:GetId()] then if entity.isGhostStructure then Plugin:OnGhostDestroyed(entity) end end
 end
@@ -1043,46 +1042,44 @@ function Plugin:addDeathToLog(target, attacker, doer)
                 targetWeapon = target:GetActiveWeapon():GetMapName()
         end
 
-        if attacker:isa("Player") then
+        if attacker:isa("Player") then            
+            local attacker_client = attacker:GetClient()                
+            if not attacker_client then return end
             
-		local attacker_client = attacker:GetClient()                
-		if not attacker_client then return end
-		
-		local deathLog =
-		{                
-		--general
-		action = "death",	
-		
-		--Attacker
-		attacker_steamId = Plugin:GetId(attacker_client) or 0,
-		attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
-		attacker_weapon = StringLower(doer:GetMapName()),
-		attacker_lifeform = StringLower(attacker:GetMapName()), 
-		attacker_hp = attacker:GetHealth(),
-		attacker_armor = attacker:GetArmorAmount(),
-		attackerx = StringFormat("%.4f", attackerOrigin.x),
-		attackery = StringFormat("%.4f", attackerOrigin.y),
-		attackerz = StringFormat("%.4f", attackerOrigin.z),
-		
-		--Target
-		target_steamId = Plugin:GetId(target_client) or 0,
-		target_team = target:GetTeamType(),
-		target_weapon = StringLower(targetWeapon),
-		target_lifeform = StringLower(target:GetMapName()), 
-		target_hp = target:GetHealth(),
-		target_armor = target:GetArmorAmount(),
-		targetx = StringFormat("%.4f", targetOrigin.x),
-		targety = StringFormat("%.4f", targetOrigin.y),
-		targetz = StringFormat("%.4f", targetOrigin.z),
-		target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
-		}
-		Plugin:addLog(deathLog)
+            local deathLog =
+            {                
+            --general
+            action = "death",	
             
-		if attacker:GetTeamNumber() ~= target:GetTeamNumber() then                   
-		    --addkill
-		    Plugin:addKill(Plugin:GetId(attacker_client), Plugin:GetId(target_client))                  
-		end
+            --Attacker
+            attacker_steamId = Plugin:GetId(attacker_client) or 0,
+            attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
+            attacker_weapon = StringLower(doer:GetMapName()),
+            attacker_lifeform = StringLower(attacker:GetMapName()), 
+            attacker_hp = attacker:GetHealth(),
+            attacker_armor = attacker:GetArmorAmount(),
+            attackerx = StringFormat("%.4f", attackerOrigin.x),
+            attackery = StringFormat("%.4f", attackerOrigin.y),
+            attackerz = StringFormat("%.4f", attackerOrigin.z),
             
+            --Target
+            target_steamId = Plugin:GetId(target_client) or 0,
+            target_team = target:GetTeamType(),
+            target_weapon = StringLower(targetWeapon),
+            target_lifeform = StringLower(target:GetMapName()), 
+            target_hp = target:GetHealth(),
+            target_armor = target:GetArmorAmount(),
+            targetx = StringFormat("%.4f", targetOrigin.x),
+            targety = StringFormat("%.4f", targetOrigin.y),
+            targetz = StringFormat("%.4f", targetOrigin.z),
+            target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
+            }
+            Plugin:addLog(deathLog)
+                
+            if attacker:GetTeamNumber() ~= target:GetTeamNumber() then                   
+                --addkill
+                Plugin:addKill(Plugin:GetId(attacker_client), Plugin:GetId(target_client))                  
+            end            
 	    else
 	        --natural causes death
 	        local deathLog =
@@ -1165,21 +1162,16 @@ end
 
 --Log functions
 
--- avoids Cheat message spam
-local TempC = true
-
 --add to log
-function Plugin:addLog(tbl)
-     
+function Plugin:addLog(tbl)    
+    if Plugin.gameFinished == 1 or not tbl then return end
+    
     if not Plugin.Log then Plugin.Log = {} end
     if not Plugin.Log[Plugin.LogPartNumber] then Plugin.Log[Plugin.LogPartNumber] = "" end
-    
-    if not tbl then return end
-    
-    if Shared.GetCheatsEnabled() and TempC then 
+   
+    if Shared.GetCheatsEnabled() and Plugin.Config.Statsonline then 
         Plugin.Config.Statsonline = false
         Shine:Notify( nil, "", "NS2Stats", "Cheats were enabled! NS2Stats will disable itself now!")
-        TempC = nil
     end
     
     tbl.time = Shared.GetGMTString(false)
@@ -1187,7 +1179,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and Plugin.gameFinished ~= 1 then
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 250000 then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1256,13 +1248,10 @@ function Plugin:AddServerInfos(params)
     Plugin:addLog(params)
 end
 
-local working = false
-
 --send Log to NS2Stats Server
 function Plugin:sendData()
-    if Plugin.LogPartNumber <= Plugin.LogPartToSend and Plugin.gameFinished ~= 1 then return end
+    if Plugin.LogPartNumber <= Plugin.LogPartToSend and Plugin.gameFinished ~= 1 or working then return end
     
-    if working then return end
     working = true
     
     local params =
@@ -1278,36 +1267,33 @@ end
 
 --Analyze the answer of server
 function Plugin:onHTTPResponseFromSend(response)	
-    local message = JsonDecode(response)               
-    if StringLen(response)>1 and StringFind(response,"LOG_RECEIVED_OK",nil, true) then
-         Plugin.Log[Plugin.LogPartToSend ] = nil 
-         Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
-         RBPSsuccessfulSends = RBPSsuccessfulSends + 1
-         working = false
-         if Plugin.LogPartNumber > Plugin.LogPartToSend or Plugin.LogPartNumber == Plugin.LogPartToSend and Plugin.gameFinished == 1 then
-            Shine.Timer.Simple(1, function() Plugin:sendData() end)
-         end
-                                      
-    elseif message then
-        
+    local message = JsonDecode(response)
+    
+    if message then        
         if message.other then
             Notify("[NSStats]: ".. message.other)
         end
     
         if message.error == "NOT_ENOUGH_PLAYERS" then
             Notify("[NS2Stats]: Send failed because of too less players ")
-            return
         end	
 
         if message.link then
             local link = StringFormat("%s%s",Plugin.Config.WebsiteUrl, message.link)
             Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
             Plugin.Config.Lastroundlink = link
-            self:SaveConfig()
-            working = false                
+            self:SaveConfig()        
         end
-        
-    elseif working then --we couldn't reach the NS2Stats Servers
+        return
+    end
+    
+    if StringLen(response)>1 and StringFind(response,"LOG_RECEIVED_OK",nil, true) then
+         Plugin.Log[Plugin.LogPartToSend ] = nil
+         Plugin.LogPartToSend = Plugin.LogPartToSend  + 1
+         RBPSsuccessfulSends = RBPSsuccessfulSends + 1
+         working = false
+         Plugin:sendData()
+    else --we couldn't reach the NS2Stats Servers
         working = false                                
         Shine.Timer.Simple(5, function() Plugin:sendData() end)             
     end    
@@ -1456,8 +1442,10 @@ function Plugin:GetId(Client)
 end
 
 --For Bots
-function Plugin:GetIdbyName(Name)
+local fakeids = {}
 
+function Plugin:GetIdbyName(Name)
+    
     if not Name then return end
     
     --disable Onlinestats
@@ -1465,6 +1453,8 @@ function Plugin:GetIdbyName(Name)
         Notify( "NS2Stats won't store game with bots. Disabling online stats now!")
         Plugin.Config.Statsonline = false 
     end
+    
+    if fakeids[Name] then return fakeids[Name] end
     
     local NewId=""
     local Letters = " []+-*/!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
@@ -1485,6 +1475,8 @@ function Plugin:GetIdbyName(Name)
     
     --make a int
     NewId = tonumber(NewId)
+    
+    fakeids[Name] = NewId    
     return NewId
 end
 
@@ -2033,8 +2025,8 @@ end
 --Cleanup
 function Plugin:Cleanup()
     self.Enabled = false
+    Plugin.Log = nil
     Shine.Timer.Destroy("WeaponUpdate")
-    Shine.Timer.Destroy("SendStats")
     Shine.Timer.Destroy("SendStatus")
     Shine.Timer.Destroy("Devour")
 end

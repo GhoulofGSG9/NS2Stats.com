@@ -90,11 +90,11 @@ function Plugin:ClientConnect(Client)
         --set badge at server       
         local setbagde
         if self.Config.flags then setbagde = GiveBadge(ClientId,nationality) end
-        if self.Config.steambadges and Data.steam_url then
+        if self.Config.steambadges and Data and Data.steam_url then
            SetSteamBagde(Client,ClientId,Data.steam_url)        
         end
         
-        if not setbagde then return end  
+        if not setbagde then return end
         
         -- send bagde to Clients        
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[nationality]), true)
