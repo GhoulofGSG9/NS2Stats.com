@@ -148,7 +148,7 @@ function Plugin:OnGameReset()
     --Reset Devour
     devourFrame = 0
     devourEntity = {}
-    devourMovement = {}
+    devourMovement = {}    
     -- update stats all connected players       
     for _, client in ipairs(Shine.GetAllClients()) do            
         Plugin:addPlayerToTable(client)        
@@ -172,8 +172,7 @@ function Plugin:SetGameState( Gamerules, NewState, OldState )
 end
 
 --Gameend
-function Plugin:EndGame( Gamerules, WinningTeam )
-        GameHasStarted = false   
+function Plugin:EndGame( Gamerules, WinningTeam )         
         if Plugin.Config.Awards then Plugin:sendAwardListToClients() end               
         Plugin:addPlayersToLog(1)      
         local initialHiveTechIdString = "None"            
@@ -190,10 +189,11 @@ function Plugin:EndGame( Gamerules, WinningTeam )
                 start_location2 = Gamerules.startingLocationNameTeam2,
                 start_path_distance = Gamerules.startingLocationsPathDistance,
                 start_hive_tech = initialHiveTechIdString,
-            }
-        Plugin.gameFinished = 1       
-        Plugin:AddServerInfos(params)        
+            }     
+        Plugin:AddServerInfos(params)
+        Plugin.gameFinished = 1          
         if Plugin.Config.Statsonline then Plugin:sendData() end
+        GameHasStarted = false
 end
 
 --Player Events
@@ -239,17 +239,22 @@ function Plugin:ClientDisconnect(Client)
 end
 
 --score changed
-function Plugin:OnPlayerScoreChanged(Player,state)
+function Plugin:OnPlayerScoreChanged(Player,state)    
+    if not state then return end
+    
     local Client = GetOwner(Player)
     if not Client then return end
     
     local taulu = Plugin:getPlayerByClient(Client)
     if not taulu then return end
     
-    --check team
-    local team = Player:GetTeamNumber() or 0 --can return temp team "-1"
+    local lifeform = Player:GetMapName()    
+    if StringFind(taulu.lifeform,"spectator",nil,true) and StringFind(lifeform,"spectator",nil,true) then return end
     
-    if taulu.teamnumber == 3 and team ~= 0 then return end --only "real" change a spectator can do
+    --check team
+    local team = Player:GetTeamNumber() or 0
+    
+    if team < 0 then return end
     
     if team >= 0 and taulu.teamnumber ~= team then
         taulu.teamnumber = team
@@ -265,8 +270,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
         Plugin:addLog(playerJoin) 
     end
     
-    --check if lifeform changed
-    local lifeform = Player:GetMapName()
+    --check if lifeform changed    
     if not Player:GetIsAlive() and (team == 1 or team == 2) then lifeform = "dead" end
     if taulu.lifeform ~= lifeform then
         taulu.lifeform = lifeform
@@ -1165,21 +1169,16 @@ end
 
 --Log functions
 
--- avoids Cheat message spam
-local TempC = true
-
 --add to log
-function Plugin:addLog(tbl)
-     
+function Plugin:addLog(tbl)    
+    if Plugin.gameFinished == 1 or not tbl then return end
+    
     if not Plugin.Log then Plugin.Log = {} end
     if not Plugin.Log[Plugin.LogPartNumber] then Plugin.Log[Plugin.LogPartNumber] = "" end
-    
-    if not tbl then return end
-    
-    if Shared.GetCheatsEnabled() and TempC then 
+   
+    if Shared.GetCheatsEnabled() and Plugin.Config.Statsonline then 
         Plugin.Config.Statsonline = false
         Shine:Notify( nil, "", "NS2Stats", "Cheats were enabled! NS2Stats will disable itself now!")
-        TempC = nil
     end
     
     tbl.time = Shared.GetGMTString(false)
@@ -1187,7 +1186,7 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 500000 and Plugin.gameFinished ~= 1 then
+    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 250000 then
         Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
         if Plugin.Config.Statsonline then Plugin:sendData() end        
     end
@@ -1260,9 +1259,8 @@ local working = false
 
 --send Log to NS2Stats Server
 function Plugin:sendData()
-    if Plugin.LogPartNumber <= Plugin.LogPartToSend and Plugin.gameFinished ~= 1 then return end
+    if Plugin.LogPartNumber <= Plugin.LogPartToSend and Plugin.gameFinished ~= 1 or working or not GameHasStarted then return end
     
-    if working then return end
     working = true
     
     local params =
@@ -1284,10 +1282,7 @@ function Plugin:onHTTPResponseFromSend(response)
          Plugin.LogPartToSend = Plugin.LogPartToSend  + 1 
          RBPSsuccessfulSends = RBPSsuccessfulSends + 1
          working = false
-         if Plugin.LogPartNumber > Plugin.LogPartToSend or Plugin.LogPartNumber == Plugin.LogPartToSend and Plugin.gameFinished == 1 then
-            Shine.Timer.Simple(1, function() Plugin:sendData() end)
-         end
-                                      
+         Plugin:sendData()                                      
     elseif message then
         
         if message.other then
@@ -1304,7 +1299,7 @@ function Plugin:onHTTPResponseFromSend(response)
             Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
             Plugin.Config.Lastroundlink = link
             self:SaveConfig()
-            working = false                
+            working = false              
         end
         
     elseif working then --we couldn't reach the NS2Stats Servers
@@ -1456,8 +1451,10 @@ function Plugin:GetId(Client)
 end
 
 --For Bots
-function Plugin:GetIdbyName(Name)
+local fakeids = {}
 
+function Plugin:GetIdbyName(Name)
+    
     if not Name then return end
     
     --disable Onlinestats
@@ -1465,6 +1462,8 @@ function Plugin:GetIdbyName(Name)
         Notify( "NS2Stats won't store game with bots. Disabling online stats now!")
         Plugin.Config.Statsonline = false 
     end
+    
+    if fakeids[Name] then return fakeids[Name] end
     
     local NewId=""
     local Letters = " []+-*/!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
@@ -1485,6 +1484,8 @@ function Plugin:GetIdbyName(Name)
     
     --make a int
     NewId = tonumber(NewId)
+    
+    fakeids[Name] = NewId    
     return NewId
 end
 
