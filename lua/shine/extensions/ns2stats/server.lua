@@ -109,7 +109,7 @@ function Plugin:Initialise()
     if Plugin.Config.Statusreport then
        Shine.Timer.Create("SendStatus" , 30, -1, function() Plugin:sendServerStatus(Currentgamestate) end) --Plugin:devourSendStatus()
     end
-     
+    
     -- every 0.25 sec create Devour datas
     -- Shine.Timer.Create("Devour",0.25,-1, function()
         --if GameHasStarted then
@@ -117,8 +117,7 @@ function Plugin:Initialise()
             --if devourFrame % 20 == 0 then Plugin:createDevourEntityFrame() end
             --devourFrame = devourFrame + 1
         --end 
-    --end) 
-    
+    --end)
     return true
 end
 
@@ -240,7 +239,7 @@ end
 function Plugin:OnPlayerScoreChanged(Player,state)    
     if not state then return end
     
-    local Client = GetOwner(Player)
+    local Client = Player:GetClient()
     if not Client then return end
     
     local taulu = Plugin:getPlayerByClient(Client)
@@ -282,8 +281,7 @@ end
 function Plugin:OnBotRenamed(Bot)
     local player = Bot:GetPlayer()
     local name = player:GetName()
-    if not name then return end
-    if not string.find(name, "[BOT]",nil,true) then return end
+    if not name or not string.find(name, "[BOT]",nil,true) then return end
     
     local client = player:GetClient()
     if not client then return end
@@ -1272,19 +1270,21 @@ function Plugin:onHTTPResponseFromSend(response)
     if message then        
         if message.other then
             Notify("[NSStats]: ".. message.other)
+            return
         end
     
         if message.error == "NOT_ENOUGH_PLAYERS" then
             Notify("[NS2Stats]: Send failed because of too less players ")
+            return
         end	
 
         if message.link then
             local link = StringFormat("%s%s",Plugin.Config.WebsiteUrl, message.link)
             Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
             Plugin.Config.Lastroundlink = link
-            self:SaveConfig()        
+            self:SaveConfig()
+            return       
         end
-        return
     end
     
     if StringLen(response)>1 and StringFind(response,"LOG_RECEIVED_OK",nil, true) then
