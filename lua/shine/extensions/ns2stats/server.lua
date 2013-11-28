@@ -306,8 +306,6 @@ end
 
 --Player shoots weapon
 function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)    
-    if not target or target:isa("Ragdoll") then return end
-    
     local attacker 
     if DamageMixin:isa("Player") then
         attacker = DamageMixin
@@ -1260,7 +1258,8 @@ function Plugin:sendData()
         last_part = Plugin.gameFinished,
         map = Shared.GetMapName(),
     }
-    Shared.SendHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end)
+    
+    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function() working = false Plugin:sendData() end, 15)
 end
 
 --Analyze the answer of server
@@ -1444,8 +1443,7 @@ end
 --For Bots
 local fakeids = {}
 
-function Plugin:GetIdbyName(Name)
-    
+function Plugin:GetIdbyName(Name)    
     if not Name then return end
     
     --disable Onlinestats
@@ -1570,7 +1568,7 @@ function Plugin:sendServerStatus(gameState)
             map = Shared.GetMapName(),
         }
 
-    Shared.SendHTTPRequest(StringFormat("%s/api/sendstatus", self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)	
+    Shared.SendHTTPRequest(StringFormat("%s/api/sendstatus", self.Config.WebsiteUrl), "POST", params, function() end)	
 end
 
 function Plugin:onHTTPResponseFromSendStatus(client,action,response,status)
@@ -1582,10 +1580,10 @@ local serverid = ""
 
 function Plugin:GetServerId()    
     if serverid == "" then 
-        Shared.SendHTTPRequest( StringFormat("%s/api/server?key=%s",self.Config.WebsiteUrl,self.Config.ServerKey),"GET",function(response)
+        Shine.TimedHTTPRequest( StringFormat("%s/api/server?key=%s",self.Config.WebsiteUrl,self.Config.ServerKey),"GET",function(response)
             local Data = JsonDecode( response )
             if Data then serverid = Data.id or "" end            
-        end)
+        end,function() Plugin:GetServerId() end)
      end
     return serverid    
 end
@@ -1593,14 +1591,14 @@ end
 --Commands
 function Plugin:CreateCommands()
     
-    local ShowPStats = self:BindCommand( "sh_showplayerstats", {"showplayerstats","showstats" }, function(Client)
-        Shared.SendHTTPRequest( StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET",function(response)   
+     local ShowPStats = self:BindCommand( "sh_showplayerstats", {"showplayerstats","showstats" }, function(Client)
+        Shared.SendHTTPRequest( StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET",function(response)
             local Data = JsonDecode(response)
             local playerid = ""
             if Data then playerid = Data.id or "" end
             local url = StringFormat( "%s/player/player/%s", self.Config.WebsiteUrl, playerid)
-            Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )            
-            end)     
+            Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )
+            end)
     end,true)
     ShowPStats:Help("Shows stats from yourself")
     
