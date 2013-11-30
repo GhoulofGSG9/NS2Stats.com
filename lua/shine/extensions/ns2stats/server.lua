@@ -133,6 +133,7 @@ end
 --Game reset
 function Plugin:OnGameReset()
     --Resets all Stats
+    Plugin.Log = {}
     Plugin.LogPartNumber = 1
     Plugin.LogPartToSend  = 1
     Gamestarted = 0
@@ -141,7 +142,6 @@ function Plugin:OnGameReset()
     RBPSawards = {}
     GameHasStarted = false
     Currentgamestate = 0
-    Plugin.Log = {}
     Plugin.Players = {}
     Items = {}
     --Reset Devour
@@ -237,7 +237,7 @@ end
 
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)    
-    if not state then return end
+    if not Player or not state then return end
     
     local Client = Player:GetClient()
     if not Client then return end
@@ -245,13 +245,13 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     local taulu = Plugin:getPlayerByClient(Client)
     if not taulu then return end
     
-    local lifeform = Player:GetMapName()    
-    if StringFind(taulu.lifeform,"spectator",nil,true) and StringFind(lifeform,"spectator",nil,true) then return end
+    local lifeform = Player:GetMapName()
     
     --check team
-    local team = Player:GetTeamNumber() or 0
-    
+    local team = Player:GetTeamNumber() or 0    
     if team < 0 then return end
+    
+    if taulu.teamnumber == 3 and team > 0 then return end   --filter spectator
     
     if team >= 0 and taulu.teamnumber ~= team then
         taulu.teamnumber = team
@@ -556,14 +556,16 @@ end
 
 --Chatlogging
 function Plugin:PlayerSay( Client, Message )
-
     if not Plugin.Config.LogChat then return end
+    
+    local player = Client:GetControllingPlayer()
+    if not player then return end
     
     Plugin:addLog({
         action = "chat_message",
-        team = Client:GetControllingPlayer():GetTeamNumber(),
+        team = player:GetTeamNumber(),
         steamid = Plugin:GetId(Client),
-        name = Client:GetPlayer():GetName(),
+        name = player:GetName(),
         message = Message.message,
         toteam = Message.teamOnly
     })
@@ -806,15 +808,12 @@ end
 
 --addfunction
 
-function Plugin:ghostStructureAction(action,structure,doer)
-        
+function Plugin:ghostStructureAction(action,structure,doer)        
     if not structure then return end
     local techId = structure:GetTechId()
     local structureOrigin = structure:GetOrigin()
-    
-    local log = nil
-    
-    log =
+   
+    local log =
     {
         action = action,
         structure_name = EnumToString(kTechId, techId),
@@ -862,7 +861,7 @@ function Plugin:OnTechResearched( ResearchMixin,structure,researchId)
     if not structure then return end
     local researchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode(researchId)
     local techId = researchNode:GetTechId()
-    if  techId == OldUpgrade then return end
+    if techId == OldUpgrade then return end
     OldUpgrade = techId
     local newUpgrade =
     {
@@ -1314,11 +1313,11 @@ end
 
 --create new entry
 function Plugin:createPlayerTable(client)
-    if not client.GetPlayer then
+    if not client.GetControllingPlayer then
         Notify("[NS2Stats Debug]: Tried to create nil player")
         return
     end
-    local player = client:GetPlayer()
+    local player = client:GetControllingPlayer()
     if not player then return end
     local taulu= {}
        
@@ -1410,8 +1409,8 @@ function Plugin:getPlayerByClient(client)
     
     if client.GetUserId then
         steamId = Plugin:GetId(client)
-    elseif client.GetPlayer then
-        local player = client:GetPlayer()
+    elseif client.GetControllingPlayer then
+        local player = client:GetControllingPlayer()
         local name = player:GetName()
     else
         return
@@ -1435,7 +1434,7 @@ end
 
 function Plugin:GetId(Client)
     if Client and Client.GetUserId then     
-        if Client:GetIsVirtual() then return Plugin:GetIdbyName(Client:GetPlayer():GetName()) or 0
+        if Client:GetIsVirtual() then return Plugin:GetIdbyName(Client:GetControllingPlayer():GetName()) or 0
         else return Client:GetUserId() end
     end 
 end
@@ -1941,7 +1940,7 @@ function Plugin:createDevourMovementFrame()
     local data = {}
     
     for key,Client in pairs(Shine.GetAllClients()) do
-        local Player = Client:GetPlayer()
+        local Player = Client:GetControllingPlayer()
         local PlayerPos = Player:GetOrigin()
 	    
 	    if Player:GetTeamNumber()>0 then

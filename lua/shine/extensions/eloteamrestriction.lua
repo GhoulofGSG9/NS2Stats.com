@@ -53,7 +53,7 @@ function Plugin:ClientConfirmConnect(Client)
 end
 
 function Plugin:ClientDisconnect(Client)
-    local steamid = client:GetUserId()
+    local steamid = Client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
     Shine.Timer.Destroy("Player_" .. tostring(steamid))
@@ -77,8 +77,8 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     
     if not JoinTime[steamid] then JoinTime[steamid] = {} end
     if not JoinTime[steamid][NewTeam] then JoinTime[steamid][NewTeam] = Shared.GetTime()
-    elseif JoinTime[steamid][NewTeam] == -1 then self:Notify( Player, self.Config.BlockMessage ) return false
-    elseif Shared.GetTime() - JoinTime[steamid][NewTeam] > 5 then JoinTime[steamid][NewTeam] = nil return end
+    elseif JoinTime[steamid][NewTeam] == -1 then self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true))) return false
+    elseif Shared.GetTime() - JoinTime[steamid][NewTeam] > 5 then JoinTime[steamid][NewTeam] = nil end
     
     local URL
     local NS2Stats = Shine.Plugins.ns2stats
@@ -87,7 +87,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     elseif RBPS then
         URL = RBPS.websiteUrl
     end
-    URL = URL .. "/api/oneplayer?ns2_id=" .. steamid
+    URL = URL .. "/api/player?ns2_id=" .. steamid
    
     Shared.SendHTTPRequest( URL, "GET",function(response)
         if not response then Gamerules:JoinTeam(Player,NewTeam,nil,true) end
@@ -100,7 +100,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         if  playerdata then
             --check if player fits to MinPlayTime
             if self.Config.BlockNewPlayers and playerdata.time_played / 60 < self.Config.MinPlayTime then
-                self:Notify( Player, self.Config.BlockMessage )
+                self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
                 JoinTime[steamid][NewTeam]= -1 -- -1 = banned
                 self:Kick(Player)
                 return
@@ -131,10 +131,10 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         else
             -- should we block people without entry at ns2stats?
              if self.Config.BlockNewPlayers then 
-                self:Notify( Player, self.Config.BlockMessage )
+                self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
                 JoinTime[steamid][NewTeam]= -1 -- -1 = banned
                 self:Kick(Player)
-                return
+                return false
             end
         end
         
@@ -151,7 +151,9 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
             self:Notify(Player, StringFormat(self.Config.BlockMessage,elo,kd,self.Config.MinElo,self.Config.MaxElo,self.Config.MinKD,self.Config.MaxKD) )
             JoinTime[steamid][NewTeam]= -1 -- -1 = banned
             self:Kick(Player)
-        else Gamerules:JoinTeam(Player,NewTeam,nil,true) end
+        else
+            Gamerules:JoinTeam(Player,NewTeam,nil,true) 
+        end
     end)
     
     self:Notify( Player, self.Config.WaitMessage )
@@ -186,10 +188,9 @@ function Plugin:Kick(player)
     Shine.Timer.Create("Player_" .. tostring(steamid),1, self.Config.Kicktime, function()        
         Kicktimes[steamid] = Kicktimes[steamid]-1
         if Kicktimes[steamid] == 10 then self:Notify(player, "You will be kicked in 10 secounds.") end
-        if Kicktimes[steamid] <= 5 then self:Notify(player, "You will be kicked in "..tostring(Kicktimes[steamid]).. " secounds.")
-            Shine:Print( "Client %s[%s] was kicked by Elorestriction. Kicking...", true, player:GetName(), steamid)
-        end        
+        if Kicktimes[steamid] <= 5 then self:Notify(player, "You will be kicked in "..tostring(Kicktimes[steamid]).. " secounds.") end        
         if Kicktimes[steamid] <= 0 then
+            Shine:Print( "Client %s[%s] was kicked by Elorestriction. Kicking...", true, player:GetName(), steamid)
             client.DisconnectReason = "You didn't fit to the set skill level"
             Server.DisconnectClient( client )
         end    
