@@ -6,7 +6,7 @@ local Shine = Shine
 local Notify = Shared.Message
 local StringFormat = string.format
 local JsonDecode = json.decode
-local HTTPRequest = Shared.SendHTTPRequest
+local HTTPRequest = Shine.TimedHTTPRequest
 
 local Plugin = {}
 
@@ -26,6 +26,7 @@ Plugin.CheckConfig = true
 
 function Plugin:Initialise()    
     self.Enabled = true
+    self.Retries = {}
     return true
 end
 
@@ -54,7 +55,7 @@ local function GetSteamBadgeName( Response )
 end
 
 local function SetSteamBagde( Client,ClientId,profileurl )
-    HTTPRequest( StringFormat("%s/gamecards/4920", profileurl), "GET", function(response)
+    Shared.SendHTTPRequest( StringFormat("%s/gamecards/4920", profileurl), "GET", function(response)
         local badgename = GetSteamBadgeName( response )        
         if badgename then badgename = StringFormat("steam_%s",badgename)
         else return end
@@ -77,32 +78,42 @@ function Plugin:ClientConnect(Client)
     local ClientId = Client:GetUserId()
     if ClientId <= 0 then return end
     
-    HTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)        
-        --everyone is a member of the UN
-        local nationality  = "UNO"        
-        
-        --get players nationality from ns2stats.com
-        local Data = JsonDecode(response)
-        if Data and Data.country and Data.country ~= "null" and Data.country ~= "-" and Data.country ~= "" then                         
-            nationality  = Data.country
-        end
-        
-        --set badge at server       
-        local setbagde
-        if self.Config.flags then setbagde = GiveBadge(ClientId,nationality) end
-        if self.Config.steambadges and Data and Data.steam_url then
-           SetSteamBagde(Client,ClientId,Data.steam_url)        
-        end
-        
-        if not setbagde then return end
-        
+    --everyone is a member of the UN
+    local nationality  = "UNO"
+    self.Retries[ ClientId ] = 1
+
+    local function SetBadges()
+        if not self.Config.flags or not GiveBadge(ClientId,nationality) then return end
         -- send bagde to Clients        
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[nationality]), true)
-        
+            
         -- give default badge (disabled)
         GiveBadge(ClientId,"disabled")
-        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges["disabled"]), true)                             
-    end)  
+        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges["disabled"]), true)  
+    end
+    
+    local function GetBadges()
+        if self.Retries[ ClientId ] >= 5 then
+           SetBadges()
+           return            
+        end
+        self.Retries[ ClientId ] = self.Retries[ ClientId ] + 1
+        
+        HTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)         
+            --get players nationality from ns2stats.com
+            local Data = JsonDecode(response)
+            if Data and Data.country and Data.country ~= "null" and Data.country ~= "-" and Data.country ~= "" then                         
+                nationality  = Data.country
+                SetBadges()
+            end
+            
+            if self.Config.steambadges and Data and Data.steam_url then
+               SetSteamBagde(Client,ClientId,Data.steam_url)        
+            end
+                           
+        end,GetBadges)
+    end    
+    GetBadges()
 end
 
 function Plugin:Cleanup()

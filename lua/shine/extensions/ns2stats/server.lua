@@ -109,7 +109,7 @@ function Plugin:Initialise()
     if Plugin.Config.Statusreport then
        Shine.Timer.Create("SendStatus" , 30, -1, function() Plugin:sendServerStatus(Currentgamestate) end) --Plugin:devourSendStatus()
     end
-     
+    
     -- every 0.25 sec create Devour datas
     -- Shine.Timer.Create("Devour",0.25,-1, function()
         --if GameHasStarted then
@@ -117,8 +117,7 @@ function Plugin:Initialise()
             --if devourFrame % 20 == 0 then Plugin:createDevourEntityFrame() end
             --devourFrame = devourFrame + 1
         --end 
-    --end) 
-    
+    --end)
     return true
 end
 
@@ -134,6 +133,7 @@ end
 --Game reset
 function Plugin:OnGameReset()
     --Resets all Stats
+    Plugin.Log = {}
     Plugin.LogPartNumber = 1
     Plugin.LogPartToSend  = 1
     Gamestarted = 0
@@ -142,7 +142,6 @@ function Plugin:OnGameReset()
     RBPSawards = {}
     GameHasStarted = false
     Currentgamestate = 0
-    Plugin.Log = {}
     Plugin.Players = {}
     Items = {}
     --Reset Devour
@@ -238,21 +237,21 @@ end
 
 --score changed
 function Plugin:OnPlayerScoreChanged(Player,state)    
-    if not state then return end
+    if not Player or not state then return end
     
-    local Client = GetOwner(Player)
+    local Client = Player:GetClient()
     if not Client then return end
     
     local taulu = Plugin:getPlayerByClient(Client)
     if not taulu then return end
     
-    local lifeform = Player:GetMapName()    
-    if StringFind(taulu.lifeform,"spectator",nil,true) and StringFind(lifeform,"spectator",nil,true) then return end
+    local lifeform = Player:GetMapName()
     
     --check team
-    local team = Player:GetTeamNumber() or 0
-    
+    local team = Player:GetTeamNumber() or 0    
     if team < 0 then return end
+    
+    if taulu.teamnumber == 3 and team > 0 then return end   --filter spectator
     
     if team >= 0 and taulu.teamnumber ~= team then
         taulu.teamnumber = team
@@ -282,8 +281,7 @@ end
 function Plugin:OnBotRenamed(Bot)
     local player = Bot:GetPlayer()
     local name = player:GetName()
-    if not name then return end
-    if not string.find(name, "[BOT]",nil,true) then return end
+    if not name or not string.find(name, "[BOT]",nil,true) then return end
     
     local client = player:GetClient()
     if not client then return end
@@ -308,8 +306,6 @@ end
 
 --Player shoots weapon
 function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)    
-    if not target or target:isa("Ragdoll") then return end
-    
     local attacker 
     if DamageMixin:isa("Player") then
         attacker = DamageMixin
@@ -560,14 +556,16 @@ end
 
 --Chatlogging
 function Plugin:PlayerSay( Client, Message )
-
     if not Plugin.Config.LogChat then return end
+    
+    local player = Client:GetControllingPlayer()
+    if not player then return end
     
     Plugin:addLog({
         action = "chat_message",
-        team = Client:GetControllingPlayer():GetTeamNumber(),
+        team = player:GetTeamNumber(),
         steamid = Plugin:GetId(Client),
-        name = Client:GetPlayer():GetName(),
+        name = player:GetName(),
         message = Message.message,
         toteam = Message.teamOnly
     })
@@ -810,15 +808,12 @@ end
 
 --addfunction
 
-function Plugin:ghostStructureAction(action,structure,doer)
-        
+function Plugin:ghostStructureAction(action,structure,doer)        
     if not structure then return end
     local techId = structure:GetTechId()
     local structureOrigin = structure:GetOrigin()
-    
-    local log = nil
-    
-    log =
+   
+    local log =
     {
         action = action,
         structure_name = EnumToString(kTechId, techId),
@@ -866,7 +861,7 @@ function Plugin:OnTechResearched( ResearchMixin,structure,researchId)
     if not structure then return end
     local researchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode(researchId)
     local techId = researchNode:GetTechId()
-    if  techId == OldUpgrade then return end
+    if techId == OldUpgrade then return end
     OldUpgrade = techId
     local newUpgrade =
     {
@@ -1262,7 +1257,8 @@ function Plugin:sendData()
         last_part = Plugin.gameFinished,
         map = Shared.GetMapName(),
     }
-    Shared.SendHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end)
+    
+    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function() working = false Plugin:sendData() end, 15)
 end
 
 --Analyze the answer of server
@@ -1272,19 +1268,21 @@ function Plugin:onHTTPResponseFromSend(response)
     if message then        
         if message.other then
             Notify("[NSStats]: ".. message.other)
+            return
         end
     
         if message.error == "NOT_ENOUGH_PLAYERS" then
             Notify("[NS2Stats]: Send failed because of too less players ")
+            return
         end	
 
         if message.link then
             local link = StringFormat("%s%s",Plugin.Config.WebsiteUrl, message.link)
             Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
             Plugin.Config.Lastroundlink = link
-            self:SaveConfig()        
+            self:SaveConfig()
+            return       
         end
-        return
     end
     
     if StringLen(response)>1 and StringFind(response,"LOG_RECEIVED_OK",nil, true) then
@@ -1315,11 +1313,11 @@ end
 
 --create new entry
 function Plugin:createPlayerTable(client)
-    if not client.GetPlayer then
+    if not client.GetControllingPlayer then
         Notify("[NS2Stats Debug]: Tried to create nil player")
         return
     end
-    local player = client:GetPlayer()
+    local player = client:GetControllingPlayer()
     if not player then return end
     local taulu= {}
        
@@ -1411,8 +1409,8 @@ function Plugin:getPlayerByClient(client)
     
     if client.GetUserId then
         steamId = Plugin:GetId(client)
-    elseif client.GetPlayer then
-        local player = client:GetPlayer()
+    elseif client.GetControllingPlayer then
+        local player = client:GetControllingPlayer()
         local name = player:GetName()
     else
         return
@@ -1436,7 +1434,7 @@ end
 
 function Plugin:GetId(Client)
     if Client and Client.GetUserId then     
-        if Client:GetIsVirtual() then return Plugin:GetIdbyName(Client:GetPlayer():GetName()) or 0
+        if Client:GetIsVirtual() then return Plugin:GetIdbyName(Client:GetControllingPlayer():GetName()) or 0
         else return Client:GetUserId() end
     end 
 end
@@ -1444,8 +1442,7 @@ end
 --For Bots
 local fakeids = {}
 
-function Plugin:GetIdbyName(Name)
-    
+function Plugin:GetIdbyName(Name)    
     if not Name then return end
     
     --disable Onlinestats
@@ -1570,7 +1567,7 @@ function Plugin:sendServerStatus(gameState)
             map = Shared.GetMapName(),
         }
 
-    Shared.SendHTTPRequest(StringFormat("%s/api/sendstatus", self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)	
+    Shared.SendHTTPRequest(StringFormat("%s/api/sendstatus", self.Config.WebsiteUrl), "POST", params, function() end)	
 end
 
 function Plugin:onHTTPResponseFromSendStatus(client,action,response,status)
@@ -1582,10 +1579,10 @@ local serverid = ""
 
 function Plugin:GetServerId()    
     if serverid == "" then 
-        Shared.SendHTTPRequest( StringFormat("%s/api/server?key=%s",self.Config.WebsiteUrl,self.Config.ServerKey),"GET",function(response)
+        Shine.TimedHTTPRequest( StringFormat("%s/api/server?key=%s",self.Config.WebsiteUrl,self.Config.ServerKey),"GET",function(response)
             local Data = JsonDecode( response )
             if Data then serverid = Data.id or "" end            
-        end)
+        end,function() Plugin:GetServerId() end)
      end
     return serverid    
 end
@@ -1593,14 +1590,14 @@ end
 --Commands
 function Plugin:CreateCommands()
     
-    local ShowPStats = self:BindCommand( "sh_showplayerstats", {"showplayerstats","showstats" }, function(Client)
-        Shared.SendHTTPRequest( StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET",function(response)   
+     local ShowPStats = self:BindCommand( "sh_showplayerstats", {"showplayerstats","showstats" }, function(Client)
+        Shared.SendHTTPRequest( StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET",function(response)
             local Data = JsonDecode(response)
             local playerid = ""
             if Data then playerid = Data.id or "" end
             local url = StringFormat( "%s/player/player/%s", self.Config.WebsiteUrl, playerid)
-            Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )            
-            end)     
+            Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )
+            end)
     end,true)
     ShowPStats:Help("Shows stats from yourself")
     
@@ -1943,7 +1940,7 @@ function Plugin:createDevourMovementFrame()
     local data = {}
     
     for key,Client in pairs(Shine.GetAllClients()) do
-        local Player = Client:GetPlayer()
+        local Player = Client:GetControllingPlayer()
         local PlayerPos = Player:GetOrigin()
 	    
 	    if Player:GetTeamNumber()>0 then
