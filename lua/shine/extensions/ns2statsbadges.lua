@@ -102,10 +102,11 @@ function Plugin:ClientConnect(Client)
         HTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)         
             --get players nationality from ns2stats.com
             local Data = JsonDecode(response)
-            if Data and Data.country and Data.country ~= "null" and Data.country ~= "-" and Data.country ~= "" then                         
-                nationality  = Data.country
-                SetBadges()
+            if Data and Data.country and Data.country ~= "null" and Data.country ~= "-" and Data.country ~= " " then                         
+                nationality  = Data.country                
             end
+            
+            SetBadges()
             
             if self.Config.steambadges and Data and Data.steam_url then
                SetSteamBagde(Client,ClientId,Data.steam_url)        

@@ -16,6 +16,8 @@ Plugin.HasConfig = true
 Plugin.ConfigName = "eloteamrestriction.json"
 
 Plugin.DefaultConfig = {
+    WebsiteUrl = "http://ns2stats.com",
+    HTTPRequestTimeout = 10,
     RestrictionMode = 0,
     TeamStats = true,
     MinElo = 1300, 
@@ -56,12 +58,11 @@ function Plugin:ClientDisconnect(Client)
     local steamid = Client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    Shine.Timer.Destroy("Player_" .. tostring(steamid))
+    self:DestroyTimer("Player_" .. tostring(steamid))
     JoinTime[steamid] = nil
     Kicktimes[steamid] = nil
 end
-function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
-    if not (RPBS or Shine.Plugins.ns2stats) then return end
+function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     
     -- check if mapvote is running
     local Mapvote = Shine.Plugins.mapvote
@@ -73,23 +74,16 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    if ShineForce or NewTeam == 0 or NewTeam > 2 then JoinTime[steamid]= nil Shine.Timer.Destroy("Player_" .. tostring(client:GetUserId())) return end
+    if ShineForce or NewTeam == 0 or NewTeam > 2 then JoinTime[steamid]= nil self:DestroyTimer("Player_" .. tostring(client:GetUserId())) return end
     
     if not JoinTime[steamid] then JoinTime[steamid] = {} end
     if not JoinTime[steamid][NewTeam] then JoinTime[steamid][NewTeam] = Shared.GetTime()
     elseif JoinTime[steamid][NewTeam] == -1 then self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true))) return false
     elseif Shared.GetTime() - JoinTime[steamid][NewTeam] > 5 then JoinTime[steamid][NewTeam] = nil end
     
-    local URL
-    local NS2Stats = Shine.Plugins.ns2stats
-    if NS2Stats then
-        URL = NS2Stats:GetStatsURL()
-    elseif RBPS then
-        URL = RBPS.websiteUrl
-    end
-    URL = URL .. "/api/player?ns2_id=" .. steamid
-   
-    Shared.SendHTTPRequest( URL, "GET",function(response)
+    local URL = self.Config.WebsiteUrl .. "/api/player?ns2_id=" .. steamid
+    
+    Shine.TimedHTTPRequest( URL, "GET",function(response)
         if not response then Gamerules:JoinTeam(Player,NewTeam,nil,true) end
         local Data = json.decode(response)
         local elo = 1500
@@ -97,9 +91,14 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         
         local playerdata
         if Data then playerdata = Data[1] end
-        if  playerdata then
+        
+        --player still connected?
+        if not Shine:IsValidClient(client) or Player and Player:GetTeamNumber() ~= 0 then return end
+        
+        if playerdata then
             --check if player fits to MinPlayTime
-            if self.Config.BlockNewPlayers and playerdata.time_played / 60 < self.Config.MinPlayTime then
+            local playtime = playerdata.time_played or 0
+            if self.Config.BlockNewPlayers and  playtime / 60 < self.Config.MinPlayTime then
                 self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
                 JoinTime[steamid][NewTeam]= -1 -- -1 = banned
                 self:Kick(Player)
@@ -134,7 +133,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
                 self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
                 JoinTime[steamid][NewTeam]= -1 -- -1 = banned
                 self:Kick(Player)
-                return false
+                return
             end
         end
         
@@ -154,7 +153,16 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         else
             Gamerules:JoinTeam(Player,NewTeam,nil,true) 
         end
-    end)
+    end,function()
+         --player still connected?
+        if not Shine:IsValidClient(client) or Player and Player:GetTeamNumber() ~= 0 then return end
+        
+        if self.Config.BlockNewPlayers then 
+                self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
+                JoinTime[steamid][NewTeam]= -1 -- -1 = banned
+                self:Kick(Player)
+        else Gamerules:JoinTeam(Player,NewTeam,nil,true) end
+    end,self.Config.HTTPRequestTimeout)
     
     self:Notify( Player, self.Config.WaitMessage )
     return false
@@ -182,10 +190,10 @@ function Plugin:Kick(player)
     local steamid = client:GetUserId() or 0
     if steamid<= 0 then return end
     
-    Shine.Timer.Destroy("Player_" .. tostring(steamid))
+    self:DestroyTimer("Player_" .. tostring(steamid))
     self:Notify(player, StringFormat(self.Config.KickMessage,self.Config.Kicktime/60))
     Kicktimes[steamid] = self.Config.Kicktime
-    Shine.Timer.Create("Player_" .. tostring(steamid),1, self.Config.Kicktime, function()        
+    self:CreateTimer("Player_" .. tostring(steamid),1, self.Config.Kicktime, function()        
         Kicktimes[steamid] = Kicktimes[steamid]-1
         if Kicktimes[steamid] == 10 then self:Notify(player, "You will be kicked in 10 secounds.") end
         if Kicktimes[steamid] <= 5 then self:Notify(player, "You will be kicked in "..tostring(Kicktimes[steamid]).. " secounds.") end        
@@ -196,6 +204,7 @@ function Plugin:Kick(player)
         end    
     end)    
 end
+
 function Plugin:Cleanup()
     self.Enabled = false
 end

@@ -101,17 +101,17 @@ function Plugin:Initialise()
     
     --every 1 sec
     --to update Weapondatas
-    Shine.Timer.Create( "WeaponUpdate", 1, -1, function()
-       Plugin:UpdateWeaponTable()
+    self:CreateTimer( "WeaponUpdate", 1, -1, function()
+       self:UpdateWeaponTable()
     end)
     
     -- every 30 sec send Server Status + Devour   
     if Plugin.Config.Statusreport then
-       Shine.Timer.Create("SendStatus" , 30, -1, function() Plugin:sendServerStatus(Currentgamestate) end) --Plugin:devourSendStatus()
+       self:CreateTimer("SendStatus" , 30, -1, function() self:sendServerStatus(Currentgamestate) end) --Plugin:devourSendStatus()
     end
     
     -- every 0.25 sec create Devour datas
-    -- Shine.Timer.Create("Devour",0.25,-1, function()
+    -- self:CreateTimer("Devour",0.25,-1, function()
         --if GameHasStarted then
             --Plugin:createDevourMovementFrame()
             --if devourFrame % 20 == 0 then Plugin:createDevourEntityFrame() end
@@ -1293,7 +1293,7 @@ function Plugin:onHTTPResponseFromSend(response)
          Plugin:sendData()
     else --we couldn't reach the NS2Stats Servers
         working = false                                
-        Shine.Timer.Simple(5, function() Plugin:sendData() end)             
+        self:SimpleTimer(5, function() self:sendData() end)             
     end    
 end
 
@@ -2023,7 +2023,4 @@ end
 function Plugin:Cleanup()
     self.Enabled = false
     Plugin.Log = nil
-    Shine.Timer.Destroy("WeaponUpdate")
-    Shine.Timer.Destroy("SendStatus")
-    Shine.Timer.Destroy("Devour")
 end
