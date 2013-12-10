@@ -102,7 +102,7 @@ function Plugin:ClientConnect(Client)
         HTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)         
             --get players nationality from ns2stats.com
             local Data = JsonDecode(response)
-            if Data and Data.country and Data.country ~= "null" and Data.country ~= "-" and Data.country ~= "" then                         
+            if Data and Data.country and Data.country ~= "null" and Data.country ~= "-" and Data.country ~= " " then                         
                 nationality  = Data.country                
             end
             
