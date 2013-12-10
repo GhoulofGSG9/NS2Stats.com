@@ -62,6 +62,7 @@ function Plugin:ClientDisconnect(Client)
     JoinTime[steamid] = nil
     Kicktimes[steamid] = nil
 end
+
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     
     -- check if mapvote is running
@@ -195,8 +196,8 @@ function Plugin:Kick(player)
     Kicktimes[steamid] = self.Config.Kicktime
     self:CreateTimer("Player_" .. tostring(steamid),1, self.Config.Kicktime, function()        
         Kicktimes[steamid] = Kicktimes[steamid]-1
-        if Kicktimes[steamid] == 10 then self:Notify(player, "You will be kicked in 10 secounds.") end
-        if Kicktimes[steamid] <= 5 then self:Notify(player, "You will be kicked in "..tostring(Kicktimes[steamid]).. " secounds.") end        
+        if Kicktimes[steamid] == 10 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end
+        if Kicktimes[steamid] <= 5 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end        
         if Kicktimes[steamid] <= 0 then
             Shine:Print( "Client %s[%s] was kicked by Elorestriction. Kicking...", true, player:GetName(), steamid)
             client.DisconnectReason = "You didn't fit to the set skill level"
