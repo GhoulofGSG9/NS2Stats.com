@@ -168,7 +168,8 @@ function Plugin:Kick(player)
     local steamid = client:GetUserId() or 0
     if steamid<= 0 then return end
     
-    self:DestroyTimer("Player_" .. tostring(steamid))
+    if self:TimerExists("Player_" .. tostring(steamid)) then return end
+    
     self:Notify(player, StringFormat(self.Config.KickMessage,self.Config.Kicktime/60))
     Kicktimes[steamid] = self.Config.Kicktime
     self:CreateTimer("Player_" .. tostring(steamid),1, self.Config.Kicktime, function()        
