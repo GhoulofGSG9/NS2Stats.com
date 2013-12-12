@@ -127,13 +127,16 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         -- now check if player fits to config
         if self.Config.RestrictionMode == 0 and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
             self:Notify( Player, StringFormat(self.Config.BlockMessage,elo,self.Config.MinElo,self.Config.MaxElo))
-            self:Kick(Player) 
+            self:Kick(Player)
+            return false
         elseif self.Config.RestrictionMode == 1 and (kd< self.Config.MinKD or kd > self.Config.MaxKD) then
             self:Notify( Player, StringFormat(self.Config.BlockMessage,kd,self.Config.MinKD,self.Config.MaxKD ))
-            self:Kick(Player) 
+            self:Kick(Player)
+            return false
         elseif self.Config.RestrictionMode == 2 and (kd< self.Config.MinKD or kd > self.Config.MaxKD) and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
             self:Notify(Player, StringFormat(self.Config.BlockMessage,elo,kd,self.Config.MinElo,self.Config.MaxElo,self.Config.MinKD,self.Config.MaxKD) )
             self:Kick(Player)
+            return false
         end
     
     else
