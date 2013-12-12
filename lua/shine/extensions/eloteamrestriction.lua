@@ -27,7 +27,6 @@ Plugin.DefaultConfig = {
     showinform = true,
     InformMessage = "This Server is Elo rating restricted",
     BlockMessage = "You don't fit to the Elo rating limit on this server. Your ELO: %s Server: Min %s , Max %s",
-    WaitMessage = "Getting your NS2 Elo rating now, please wait",
     KickMessage = "You will be kicked in %s min",
     BlockNewPlayers = false,
     MinPlayTime = 10,
