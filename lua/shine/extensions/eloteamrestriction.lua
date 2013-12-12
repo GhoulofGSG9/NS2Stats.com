@@ -46,12 +46,30 @@ function Plugin:Initialise()
     return true
 end
 
-local JoinTime= {}
 local Kicktimes = {}
+local Ns2statsData = {}
+local Tries = {}
 
 function Plugin:ClientConfirmConnect(Client)
     local player = Client:GetControllingPlayer()
     if self.Config.showinform and player then self:Notify( player, self.Config.InformMessage) end
+end
+
+function Plugin:ClientConnect( Client )
+    local steamid = Client:GetUserId()
+    if not steamid or steamid <= 0 then return end   
+    
+    if not Tries[steamid] then Tries[steamid] = 0    
+    if Tries[steamid] >= 5 then return end
+    
+    local URL = self.Config.WebsiteUrl .. "/api/player?ns2_id=" .. steamid
+    
+    Shine.TimedHTTPRequest( URL, "GET",function(response)
+        Ns2statsData[steamid] = json.decode(response)[1]
+    end,function()
+        Tries[steamid] = Tries[steamid] + 1
+        self:ClientConnect( Client )
+    end)
 end
 
 function Plugin:ClientDisconnect(Client)
@@ -59,114 +77,73 @@ function Plugin:ClientDisconnect(Client)
     if not steamid or steamid <= 0 then return end
     
     self:DestroyTimer("Player_" .. tostring(steamid))
-    JoinTime[steamid] = nil
     Kicktimes[steamid] = nil
 end
 
-function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
-    
-    -- check if mapvote is running
-    local Mapvote = Shine.Plugins.mapvote
-    if Mapvote and Mapvote.Enabled and Mapvote:VoteStarted() then return end
-    
+function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
     local client = Server.GetOwner(Player)
-    if not Shine:IsValidClient(client) or Shine:HasAccess(client, "sh_ignoreelo" ) then return end
     
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    if ShineForce or NewTeam == 0 or NewTeam > 2 then JoinTime[steamid]= nil self:DestroyTimer("Player_" .. tostring(client:GetUserId())) return end
+    if ShineForce or NewTeam == 0 or NewTeam > 2 then self:DestroyTimer("Player_" .. tostring(client:GetUserId())) return end
     
-    if not JoinTime[steamid] then JoinTime[steamid] = {} end
-    if not JoinTime[steamid][NewTeam] then JoinTime[steamid][NewTeam] = Shared.GetTime()
-    elseif JoinTime[steamid][NewTeam] == -1 then self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true))) return false
-    elseif Shared.GetTime() - JoinTime[steamid][NewTeam] > 5 then JoinTime[steamid][NewTeam] = nil end
+    self:Notify( Player, self.Config.WaitMessage )
     
-    local URL = self.Config.WebsiteUrl .. "/api/player?ns2_id=" .. steamid
-    
-    Shine.TimedHTTPRequest( URL, "GET",function(response)
-        if not response then Gamerules:JoinTeam(Player,NewTeam,nil,true) end
-        local Data = json.decode(response)
-        local elo = 1500
-        local kd = 1
-        
-        local playerdata
-        if Data then playerdata = Data[1] end
-        
-        --player still connected?
-        if not Shine:IsValidClient(client) or Player and Player:GetTeamNumber() ~= 0 then return end
-        
-        if playerdata then
-            --check if player fits to MinPlayTime
-            local playtime = playerdata.time_played or 0
-            if self.Config.BlockNewPlayers and  playtime / 60 < self.Config.MinPlayTime then
-                self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
-                JoinTime[steamid][NewTeam]= -1 -- -1 = banned
-                self:Kick(Player)
-                return
-            end
-            if self.Config.TeamStats then
-                if NewTeam == 1 then
-                    elo = playerdata.marine.elo.rating
-                    local deaths = tonumber(playerdata.marine.deaths)
-                    if deaths == 0 then death = 1 end
-                    local kills = tonumber(playerdata.marine.kills)
-                    kd = kills / deaths
-                elseif NewTeam == 2 then
-                    elo = playerdata.alien.elo.rating
-                    local deaths = tonumber(playerdata.alien.deaths)
-                    if deaths == 0 then death = 1 end
-                    local kills = tonumber(playerdata.alien.kills)
-                    kd = kills / deaths
-                end
-                if elo == "" or elo == "-" then elo = 1500 end  
-                elo = tonumber(elo)                         
-            else
-                    elo = playerdata.elo.rating
-                    local deaths = tonumber(playerdata.deaths)
-                    if deaths == 0 then death = 1 end
-                    local kills = tonumber(playerdata.kills)
-                    kd = kills / deaths
-            end
-        else
-            -- should we block people without entry at ns2stats?
-             if self.Config.BlockNewPlayers then 
-                self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
-                JoinTime[steamid][NewTeam]= -1 -- -1 = banned
-                self:Kick(Player)
-                return
-            end
+    local playerdata = Ns2statsData[steamid]
+            
+    if playerdata then
+        --check if player fits to MinPlayTime
+        local playtime = playerdata.time_played or 0
+        if self.Config.BlockNewPlayers and  playtime / 60 < self.Config.MinPlayTime then
+            self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
+            self:Kick(Player)
+            return false
         end
         
-        -- now check if player fits to config      
+        if self.Config.TeamStats then
+            if NewTeam == 1 then
+                elo = playerdata.marine.elo.rating
+                local deaths = tonumber(playerdata.marine.deaths)
+                if deaths == 0 then death = 1 end
+                local kills = tonumber(playerdata.marine.kills)
+                kd = kills / deaths
+            elseif NewTeam == 2 then
+                elo = playerdata.alien.elo.rating
+                local deaths = tonumber(playerdata.alien.deaths)
+                if deaths == 0 then death = 1 end
+                local kills = tonumber(playerdata.alien.kills)
+                kd = kills / deaths
+            end
+            if elo == "" or elo == "-" then elo = 1500 end  
+            elo = tonumber(elo)                         
+        else
+                elo = playerdata.elo.rating
+                local deaths = tonumber(playerdata.deaths)
+                if deaths == 0 then death = 1 end
+                local kills = tonumber(playerdata.kills)
+                kd = kills / deaths
+        end
+        
+        -- now check if player fits to config
         if self.Config.RestrictionMode == 0 and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
             self:Notify( Player, StringFormat(self.Config.BlockMessage,elo,self.Config.MinElo,self.Config.MaxElo))
-            JoinTime[steamid][NewTeam]= -1 -- -1 = banned
             self:Kick(Player) 
         elseif self.Config.RestrictionMode == 1 and (kd< self.Config.MinKD or kd > self.Config.MaxKD) then
             self:Notify( Player, StringFormat(self.Config.BlockMessage,kd,self.Config.MinKD,self.Config.MaxKD ))
-            JoinTime[steamid][NewTeam]= -1 -- -1 = banned
             self:Kick(Player) 
         elseif self.Config.RestrictionMode == 2 and (kd< self.Config.MinKD or kd > self.Config.MaxKD) and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
             self:Notify(Player, StringFormat(self.Config.BlockMessage,elo,kd,self.Config.MinElo,self.Config.MaxElo,self.Config.MinKD,self.Config.MaxKD) )
-            JoinTime[steamid][NewTeam]= -1 -- -1 = banned
             self:Kick(Player)
-        else
-            Gamerules:JoinTeam(Player,NewTeam,nil,true) 
         end
-    end,function()
-         --player still connected?
-        if not Shine:IsValidClient(client) or Player and Player:GetTeamNumber() ~= 0 then return end
-        
-        if self.Config.BlockNewPlayers then 
-                self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
-                JoinTime[steamid][NewTeam]= -1 -- -1 = banned
-                self:Kick(Player)
-        else Gamerules:JoinTeam(Player,NewTeam,nil,true) end
-    end,self.Config.HTTPRequestTimeout)
     
-    self:Notify( Player, self.Config.WaitMessage )
-    return false
+    else
+         -- should we block people without entry at ns2stats?
+         if self.Config.BlockNewPlayers then 
+            self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
+            self:Kick(Player)
+            return false
+    end 
 end
 
 function Plugin:Notify( Player, Message, Format, ... )
