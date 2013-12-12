@@ -59,7 +59,7 @@ function Plugin:ClientConnect( Client )
     if not steamid or steamid <= 0 then return end   
     
     if not Tries[steamid] then Tries[steamid] = 0    
-    if Tries[steamid] >= 5 then return end
+    elseif Tries[steamid] >= 5 then return end
     
     local URL = self.Config.WebsiteUrl .. "/api/player?ns2_id=" .. steamid
     
@@ -132,19 +132,17 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         elseif self.Config.RestrictionMode == 1 and (kd< self.Config.MinKD or kd > self.Config.MaxKD) then
             self:Notify( Player, StringFormat(self.Config.BlockMessage,kd,self.Config.MinKD,self.Config.MaxKD ))
             self:Kick(Player)
-            return false
+            return false 
         elseif self.Config.RestrictionMode == 2 and (kd< self.Config.MinKD or kd > self.Config.MaxKD) and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
             self:Notify(Player, StringFormat(self.Config.BlockMessage,elo,kd,self.Config.MinElo,self.Config.MaxElo,self.Config.MinKD,self.Config.MaxKD) )
             self:Kick(Player)
             return false
         end
     
-    else
-         -- should we block people without entry at ns2stats?
-         if self.Config.BlockNewPlayers then 
-            self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
-            self:Kick(Player)
-            return false
+    elseif self.Config.BlockNewPlayers then 
+        self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
+        self:Kick(Player)
+        return false
     end 
 end
 
