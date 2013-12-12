@@ -25,11 +25,6 @@ Plugin.DefaultConfig =
 
 Plugin.CheckConfig = true
 
-function Plugin:Initialise()    
-    self.Enabled = true
-    return true
-end
-
 SetupClassHook( "CommandStructure", "LoginPlayer", "CheckComLogin","Halt")
 
 function  Plugin:CheckComLogin( Chair, Player )
@@ -93,10 +88,6 @@ function Plugin:ClientDisconnect(Client)
     if not steamid or steamid <= 0 then return end
     
     self:DestroyTimer("Player_" .. tostring(steamid))
-end
-
-function Plugin:Cleanup()
-    self.Enabled = false
 end
 
 Shine:RegisterExtension( "norookies", Plugin )
