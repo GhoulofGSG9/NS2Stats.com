@@ -64,7 +64,7 @@ function Plugin:ClientConnect( Client )
     local URL = self.Config.WebsiteUrl .. "/api/player?ns2_id=" .. steamid
     
     Shine.TimedHTTPRequest( URL, "GET",function(response)
-        Ns2statsData[steamid] = json.decode(response)[1]
+        Ns2statsData[steamid] = json.decode(response) and json.decode(response)[1]
     end,function()
         Tries[steamid] = Tries[steamid] + 1
         self:ClientConnect( Client )
