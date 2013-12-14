@@ -25,17 +25,16 @@ Plugin.DefaultConfig =
 
 Plugin.CheckConfig = true
 
-function Plugin:Initialise()    
-    self.Enabled = true
-    return true
-end
-
-SetupClassHook( "CommandStructure", "LoginPlayer", "CheckComLogin","Halt")
+Shine.Hook.SetupClassHook( "CommandStructure", "LoginPlayer", "CheckComLogin","Halt")
 
 function  Plugin:CheckComLogin( Chair, Player )
     if not self.Config.BlockCC or not Player or not Player.GetClient then return end
+    
     local steamid = Player:GetClient():GetUserId()
-    if steamid and gPlayerData and gPlayerData[tostring(steamid)] and gPlayerData[tostring(steamid)].playTime < self.Config.MinPlaytime then
+    if not steamid or steamid <= 0 then return end
+    
+    local pData = GetPlayerHiveData(steamid)
+    if pData and pData.playTime < self.Config.MinPlaytime then
         self:Notify(Player, self.Config.BlockMessage)
         self:Kick(Player)
         return false 
@@ -54,7 +53,8 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    local playtime = gPlayerData and gPlayerData[tostring(steamid)] and gPlayerData[tostring(steamid)].playTime or 0
+    local pData = GetPlayerHiveData(steamid)
+    local playtime = pData and pData.playTime or 0
     
     if self.Config.BlockTeams and playtime < self.Config.MinPlaytime then
         self:Notify(Player, self.Config.BlockMessage)
@@ -93,10 +93,6 @@ function Plugin:ClientDisconnect(Client)
     if not steamid or steamid <= 0 then return end
     
     self:DestroyTimer("Player_" .. tostring(steamid))
-end
-
-function Plugin:Cleanup()
-    self.Enabled = false
 end
 
 Shine:RegisterExtension( "norookies", Plugin )

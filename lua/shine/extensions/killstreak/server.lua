@@ -25,10 +25,6 @@ Plugin.DefaultConfig =
 Plugin.CheckConfig = true
 
 local Killstreaks = {}
-function Plugin:Initialise()
-    self.Enabled = true
-    return true
-end
 
 function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, Dir )
     if not Attacker or not Victim then return end
@@ -176,9 +172,4 @@ function Plugin:PlaySoundForEveryPlayer(name)
     if self.Config.SendSounds then
         self:SendNetworkMessage(nil,"PlaySound",{Name = name } ,true)
     end
-end
-
-function Plugin:Cleanup()
-    self.Enabled = false
-end    
-    
+end   
