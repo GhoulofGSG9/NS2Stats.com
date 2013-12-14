@@ -54,8 +54,3 @@ local SetSoundVolume = Shine:RegisterClientCommand("sh_setsoundvolume",function 
     Notify( StringFormat( "[Shine] Killstreak Sounds Volume has been set to %s.", Volume) )
 end)
 SetSoundVolume:AddParam{Type = "number",Min= 0,Max=200, Round= true, Error = "Please set a value between 0 and 200. Any value outside this limit is not allowed"}
-
-function Plugin:Cleanup()
-    self.Enabled = false
-end    
-    

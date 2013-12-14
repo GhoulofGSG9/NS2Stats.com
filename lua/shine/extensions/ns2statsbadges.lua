@@ -11,7 +11,6 @@ local HTTPRequest = Shine.TimedHTTPRequest
 local Plugin = {}
 
 Plugin.Version = "1.5"
-Plugin.DefaultState = false
 
 Plugin.HasConfig = true
 
@@ -23,12 +22,6 @@ Plugin.DefaultConfig =
 }
 
 Plugin.CheckConfig = true
-
-function Plugin:Initialise()    
-    self.Enabled = true
-    self.Retries = {}
-    return true
-end
 
 local function FindCharactersBetween( Response, OpeningCharacters, ClosingCharacters )
         local Result
@@ -72,6 +65,8 @@ local function SetSteamBagde( Client,ClientId,profileurl )
     end)
 end
 
+local Retries = {}
+
 function Plugin:ClientConnect(Client)
     if not GiveBadge or not kBadges or not Client then return end
  
@@ -80,7 +75,7 @@ function Plugin:ClientConnect(Client)
     
     --everyone is a member of the UN
     local nationality  = "UNO"
-    self.Retries[ ClientId ] = 1
+    Retries[ ClientId ] = 1
 
     local function SetBadges()
         if not self.Config.flags or not GiveBadge(ClientId,nationality) then return end
@@ -93,16 +88,16 @@ function Plugin:ClientConnect(Client)
     end
     
     local function GetBadges()
-        if self.Retries[ ClientId ] >= 5 then
+        if Retries[ ClientId ] >= 5 then
            SetBadges()
            return            
         end
-        self.Retries[ ClientId ] = self.Retries[ ClientId ] + 1
+        Retries[ ClientId ] = Retries[ ClientId ] + 1
         
         HTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)         
             --get players nationality from ns2stats.com
             local Data = JsonDecode(response)
-            if Data and Data.country and Data.country ~= "null" and Data.country ~= "-" and Data.country ~= " " then                         
+            if Data and Data.country and string.len(tostring(Data.country))>= 2 and Data.country ~= "null" then                        
                 nationality  = Data.country                
             end
             
@@ -112,13 +107,9 @@ function Plugin:ClientConnect(Client)
                SetSteamBagde(Client,ClientId,Data.steam_url)        
             end
                            
-        end,GetBadges)
+        end,function() GetBadges() end)
     end    
     GetBadges()
-end
-
-function Plugin:Cleanup()
-    self.Enabled = false
 end
 
 Shine:RegisterExtension( "ns2statsbadges", Plugin )
