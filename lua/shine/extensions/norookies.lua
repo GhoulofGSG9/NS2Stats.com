@@ -19,7 +19,7 @@ Plugin.DefaultConfig =
     BlockCC = true,
     BlockMessage = "This Server is not rookie friendly",
     Kick = true,
-    Kicktime = 1,
+    Kicktime = 60,
     KickMessage = "You will be kicked in %s min",
 }
 
@@ -82,7 +82,7 @@ function Plugin:Kick(player)
         if Kicktimes[steamid] <= 5 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end        
         if Kicktimes[steamid] <= 0 then
             Shine:Print( "Client %s[%s] was kicked by No Rookies. Kicking...", true, player:GetName(), steamid)
-            client.DisconnectReason = "You didn't fit to the set skill level"
+            client.DisconnectReason = "You didn't fit to the set min playtime"
             Server.DisconnectClient( client )
         end    
     end)    

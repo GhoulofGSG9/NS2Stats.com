@@ -1258,7 +1258,7 @@ function Plugin:sendData()
         map = Shared.GetMapName(),
     }
     
-    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function() working = false Plugin:sendData() end, 15)
+    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function() working = false Plugin:sendData() end, 30)
 end
 
 --Analyze the answer of server

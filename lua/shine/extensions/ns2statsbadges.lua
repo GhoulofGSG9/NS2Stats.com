@@ -48,7 +48,26 @@ local function GetSteamBadgeName( Response )
 end
 
 local function SetSteamBagde( Client,ClientId,profileurl )
+
+    --normal
     Shared.SendHTTPRequest( StringFormat("%s/gamecards/4920", profileurl), "GET", function(response)
+        local badgename = GetSteamBadgeName( response )        
+        if badgename then badgename = StringFormat("steam_%s",badgename)
+        else return end
+       
+        local setbagde = GiveBadge(ClientId,badgename)
+        if not setbagde then return end  
+            
+        -- send bagde to Clients        
+        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[badgename]), true)
+        
+        -- give default badge (disabled)
+        GiveBadge(ClientId,"disabled")
+        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges["disabled"]), true) 
+    end)
+    
+    --foil
+    Shared.SendHTTPRequest( StringFormat("%s/gamecards/4920?border=1", profileurl), "GET", function(response)
         local badgename = GetSteamBadgeName( response )        
         if badgename then badgename = StringFormat("steam_%s",badgename)
         else return end
@@ -88,7 +107,7 @@ function Plugin:ClientConnect(Client)
     end
     
     local function GetBadges()
-        if Retries[ ClientId ] >= 5 then
+        if Retries[ ClientId ] >= 3 then
            SetBadges()
            return            
         end
@@ -107,7 +126,7 @@ function Plugin:ClientConnect(Client)
                SetSteamBagde(Client,ClientId,Data.steam_url)        
             end
                            
-        end,function() GetBadges() end)
+        end,function() GetBadges() end,10)
     end    
     GetBadges()
 end

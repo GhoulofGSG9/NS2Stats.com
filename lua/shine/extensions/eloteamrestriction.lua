@@ -147,6 +147,8 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 end
 
 function Plugin:Notify( Player, Message, Format, ... )
+   if not Player or not Message then return end
+   
    local a = false
    repeat
        local m = Message
