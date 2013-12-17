@@ -38,7 +38,8 @@ Plugin.DefaultConfig =
     ServerKey = "", -- Serverkey given by ns2stats.com
     Tags = {}, --Tags added to log
     Competitive = false, -- tag rounds as Competitive
-    Lastroundlink = "" --Link of last round
+    Lastroundlink = "", --Link of last round
+    SendDatastoHive = false
 }
 
 Plugin.CheckConfig = true
@@ -123,7 +124,7 @@ end
 
 -- NS2VanillaStats
 function Plugin:EnableNS2Ranking()
-    return Plugin.Config.Statsonline and Shine.GetGamemode() == "ns2"
+    return self.Config.SendDatastoHive and self.Config.Statsonline and Shine.GetGamemode() == "ns2"
 end
 
 -- Events

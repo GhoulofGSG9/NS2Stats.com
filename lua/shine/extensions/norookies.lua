@@ -6,6 +6,9 @@ local Shine = Shine
 
 local Plugin = {}
 
+local Notify = Shared.Message
+local StringFormat = string.format
+
 Plugin.Version = "1.0"
 Plugin.DefaultState = false
 
@@ -74,7 +77,7 @@ function Plugin:Kick(player)
     if steamid<= 0 then return end
     
     self:DestroyTimer("Player_" .. tostring(steamid))
-    self:Notify(player, StringFormat(self.Config.KickMessage,self.Config.Kicktime/60))
+    self:Notify(player, StringFormat(self.Config.KickMessage, self.Config.Kicktime/60))
     Kicktimes[steamid] = self.Config.Kicktime
     self:CreateTimer("Player_" .. tostring(steamid),1, self.Config.Kicktime, function()        
         Kicktimes[steamid] = Kicktimes[steamid]-1
