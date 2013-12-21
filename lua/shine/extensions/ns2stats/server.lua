@@ -38,7 +38,7 @@ Plugin.DefaultConfig =
     ServerKey = "", -- Serverkey given by ns2stats.com
     Tags = {}, --Tags added to log
     Competitive = false, -- tag rounds as Competitive
-    Lastroundlink = "" --Link of last round
+    Lastroundlink = "", --Link of last round
 }
 
 Plugin.CheckConfig = true
@@ -90,8 +90,8 @@ function Plugin:Initialise()
     Plugin:CreateCommands()
     
     if self.Config.ServerKey == "" then
-        Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",Plugin.Config.WebsiteUrl), "GET",
-            function(response) Plugin:acceptKey(response) end)
+        self.Config.Statsonline = false
+        Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",Plugin.Config.WebsiteUrl), "GET", function(response) Plugin:acceptKey(response) end)
     end
     
     --get Serverid
@@ -123,7 +123,7 @@ end
 
 -- NS2VanillaStats
 function Plugin:EnableNS2Ranking()
-    return Plugin.Config.Statsonline and Shine.GetGamemode() == "ns2"
+    return self.Config.Statsonline and Shine.GetGamemode() == "ns2"
 end
 
 -- Events
@@ -1258,7 +1258,7 @@ function Plugin:sendData()
         map = Shared.GetMapName(),
     }
     
-    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function() working = false Plugin:sendData() end, 15)
+    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function() working = false Plugin:sendData() end, 30)
 end
 
 --Analyze the answer of server
@@ -1483,7 +1483,7 @@ end
 
 --Update Weapontalble
 
-function  Plugin:UpdateWeaponTable() 
+function Plugin:UpdateWeaponTable() 
         if not GameHasStarted then return end         
         for _, client in ipairs(Shine.GetAllClients()) do
             Plugin:updateWeaponData(client)                 
@@ -1544,7 +1544,7 @@ function Plugin:acceptKey(response)
                 Notify("NS2Stats: You may use admin command sh_verity to claim this server.")
                 Notify("NS2Stats setup complete.")
                 self:SaveConfig()
-                                
+                self.Config.Statsonline = true                                
             else
                 Notify("NS2Stats: Unable to receive unique key from server, stats wont work yet. ")
                 Notify("NS2Stats: Server restart might help.")
@@ -1579,10 +1579,10 @@ local serverid = ""
 
 function Plugin:GetServerId()    
     if serverid == "" then 
-        Shine.TimedHTTPRequest( StringFormat("%s/api/server?key=%s",self.Config.WebsiteUrl,self.Config.ServerKey),"GET",function(response)
+        Shared.SendHTTPRequest( StringFormat("%s/api/server?key=%s",self.Config.WebsiteUrl,self.Config.ServerKey),"GET",function(response)
             local Data = JsonDecode( response )
             if Data then serverid = Data.id or "" end            
-        end,function() Plugin:GetServerId() end)
+        end)
      end
     return serverid    
 end

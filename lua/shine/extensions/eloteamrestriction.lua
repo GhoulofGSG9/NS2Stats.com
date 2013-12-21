@@ -17,7 +17,7 @@ Plugin.ConfigName = "eloteamrestriction.json"
 
 Plugin.DefaultConfig = {
     WebsiteUrl = "http://ns2stats.com",
-    HTTPRequestTimeout = 10,
+    HTTPMaxWaitTime = 30,
     RestrictionMode = 0,
     TeamStats = true,
     MinElo = 1300, 
@@ -29,7 +29,8 @@ Plugin.DefaultConfig = {
     BlockMessage = "You don't fit to the Elo rating limit on this server. Your ELO: %s Server: Min %s , Max %s",
     KickMessage = "You will be kicked in %s min",
     BlockNewPlayers = false,
-    MinPlayTime = 10,
+    MinPlayTime = 0,
+    MaxPlayTime = 99999,
     KickBlockedPlayers = false,
     Kicktime = 60,
 }
@@ -47,7 +48,6 @@ end
 
 local Kicktimes = {}
 local Ns2statsData = {}
-local Tries = {}
 
 function Plugin:ClientConfirmConnect(Client)
     local player = Client:GetControllingPlayer()
@@ -58,24 +58,28 @@ function Plugin:ClientConnect( Client )
     local steamid = Client:GetUserId()
     if not steamid or steamid <= 0 then return end   
     
-    if not Tries[steamid] then Tries[steamid] = 0    
-    elseif Tries[steamid] >= 5 then return end
+    if Ns2statsData[steamid] or not Shine:IsValidClient(Client) then return
+    elseif not self:TimerExists(StringFormat("Wait_%s",steamid)) then
+        self:CreateTimer(StringFormat("Wait_%s",steamid),self.Config.HTTPMaxWaitTime, 1, function()
+            Ns2statsData[steamid] = 0
+        end)
+    end
     
-    local URL = self.Config.WebsiteUrl .. "/api/player?ns2_id=" .. steamid
+    local URL = StringFormat("%s/api/player?ns2_id=%s",self.Config.WebsiteUrl,steamid)
     
     Shine.TimedHTTPRequest( URL, "GET",function(response)
-        Ns2statsData[steamid] = json.decode(response) and json.decode(response)[1]
+        Ns2statsData[steamid] = json.decode(response) and json.decode(response)[1] or 0
+        self:DestroyTimer(StringFormat("Wait_%s",steamid))
     end,function()
-        Tries[steamid] = Tries[steamid] + 1
         self:ClientConnect( Client )
-    end)
+    end,10)
 end
 
 function Plugin:ClientDisconnect(Client)
     local steamid = Client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    self:DestroyTimer("Player_" .. tostring(steamid))
+    self:DestroyTimer(StringFormat("Kick_%s",steamid))
     Kicktimes[steamid] = nil
 end
 
@@ -85,16 +89,19 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    if ShineForce or NewTeam == 0 or NewTeam > 2 then self:DestroyTimer("Player_" .. tostring(client:GetUserId())) return end
+    if ShineForce or NewTeam == 0 or NewTeam > 2 then self:DestroyTimer(StringFormat("Kick_%s",steamid)) return end
     
-    self:Notify( Player, self.Config.WaitMessage )
+    if self:TimerExists(StringFormat("Wait_%s",steamid)) then
+        self:Notify( Player, self.Config.WaitMessage )
+        return false
+    end    
     
     local playerdata = Ns2statsData[steamid]
             
-    if playerdata then
+    if playerdata and not playerdata == 0 then
         --check if player fits to MinPlayTime
         local playtime = playerdata.time_played or 0
-        if self.Config.BlockNewPlayers and  playtime / 60 < self.Config.MinPlayTime then
+        if playtime / 60 < self.Config.MinPlayTime or playtime / 60 > self.Config.MaxPlayTime then
             self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
             self:Kick(Player)
             return false
@@ -147,6 +154,8 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 end
 
 function Plugin:Notify( Player, Message, Format, ... )
+   if not Player or not Message then return end
+   
    local a = false
    repeat
        local m = Message
@@ -168,11 +177,11 @@ function Plugin:Kick(player)
     local steamid = client:GetUserId() or 0
     if steamid<= 0 then return end
     
-    if self:TimerExists("Player_" .. tostring(steamid)) then return end
+    if self:TimerExists(StringFormat("Kick_%s",steamid)) then return end
     
     self:Notify(player, StringFormat(self.Config.KickMessage,self.Config.Kicktime/60))
     Kicktimes[steamid] = self.Config.Kicktime
-    self:CreateTimer("Player_" .. tostring(steamid),1, self.Config.Kicktime, function()        
+    self:CreateTimer(StringFormat("Kick_%s",steamid),1, self.Config.Kicktime, function()        
         Kicktimes[steamid] = Kicktimes[steamid]-1
         if Kicktimes[steamid] == 10 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end
         if Kicktimes[steamid] <= 5 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end        

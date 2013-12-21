@@ -47,7 +47,16 @@ local function GetSteamBadgeName( Response )
         return FindCharactersBetween( Response, "<div class=\"badge_info_title\">", "</div>" )
 end
 
+--fix for no badge showing up
+local function AvoidEmptyBadge(Client, Badge)
+    if getClientBadgeEnum(Client) == kBadges.None then
+       setClientBadgeEnum(kBadges[Badge]) 
+    end
+end
+
 local function SetSteamBagde( Client,ClientId,profileurl )
+
+    --normal
     Shared.SendHTTPRequest( StringFormat("%s/gamecards/4920", profileurl), "GET", function(response)
         local badgename = GetSteamBadgeName( response )        
         if badgename then badgename = StringFormat("steam_%s",badgename)
@@ -58,6 +67,25 @@ local function SetSteamBagde( Client,ClientId,profileurl )
             
         -- send bagde to Clients        
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[badgename]), true)
+        AvoidEmptyBadge(Client, badgename)
+        
+        -- give default badge (disabled)
+        GiveBadge(ClientId,"disabled")
+        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges["disabled"]), true) 
+    end)
+    
+    --foil
+    Shared.SendHTTPRequest( StringFormat("%s/gamecards/4920?border=1", profileurl), "GET", function(response)
+        local badgename = GetSteamBadgeName( response )        
+        if badgename then badgename = StringFormat("steam_%s",badgename)
+        else return end
+       
+        local setbagde = GiveBadge(ClientId,badgename)
+        if not setbagde then return end  
+            
+        -- send bagde to Clients        
+        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[badgename]), true)
+        AvoidEmptyBadge(Client, badgename)
         
         -- give default badge (disabled)
         GiveBadge(ClientId,"disabled")
@@ -79,8 +107,9 @@ function Plugin:ClientConnect(Client)
 
     local function SetBadges()
         if not self.Config.flags or not GiveBadge(ClientId,nationality) then return end
-        -- send bagde to Clients        
+        -- send bagde to Client
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[nationality]), true)
+        AvoidEmptyBadge(Client, nationality)
             
         -- give default badge (disabled)
         GiveBadge(ClientId,"disabled")
@@ -88,14 +117,17 @@ function Plugin:ClientConnect(Client)
     end
     
     local function GetBadges()
-        if Retries[ ClientId ] >= 5 then
+        if Retries[ ClientId ] >= 3 then
            SetBadges()
            return            
         end
         Retries[ ClientId ] = Retries[ ClientId ] + 1
         
-        HTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)         
-            --get players nationality from ns2stats.com
+        HTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)
+            --player still connected?
+            if not Shine:IsValidClient(Client) then return end
+            
+             --get players nationality from ns2stats.com
             local Data = JsonDecode(response)
             if Data and Data.country and string.len(tostring(Data.country))>= 2 and Data.country ~= "null" then                        
                 nationality  = Data.country                
@@ -107,7 +139,7 @@ function Plugin:ClientConnect(Client)
                SetSteamBagde(Client,ClientId,Data.steam_url)        
             end
                            
-        end,function() GetBadges() end)
+        end,function() GetBadges() end,10)
     end    
     GetBadges()
 end
