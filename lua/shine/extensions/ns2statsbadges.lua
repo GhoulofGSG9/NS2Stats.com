@@ -107,7 +107,7 @@ function Plugin:ClientConnect(Client)
 
     local function SetBadges()
         if not self.Config.flags or not GiveBadge(ClientId,nationality) then return end
-        -- send bagde to Clients        
+        -- send bagde to Client
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[nationality]), true)
         AvoidEmptyBadge(Client, nationality)
             
