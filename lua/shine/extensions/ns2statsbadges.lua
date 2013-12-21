@@ -47,6 +47,13 @@ local function GetSteamBadgeName( Response )
         return FindCharactersBetween( Response, "<div class=\"badge_info_title\">", "</div>" )
 end
 
+--fix for no badge showing up
+local function AvoidEmptyBadge(Client, Badge)
+    if getClientBadgeEnum(Client) == kBadges.None then
+       setClientBadgeEnum(kBadges[Badge]) 
+    end
+end
+
 local function SetSteamBagde( Client,ClientId,profileurl )
 
     --normal
@@ -60,6 +67,7 @@ local function SetSteamBagde( Client,ClientId,profileurl )
             
         -- send bagde to Clients        
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[badgename]), true)
+        AvoidEmptyBadge(Client, badgename)
         
         -- give default badge (disabled)
         GiveBadge(ClientId,"disabled")
@@ -77,6 +85,7 @@ local function SetSteamBagde( Client,ClientId,profileurl )
             
         -- send bagde to Clients        
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[badgename]), true)
+        AvoidEmptyBadge(Client, badgename)
         
         -- give default badge (disabled)
         GiveBadge(ClientId,"disabled")
@@ -100,6 +109,7 @@ function Plugin:ClientConnect(Client)
         if not self.Config.flags or not GiveBadge(ClientId,nationality) then return end
         -- send bagde to Clients        
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[nationality]), true)
+        AvoidEmptyBadge(Client, nationality)
             
         -- give default badge (disabled)
         GiveBadge(ClientId,"disabled")
@@ -113,8 +123,11 @@ function Plugin:ClientConnect(Client)
         end
         Retries[ ClientId ] = Retries[ ClientId ] + 1
         
-        HTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)         
-            --get players nationality from ns2stats.com
+        HTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)
+            --player still connected?
+            if not Shine:IsValidClient(Client) then return end
+            
+             --get players nationality from ns2stats.com
             local Data = JsonDecode(response)
             if Data and Data.country and string.len(tostring(Data.country))>= 2 and Data.country ~= "null" then                        
                 nationality  = Data.country                

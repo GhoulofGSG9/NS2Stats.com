@@ -17,6 +17,8 @@ Plugin.HasConfig = true
 Plugin.ConfigName = "norookies.json"
 Plugin.DefaultConfig =
 {
+    MinPlayer = 0,
+    DisableAfterRoundtime = 0,
     MinPlaytime = 8,
     BlockTeams = true,
     BlockCC = true,
@@ -28,10 +30,24 @@ Plugin.DefaultConfig =
 
 Plugin.CheckConfig = true
 
+local Enabled = true
+
 Shine.Hook.SetupClassHook( "CommandStructure", "LoginPlayer", "CheckComLogin","Halt")
 
+function Plugin:SetGameState( Gamerules, NewState, OldState )
+    if NewState == kGameState.Started and self.Config.DisableAfterRoundtime > 0 then        
+        self:CreateTimer("Disable",self.Config.DisableAfterRoundtime * 60 ,1,function() Enabled = false end)
+    end
+end
+
+function Plugin:EndGame( Gamerules, WinningTeam )
+    self:DestroyTimer("Disable")
+    Enabled = true
+end
+    
 function  Plugin:CheckComLogin( Chair, Player )
-    if not self.Config.BlockCC or not Player or not Player.GetClient then return end
+    local Players = Shared.GetEntitiesWithClassname( "Player" ):GetSize()
+    if not Enabled or not self.Config.BlockCC or not Player or not Player.GetClient or Players < self.Config.MinPlayer then return end
     
     local steamid = Player:GetClient():GetUserId()
     if not steamid or steamid <= 0 then return end
@@ -48,7 +64,9 @@ function Plugin:Notify( Player, Message )
     Shine:NotifyDualColour( Player, 100, 255, 100, "[No Rookies]", 255, 255, 255, Message)
 end
 
-function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
+function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
+    local Players = Shared.GetEntitiesWithClassname( "Player" ):GetSize()
+    if not Enabled or Players < self.Config.MinPlayer then return end
     
     local client = Player:GetClient()
     if ShineForce or not Shine:IsValidClient(client) or Shine:HasAccess(client, "sh_ignorestatus" ) then return end
