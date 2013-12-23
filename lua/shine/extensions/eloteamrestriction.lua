@@ -41,7 +41,8 @@ function Plugin:Initialise()
     local Gamemode = Shine.GetGamemode()
     if Gamemode ~= "ns2" then        
         return false, StringFormat( "The eloteamrestriction plugin does not work with %s.", Gamemode )
-    end    
+    end
+  
     self.Enabled = true
     return true
 end
@@ -91,7 +92,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     
     if ShineForce or NewTeam == 0 or NewTeam > 2 then self:DestroyTimer(StringFormat("Kick_%s",steamid)) return end
     
-    if self:TimerExists(StringFormat("Wait_%s",steamid)) then
+    if self:TimerExists(StringFormat("Wait_%s", steamid)) then
         self:Notify( Player, self.Config.WaitMessage )
         return false
     end    
@@ -140,14 +141,14 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
             self:Notify( Player, StringFormat(self.Config.BlockMessage,kd,self.Config.MinKD,self.Config.MaxKD ))
             self:Kick(Player)
             return false 
-        elseif self.Config.RestrictionMode == 2 and (kd< self.Config.MinKD or kd > self.Config.MaxKD) and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
+        elseif self.Config.RestrictionMode == 2 and (kd < self.Config.MinKD or kd > self.Config.MaxKD) and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
             self:Notify(Player, StringFormat(self.Config.BlockMessage,elo,kd,self.Config.MinElo,self.Config.MaxElo,self.Config.MinKD,self.Config.MaxKD) )
             self:Kick(Player)
             return false
         end
     
     elseif self.Config.BlockNewPlayers then 
-        self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
+        self:Notify( Player, self.Config.BlockMessage:sub(1, self.Config.BlockMessage:find(".", 1, true)))
         self:Kick(Player)
         return false
     end 
@@ -191,10 +192,6 @@ function Plugin:Kick(player)
             Server.DisconnectClient( client )
         end    
     end)    
-end
-
-function Plugin:Cleanup()
-    self.Enabled = false
 end
 
 Shine:RegisterExtension( "eloteamrestriction", Plugin )
