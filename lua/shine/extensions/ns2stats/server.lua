@@ -73,7 +73,7 @@ function Plugin:Initialise()
     end
     
     --get Serverid
-    Plugin:GetServerId()
+    self:GetServerId()
     
     --Timers
     
@@ -84,7 +84,7 @@ function Plugin:Initialise()
     end)
     
     -- every 30 sec send Server Status + Devour   
-    if Plugin.Config.Statusreport then
+    if self.Config.Statusreport then
        self:CreateTimer("SendStatus" , 30, -1, function() self:sendServerStatus(self.currentGameState) end) --Plugin:devourSendStatus()
     end
     
