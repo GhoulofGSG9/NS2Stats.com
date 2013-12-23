@@ -1543,8 +1543,8 @@ function Plugin:acceptKey(response)
                 Notify(StringFormat("NS2Stats: Key %s has been assigned to this server ", self.Config.ServerKey))
                 Notify("NS2Stats: You may use admin command sh_verity to claim this server.")
                 Notify("NS2Stats setup complete.")
-                self:SaveConfig()
-                self.Config.Statsonline = true                                
+                self.Config.Statsonline = true
+                self:SaveConfig()                                              
             else
                 Notify("NS2Stats: Unable to receive unique key from server, stats wont work yet. ")
                 Notify("NS2Stats: Server restart might help.")

@@ -50,7 +50,7 @@ end
 --fix for no badge showing up
 local function AvoidEmptyBadge(Client, Badge)
     if getClientBadgeEnum(Client) == kBadges.None then
-       setClientBadgeEnum(kBadges[Badge]) 
+       setClientBadgeEnum(Client, kBadges[Badge]) 
     end
 end
 
