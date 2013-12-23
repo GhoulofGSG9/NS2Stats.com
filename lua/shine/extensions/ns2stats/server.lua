@@ -111,7 +111,7 @@ end
 --Game reset
 function Plugin:OnGameReset()
     --Resets all Stats
-    self.self.working = true
+    self.working = true
     self.Log = {}
     self.LogPartNumber = 1
     self.LogPartToSend  = 1
