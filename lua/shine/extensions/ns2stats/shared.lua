@@ -18,7 +18,7 @@ function Plugin:SetupDataTable()
 
    self:AddNetworkMessage("StatsAwards", AwardMessage, "Client" )
 
-    local Config = {
+   local Config = {
         WebsiteApiUrl = "string(255)",
         SendMapData = "boolean",
     }

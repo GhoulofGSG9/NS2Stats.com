@@ -59,9 +59,8 @@ Shine.Hook.SetupClassHook("NS2Gamerules","ResetGame","OnGameReset","PassivePre")
 Shine.Hook.SetupClassHook("PlayerRanking","GetTrackServer","EnableNS2Ranking","ActivePre")
 
 function Plugin:Initialise()
-    self.Enabled = true
-    
     --ceate values
+    self.Enabled = true 
     self:OnGameReset()
     
     --create Commands
@@ -123,8 +122,10 @@ function Plugin:OnGameReset()
     self.currentGameState = 0
     self.PlayersInfos = {}
     self.ItemInfos = {}
+    self.BuildingsInfos = {}
     
     --Reset Devour
+    self.Devour = {}
     self.Devour.Frame = 0
     self.Devour.Entities = {}
     self.Devour.MovementInfos = {}
@@ -132,8 +133,8 @@ function Plugin:OnGameReset()
     -- update stats all connected players
     for _, client in ipairs(Shine.GetAllClients()) do
         self:addPlayerToTable(client)
-    end        
-    self.BuildingsInfos = {}
+    end
+    
     self:addLog({action="game_reset"})
 end
 
@@ -226,7 +227,7 @@ function Plugin:OnPlayerScoreChanged(Player,state)
     local Client = Player:GetClient()
     if not Client then return end
     
-    local taulu = Plugin:getPlayerByClient(Client)
+    local taulu = self:getPlayerByClient(Client)
     if not taulu then return end
     
     local lifeform = Player:GetMapName()
@@ -265,7 +266,7 @@ end
 function Plugin:OnBotRenamed(Bot)
     local player = Bot:GetPlayer()
     local name = player:GetName()
-    if not name or not string.find(name, "[BOT]",nil,true) then return end
+    if not name or not string.find(name, "[BOT]", nil, true) then return end
     
     local client = player:GetClient()
     if not client then return end
@@ -546,9 +547,6 @@ function Plugin:PlayerSay( Client, Message )
 end
 
 --Team Events
-
---Pickable Stuff
-local self.ItemInfos = {}
 
 --Item is dropped
 function Plugin:OnPickableItemCreated(item, techId, player) 
@@ -892,7 +890,7 @@ function Plugin:OnBuildingRecycled( structure, ResearchID )
         structure_y = StringFormat("%.4f", structureOrigin.y),
         structure_z = StringFormat("%.4f", structureOrigin.z)
     }
-    structure:addLog(newUpgrade)
+    self:addLog(newUpgrade)
 end
 
 --Structure gets killed
@@ -963,7 +961,7 @@ end
 
 function Plugin:OnEntityDestroy(entity)
     if entity:isa("DropPack") and entity:GetTechId() > 180 then  Plugin:OnPickableItemDestroyed(entity) end
-    if self.BuildingsInfos[entity:GetId()] then if entity.isGhostStructure then self:OnGhostDestroyed(entity) end end
+    if self.BuildingsInfos[entity:GetId()] and entity.isGhostStructure then self:OnGhostDestroyed(entity) end
 end
 
 --add Player death to Log
@@ -1233,7 +1231,6 @@ end
 --add Player to table
 function Plugin:addPlayerToTable(client)
     if not client then return end
-    
     local entry = self:createPlayerTable(client)
     if not entry then return end
     
@@ -1289,7 +1286,6 @@ end
 
 --Update Player Entry
 function Plugin:UpdatePlayerInTable(client,player,taulu)
-
     if taulu.dc then return end
     
     taulu.name = player:GetName()
@@ -1319,7 +1315,6 @@ function Plugin:getTeamCommanderSteamid(teamNumber)
             return taulu.steamId
         end	
     end
-
     return 0
 end
 
@@ -1328,7 +1323,7 @@ function Plugin:getPlayerByName(name)
     for key,taulu in pairs(self.PlayersInfos) do        
         if taulu.name == name then return taulu end	
     end
-    return end
+    return
 end
 
 function Plugin:getPlayerByClient(client)
@@ -1344,6 +1339,7 @@ function Plugin:getPlayerByClient(client)
         local name = player:GetName()
         self:getPlayerByName(name)
     end
+    return
 end
 --Player Table end
 
@@ -1352,7 +1348,8 @@ function Plugin:GetId(Client)
     if Client and Client.GetUserId then     
         if Client:GetIsVirtual() then return Plugin:GetIdbyName(Client:GetControllingPlayer():GetName()) or 0
         else return Client:GetUserId() end
-    end 
+    end
+    return
 end
 
 --For Bots
@@ -1537,8 +1534,9 @@ function Plugin:CreateCommands()
     
     local Debug = self:BindCommand( "sh_statsdebug","statsdebug",function(Client)
         Shine:AdminPrint( Client,"NS2Stats Debug Report:")
-        Shine:AdminPrint( Client,StringFormat("%s Players in PlayerTable.",#self.PlayersInfos))
-        Shine:AdminPrint( Client,StringFormat("Current Logparts %s / %s . Length of ToSend: %s",Plugin.LogPartToSend,Plugin.LogPartNumber ,StringLen(Plugin.Log[Plugin.LogPartToSend])))
+        Shine:AdminPrint( Client, StringFormat("Ns2Stats is %s sending datas to website",Plugin.StatsEnabled and "" or "not"))
+        Shine:AdminPrint( Client, StringFormat("%s Players in PlayerTable.",#Plugin.PlayersInfos))
+        Shine:AdminPrint( Client, StringFormat("Current Logparts %s / %s . Length of ToSend: %s",Plugin.LogPartToSend,Plugin.LogPartNumber ,StringLen(Plugin.Log[Plugin.LogPartToSend])))
     end,true)
 end
 
