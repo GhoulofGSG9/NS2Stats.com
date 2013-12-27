@@ -73,7 +73,7 @@ function Plugin:ClientConnect( Client )
         self:DestroyTimer(StringFormat("Wait_%s",steamid))
     end,function()
         self:ClientConnect( Client )
-    end,10)
+    end, 10)
 end
 
 function Plugin:ClientDisconnect(Client)
@@ -85,7 +85,7 @@ function Plugin:ClientDisconnect(Client)
 end
 
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
-    local client = Server.GetOwner(Player)
+    local client = Player:GetClient()
     
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
@@ -110,34 +110,34 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         
         if self.Config.TeamStats then
             if NewTeam == 1 then
-                elo = playerdata.marine.elo.rating
-                local deaths = tonumber(playerdata.marine.deaths)
+                local elo = playerdata.marine.elo.rating or 1500
+                local deaths = tonumber(playerdata.marine.deaths) or 1
                 if deaths == 0 then death = 1 end
-                local kills = tonumber(playerdata.marine.kills)
-                kd = kills / deaths
+                local kills = tonumber(playerdata.marine.kills) or 1
+                local kd = kills / deaths
             elseif NewTeam == 2 then
-                elo = playerdata.alien.elo.rating
-                local deaths = tonumber(playerdata.alien.deaths)
+                local elo = playerdata.alien.elo.rating or 1500
+                local deaths = tonumber(playerdata.alien.deaths) or 1
                 if deaths == 0 then death = 1 end
-                local kills = tonumber(playerdata.alien.kills)
-                kd = kills / deaths
+                local kills = tonumber(playerdata.alien.kills) or 1
+                local kd = kills / deaths
             end
             if elo == "" or elo == "-" then elo = 1500 end  
             elo = tonumber(elo)                         
         else
-                elo = playerdata.elo.rating
-                local deaths = tonumber(playerdata.deaths)
+                local elo = playerdata.elo.rating or 1500
+                local deaths = tonumber(playerdata.deaths) or 1
                 if deaths == 0 then death = 1 end
-                local kills = tonumber(playerdata.kills)
-                kd = kills / deaths
+                local kills = tonumber(playerdata.kills) or 1
+                local kd = kills / deaths
         end
         
         -- now check if player fits to config
-        if self.Config.RestrictionMode == 0 and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
+        if self.Config.RestrictionMode == 0 and (elo < self.Config.MinElo or elo > self.Config.MaxElo) then
             self:Notify( Player, StringFormat(self.Config.BlockMessage,elo,self.Config.MinElo,self.Config.MaxElo))
             self:Kick(Player)
             return false
-        elseif self.Config.RestrictionMode == 1 and (kd< self.Config.MinKD or kd > self.Config.MaxKD) then
+        elseif self.Config.RestrictionMode == 1 and (kd < self.Config.MinKD or kd > self.Config.MaxKD) then
             self:Notify( Player, StringFormat(self.Config.BlockMessage,kd,self.Config.MinKD,self.Config.MaxKD ))
             self:Kick(Player)
             return false 

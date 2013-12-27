@@ -23,6 +23,8 @@ Plugin.DefaultConfig =
 
 Plugin.CheckConfig = true
 
+Plugin.Retries = {} 
+
 local function FindCharactersBetween( Response, OpeningCharacters, ClosingCharacters )
         local Result
 
@@ -62,7 +64,7 @@ local function SetSteamBagde( Client,ClientId,profileurl )
         if badgename then badgename = StringFormat("steam_%s",badgename)
         else return end
        
-        local setbagde = GiveBadge(ClientId,badgename)
+        local setbagde = GiveBadge(ClientId, badgename)
         if not setbagde then return end  
             
         -- send bagde to Clients        
@@ -93,8 +95,6 @@ local function SetSteamBagde( Client,ClientId,profileurl )
     end)
 end
 
-local Retries = {}
-
 function Plugin:ClientConnect(Client)
     if not GiveBadge or not kBadges or not Client then return end
  
@@ -103,10 +103,10 @@ function Plugin:ClientConnect(Client)
     
     --everyone is a member of the UN
     local nationality  = "UNO"
-    Retries[ ClientId ] = 1
+    self.Retries[ ClientId ] = 1
 
     local function SetBadges()
-        if not self.Config.flags or not GiveBadge(ClientId,nationality) then return end
+        if not self.Config.flags or not GiveBadge(ClientId, nationality) then return end
         -- send bagde to Client
         Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage(-1, kBadges[nationality]), true)
         AvoidEmptyBadge(Client, nationality)
@@ -117,20 +117,21 @@ function Plugin:ClientConnect(Client)
     end
     
     local function GetBadges()
-        if Retries[ ClientId ] >= 3 then
+        if not self.Retries[ ClientId ] then return end
+        if self.Retries[ ClientId ] >= 3 then
            SetBadges()
            return            
         end
-        Retries[ ClientId ] = Retries[ ClientId ] + 1
+        self.Retries[ ClientId ] = self.Retries[ ClientId ] + 1
         
         HTTPRequest( StringFormat("http://ns2stats.com/api/oneplayer?ns2_id=%s", ClientId), "GET", function(response)
-            --player still connected?
-            if not Shine:IsValidClient(Client) then return end
-            
-             --get players nationality from ns2stats.com
+        
+            if not self.Retries[ ClientId ] then return end
+         
+            --get players nationality from ns2stats.com            
             local Data = JsonDecode(response)
             if Data and Data.country and string.len(tostring(Data.country))>= 2 and Data.country ~= "null" then                        
-                nationality  = Data.country                
+                nationality  = Data.country                          
             end
             
             SetBadges()
@@ -142,6 +143,13 @@ function Plugin:ClientConnect(Client)
         end,function() GetBadges() end,10)
     end    
     GetBadges()
+end
+
+function Plugin:ClientDisconnect( Client )
+    local ClientId = Client:GetUserId()
+    if ClientId <= 0 then return end
+    
+    self.Retries[ ClientId ] = nil
 end
 
 Shine:RegisterExtension( "ns2statsbadges", Plugin )
