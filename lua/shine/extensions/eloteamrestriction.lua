@@ -26,8 +26,8 @@ Plugin.DefaultConfig = {
     MaxKD = 3,
     showinform = true,
     InformMessage = "This Server is Elo rating restricted",
-    BlockMessage = "You don't fit to the Elo rating limit on this server. Your ELO: %s Server: Min %s , Max %s",
-    KickMessage = "You will be kicked in %s min",
+    BlockMessage = "You don't fit to the Elo rating limit on this server. Your ELO:  %s Server: Min %s , Max %s",
+    KickMessage = "You will be kicked in %s seconds",
     BlockNewPlayers = false,
     MinPlayTime = 0,
     MaxPlayTime = 99999,
@@ -73,7 +73,7 @@ function Plugin:ClientConnect( Client )
         self:DestroyTimer(StringFormat("Wait_%s",steamid))
     end,function()
         self:ClientConnect( Client )
-    end,10)
+    end, 10)
 end
 
 function Plugin:ClientDisconnect(Client)
@@ -85,7 +85,7 @@ function Plugin:ClientDisconnect(Client)
 end
 
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
-    local client = Server.GetOwner(Player)
+    local client = Player:GetClient()
     
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
@@ -95,63 +95,67 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     if self:TimerExists(StringFormat("Wait_%s", steamid)) then
         self:Notify( Player, self.Config.WaitMessage )
         return false
-    end    
+    end
     
     local playerdata = Ns2statsData[steamid]
-            
-    if playerdata and not playerdata == 0 then
-        --check if player fits to MinPlayTime
-        local playtime = playerdata.time_played or 0
-        if playtime / 60 < self.Config.MinPlayTime or playtime / 60 > self.Config.MaxPlayTime then
-            self:Notify( Player, self.Config.BlockMessage:sub(1,self.Config.BlockMessage:find(".",1,true)))
-            self:Kick(Player)
-            return false
-        end
-        
-        if self.Config.TeamStats then
-            if NewTeam == 1 then
-                elo = playerdata.marine.elo.rating
-                local deaths = tonumber(playerdata.marine.deaths)
-                if deaths == 0 then death = 1 end
-                local kills = tonumber(playerdata.marine.kills)
-                kd = kills / deaths
-            elseif NewTeam == 2 then
-                elo = playerdata.alien.elo.rating
-                local deaths = tonumber(playerdata.alien.deaths)
-                if deaths == 0 then death = 1 end
-                local kills = tonumber(playerdata.alien.kills)
-                kd = kills / deaths
-            end
-            if elo == "" or elo == "-" then elo = 1500 end  
-            elo = tonumber(elo)                         
-        else
-                elo = playerdata.elo.rating
-                local deaths = tonumber(playerdata.deaths)
-                if deaths == 0 then death = 1 end
-                local kills = tonumber(playerdata.kills)
-                kd = kills / deaths
-        end
-        
-        -- now check if player fits to config
-        if self.Config.RestrictionMode == 0 and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
-            self:Notify( Player, StringFormat(self.Config.BlockMessage,elo,self.Config.MinElo,self.Config.MaxElo))
-            self:Kick(Player)
-            return false
-        elseif self.Config.RestrictionMode == 1 and (kd< self.Config.MinKD or kd > self.Config.MaxKD) then
-            self:Notify( Player, StringFormat(self.Config.BlockMessage,kd,self.Config.MinKD,self.Config.MaxKD ))
-            self:Kick(Player)
-            return false 
-        elseif self.Config.RestrictionMode == 2 and (kd < self.Config.MinKD or kd > self.Config.MaxKD) and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
-            self:Notify(Player, StringFormat(self.Config.BlockMessage,elo,kd,self.Config.MinElo,self.Config.MaxElo,self.Config.MinKD,self.Config.MaxKD) )
-            self:Kick(Player)
-            return false
-        end
     
-    elseif self.Config.BlockNewPlayers then 
-        self:Notify( Player, self.Config.BlockMessage:sub(1, self.Config.BlockMessage:find(".", 1, true)))
+    --check if datas exist
+    if not playerdata or playerdata == 0 then
+        if self.Config.BlockNewPlayers then
+            self:Notify( Player, self.Config.BlockMessage:sub(1, self.Config.BlockMessage:find(".", 1, true)))
+            self:Kick(Player)
+            return false
+        else
+            return
+        end 
+    end
+          
+    --check if player fits to MinPlayTime
+    local playtime = tonumber(playerdata.time_played) or 0
+    if playtime / 60 < self.Config.MinPlayTime or playtime / 60 > self.Config.MaxPlayTime then
+        self:Notify( Player, self.Config.BlockMessage:sub(1, self.Config.BlockMessage:find(".",1,true)))
         self:Kick(Player)
         return false
-    end 
+    end
+    
+    local marineelo = tonumber(playerdata.marine.elo.rating) or 1500
+    local alienelo = tonumber(playerdata.alien.elo.rating) or 1500
+    local elo = (marineelo + alienelo) * 0.5
+    local deaths = tonumber(playerdata.deaths) or 1
+    if deaths <= 0 then death = 1 end
+    local kills = tonumber(playerdata.kills) or 1
+    local kd = kills / deaths
+    
+    if self.Config.TeamStats then
+        if NewTeam == 1 then
+            elo = marineelo
+            deaths = tonumber(playerdata.marine.deaths) or 1
+            if deaths <= 0 then death = 1 end
+            kills = tonumber(playerdata.marine.kills) or 1
+            kd = kills / deaths
+        else
+            elo = alienelo
+            deaths = tonumber(playerdata.alien.deaths) or 1
+            if deaths <= 0 then death = 1 end
+            kills = tonumber(playerdata.alien.kills) or 1
+            kd = kills / deaths
+        end
+    end
+    
+    -- now check if player fits to config
+    if self.Config.RestrictionMode == 0 and (elo < self.Config.MinElo or elo > self.Config.MaxElo) then
+        self:Notify( Player, StringFormat(self.Config.BlockMessage,elo,self.Config.MinElo,self.Config.MaxElo))
+        self:Kick(Player)
+        return false
+    elseif self.Config.RestrictionMode == 1 and (kd < self.Config.MinKD or kd > self.Config.MaxKD) then
+        self:Notify( Player, StringFormat(self.Config.BlockMessage,kd,self.Config.MinKD,self.Config.MaxKD ))
+        self:Kick(Player)
+        return false 
+    elseif self.Config.RestrictionMode == 2 and (kd < self.Config.MinKD or kd > self.Config.MaxKD) and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
+        self:Notify(Player, StringFormat(self.Config.BlockMessage,elo,kd,self.Config.MinElo,self.Config.MaxElo,self.Config.MinKD,self.Config.MaxKD) )
+        self:Kick(Player)
+        return false
+    end
 end
 
 function Plugin:Notify( Player, Message, Format, ... )

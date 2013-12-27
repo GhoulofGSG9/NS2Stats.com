@@ -3,15 +3,12 @@ Shine Killstreak Plugin - Server
 ]]
 
 local Shine = Shine
-local GetOwner = Server.GetOwner
-
 local StringFormat = string.format
 
 local Plugin = Plugin
 
 Plugin.HasConfig = true
 Plugin.ConfigName = "Killstreak.json"
-
 Plugin.DefaultConfig =
 {
     SendSounds = false,
@@ -21,14 +18,12 @@ Plugin.DefaultConfig =
     StoppedValue = 5,
     StoppedMsg = "%s has been stopped by %s " -- first victim then killer
 }
-
 Plugin.CheckConfig = true
 
-local Killstreaks = {}
+Plugin.Killstreaks = {}
 
 function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, Dir )
-    if not Attacker or not Victim then return end
-    if not Victim:isa("Player") then return end
+    if not Attacker or not Victim or not Victim:isa("Player") then return end
     
     if not Attacker:isa("Player") then 
          local RealKiller = Attacker.GetOwner and Attacker:GetOwner() or nil
@@ -37,10 +32,10 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, D
          else return end
     end
     
-    local VictimClient = GetOwner( Victim )
+    local VictimClient = Victim:GetClient()
     if not VictimClient then return end
       
-    if Killstreaks[VictimClient] and Killstreaks[VictimClient] >= self.Config.StoppedValue then
+    if self.Killstreaks[VictimClient] and self.Killstreaks[VictimClient] >= self.Config.StoppedValue then
         local colour = {255,0,0}
         local team = Victim:GetTeamNumber()
         
@@ -49,33 +44,33 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, D
         
         Shine:NotifyColour(nil,colour[1],colour[2],colour[3],StringFormat(self.Config.StoppedMsg,Victim:GetName(),Attacker:GetName()))
     end
-    Killstreaks[VictimClient] = nil
+    self.Killstreaks[VictimClient] = nil
     
-    local AttackerClient = GetOwner( Attacker )
+    local AttackerClient = Attacker:GetClient()
     if not AttackerClient then return end
     
-    if not Killstreaks[AttackerClient] then Killstreaks[AttackerClient] = 1
-    else Killstreaks[AttackerClient] = Killstreaks[AttackerClient] + 1 end    
+    if not self.Killstreaks[AttackerClient] then self.Killstreaks[AttackerClient] = 1
+    else self.Killstreaks[AttackerClient] = self.Killstreaks[AttackerClient] + 1 end    
 
-    Plugin:CheckForMultiKills(Attacker:GetName(),Killstreaks[AttackerClient],Attacker:GetTeamNumber())      
+    Plugin:CheckForMultiKills(Attacker:GetName(), self.Killstreaks[AttackerClient], Attacker:GetTeamNumber())      
 end
 
 Shine.Hook.SetupGlobalHook("RemoveAllObstacles","OnGameReset","PassivePost")
 
 --Gamereset
 function Plugin:OnGameReset()
-    Killstreaks = {}
+    self.Killstreaks = {}
 end
 
 function Plugin:ClientDisconnect( Client )
-    Killstreaks[Client] = nil
+    self.Killstreaks[Client] = nil
 end
 
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
-    local Client = GetOwner(Player)
+    local Client = Player:GetClient()
     if not Client then return end
     
-    Killstreaks[Client] = nil
+    self.Killstreaks[Client] = nil
 end
 
 local Streaks = {

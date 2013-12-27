@@ -59,15 +59,19 @@ Shine.Hook.SetupClassHook("NS2Gamerules","ResetGame","OnGameReset","PassivePre")
 Shine.Hook.SetupClassHook("PlayerRanking","GetTrackServer","EnableNS2Ranking","ActivePre")
 
 function Plugin:Initialise()
+    self.Enabled = true
+    
     --ceate values
-    self.Enabled = true 
+    self.StatsEnabled = true
+    self.SuccessfulSends = 0
+    self.ResendCount = 0
     self:OnGameReset()
     
     --create Commands
     self:CreateCommands()
     
     if self.Config.ServerKey == "" then
-        self.Enabled = false
+        self.StatsEnabled = false
         Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",self.Config.WebsiteUrl), "GET", function(response) self:acceptKey(response) end)
     end
     
@@ -100,7 +104,7 @@ end
 
 -- NS2VanillaStats
 function Plugin:EnableNS2Ranking()
-    return self.Enabled and Shine.GetGamemode() == "ns2"
+    return self.StatsEnabled and Shine.GetGamemode() == "ns2"
 end
 
 -- Events
@@ -142,12 +146,12 @@ end
 function Plugin:SetGameState( Gamerules, NewState, OldState )
     self.currentGameState = NewState
     if NewState == kGameState.Started then
-        self.working= false             
+        self.working = false             
         self.roundStarted = true
         self.GameStartTime = Shared.GetTime()
         self:addLog({action = "game_start"})
        
-        --send Playerlist            
+        --add Playerlist to Log           
         self:addPlayersToLog(0)
     end
 end
@@ -177,7 +181,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
         
         self.RoundFinished = 1
         
-        if self.Enabled then Plugin:sendData() end
+        if self.StatsEnabled then self:sendData() end
         self.roundStarted = false
 end
 
@@ -1098,8 +1102,8 @@ function Plugin:addLog(tbl)
     if not Plugin.Log then Plugin.Log = {} end
     if not Plugin.Log[Plugin.LogPartNumber] then Plugin.Log[Plugin.LogPartNumber] = "" end
    
-    if Shared.GetCheatsEnabled() and self.Enabled then 
-        self.Enabled = false
+    if Shared.GetCheatsEnabled() and self.StatsEnabled then 
+        self.StatsEnabled = false
         Shine:Notify( nil, "", "NS2Stats", "Cheats were enabled! NS2Stats will disable itself now!")
     end
     
@@ -1108,9 +1112,9 @@ function Plugin:addLog(tbl)
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
     
     --avoid that log gets too long
-    if StringLen(Plugin.Log[Plugin.LogPartNumber]) > 250000 then
-        Plugin.LogPartNumber = Plugin.LogPartNumber + 1    
-        if self.Enabled then Plugin:sendData() end        
+    if StringLen(self.Log[self.LogPartNumber]) > 250000 then
+        self.LogPartNumber = self.LogPartNumber + 1    
+        if self.StatsEnabled then self:sendData() end        
     end
 end
 
@@ -1152,8 +1156,8 @@ function Plugin:AddServerInfos(params)
     params.statsVersion = Plugin.Version
     params.serverName = Server.GetName()
     params.gamemode = Shine.GetGamemode()
-    params.successfulSends = RBPSsuccessfulSends
-    params.resendCount = RBPSresendCount
+    params.successfulSends = self.SuccessfulSends 
+    params.resendCount = self.ResendCount
     params.mods = mods
     params.awards = self.Awards
     params.tags = self.Config.Tags    
@@ -1183,9 +1187,8 @@ function Plugin:sendData()
         part_number = self.LogPartToSend ,
         last_part = self.RoundFinished,
         map = Shared.GetMapName(),
-    }
-    
-    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function() self.working = false Plugin:sendData() end, 30)
+    }    
+    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function() Plugin.working = false Plugin.ResendCount = Plugin.ResendCount + 1 Plugin:sendData() end, 30)
 end
 
 --Analyze the answer of server
@@ -1215,7 +1218,7 @@ function Plugin:onHTTPResponseFromSend(response)
     if StringLen(response)>1 and StringFind(response,"LOG_RECEIVED_OK",nil, true) then
          self.Log[Plugin.LogPartToSend ] = nil
          self.LogPartToSend = Plugin.LogPartToSend  + 1
-         RBPSsuccessfulSends = RBPSsuccessfulSends + 1
+         self.SuccessfulSends  = self.SuccessfulSends  + 1
          self.working = false
          Plugin:sendData()
     else --we couldn't reach the NS2Stats Servers
@@ -1359,9 +1362,9 @@ function Plugin:GetIdbyName(Name)
     if not Name then return end
     
     --disable Onlinestats
-    if self.Enabled then
+    if self.StatsEnabled then
         Notify( "NS2Stats won't store game with bots. Disabling online stats now!")
-        self.Enabled = false 
+        self.StatsEnabled = false 
     end
     
     if fakeids[Name] then return fakeids[Name] end
@@ -1465,7 +1468,7 @@ function Plugin:acceptKey(response)
                 Notify(StringFormat("NS2Stats: Key %s has been assigned to this server ", self.Config.ServerKey))
                 Notify("NS2Stats: You may use admin command sh_verity to claim this server.")
                 Notify("NS2Stats setup complete.")
-                self.Enabled = true
+                self.StatsEnabled = true
                 self:SaveConfig()                                              
             else
                 Notify("NS2Stats: Unable to receive unique key from server, stats wont work yet. ")
@@ -1534,7 +1537,8 @@ function Plugin:CreateCommands()
     
     local Debug = self:BindCommand( "sh_statsdebug","statsdebug",function(Client)
         Shine:AdminPrint( Client,"NS2Stats Debug Report:")
-        Shine:AdminPrint( Client, StringFormat("Ns2Stats is %s sending datas to website",Plugin.StatsEnabled and "" or "not"))
+        Shine:AdminPrint( Client, StringFormat("Ns2Stats is%s sending datas to website",Plugin.StatsEnabled and " " or " not"))
+        Shine:AdminPrint( Client, StringFormat("Status: %s",Plugin.working and "working" or "not working"))
         Shine:AdminPrint( Client, StringFormat("%s Players in PlayerTable.",#Plugin.PlayersInfos))
         Shine:AdminPrint( Client, StringFormat("Current Logparts %s / %s . Length of ToSend: %s",Plugin.LogPartToSend,Plugin.LogPartNumber ,StringLen(Plugin.Log[Plugin.LogPartToSend])))
     end,true)
