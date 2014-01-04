@@ -23,6 +23,7 @@ local TeamScores = {
 }
 
 Shine.Hook.SetupClassHook("ScoringMixin", "AddScore", "OnScore", "PassivePost")
+
 function Plugin:OnScore(player, points, res, wasKill)
     if not points then return end
     

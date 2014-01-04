@@ -56,6 +56,8 @@ function Plugin:ClientConfirmConnect(Client)
 end
 
 function Plugin:ClientConnect( Client )
+    if not Shine:IsValidClient( Client ) then return end
+    
     local steamid = Client:GetUserId()
     if not steamid or steamid <= 0 then return end   
     
@@ -72,7 +74,7 @@ function Plugin:ClientConnect( Client )
         Ns2statsData[steamid] = json.decode(response) and json.decode(response)[1] or 0
         self:DestroyTimer(StringFormat("Wait_%s",steamid))
     end,function()
-        self:ClientConnect( Client )
+        self:ClientConnect( Client ) 
     end, 10)
 end
 
