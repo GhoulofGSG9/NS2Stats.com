@@ -31,7 +31,7 @@ Plugin.DefaultConfig =
 }
 Plugin.CheckConfig = true
 
-Shine.Hook.SetupClassHook( "CommandStructure", "LoginPlayer", "CheckComLogin","Halt")
+Shine.Hook.SetupClassHook( "CommandStructure", "GetIsPlayerValidForCommander", "CheckComLogin","ActivePre")
 
 local Enabled = true
 local HiveData = {}
@@ -70,7 +70,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
     Enabled = true
 end
     
-function  Plugin:CheckComLogin( Chair, Player )
+function Plugin:CheckComLogin( Chair, Player )
     if not Enabled or not self.Config.BlockCC or not Player or not Player.GetClient or #Shine.GetAllPlayers() < self.Config.MinPlayer then return end
     
     local steamid = Player:GetClient():GetUserId()
