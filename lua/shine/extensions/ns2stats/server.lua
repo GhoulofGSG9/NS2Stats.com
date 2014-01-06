@@ -88,7 +88,7 @@ function Plugin:Initialise()
     
     -- every 30 sec send Server Status + Devour   
     if self.Config.Statusreport then
-       self:CreateTimer("SendStatus" , 30, -1, function() self:sendServerStatus(self.currentGameState) end) --Plugin:devourSendStatus()
+       self:CreateTimer("SendStatus" , 60, -1, function() self:sendServerStatus(self.currentGameState) end) --Plugin:devourSendStatus()
     end
     
     -- every 0.25 sec create Devour datas

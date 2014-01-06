@@ -17,7 +17,7 @@ Plugin.ConfigName = "eloteamrestriction.json"
 
 Plugin.DefaultConfig = {
     WebsiteUrl = "http://ns2stats.com",
-    HTTPMaxWaitTime = 30,
+    HTTPMaxWaitTime = 20,
     RestrictionMode = 0,
     TeamStats = true,
     MinElo = 1300, 
@@ -75,7 +75,7 @@ function Plugin:ClientConnect( Client )
         self:DestroyTimer(StringFormat("Wait_%s",steamid))
     end,function()
         self:ClientConnect( Client ) 
-    end, 10)
+    end)
 end
 
 function Plugin:ClientDisconnect(Client)

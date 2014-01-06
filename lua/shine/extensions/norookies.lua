@@ -76,9 +76,9 @@ function Plugin:CheckComLogin( Chair, Player )
     local steamid = Player:GetClient():GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    if self:TimerExists(StringFormat("Wait_%s",steamid))then self:Notify(Player, self.Config.WaitMessage) end
+    if self:TimerExists(StringFormat("Wait_%s",steamid))then self:Notify(Player, self.Config.WaitMessage) return false end
     local pdata = HiveData[steamid]
-    if pdata == 0 then return end --hive time
+    if pdata == 0 then return end --hive timeout
         
     local playtime = tonumber(pdata.playTime) or 0
    
@@ -102,9 +102,9 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    if self:TimerExists(StringFormat("Wait_%s",steamid))then self:Notify(Player, self.Config.WaitMessage) end
+    if self:TimerExists(StringFormat("Wait_%s",steamid))then self:Notify(Player, self.Config.WaitMessage) return false end
     local pdata = HiveData[steamid]
-    if pdata == 0 then return end --hive time
+    if pdata == 0 then return end --hive timeout
         
     local playtime = tonumber(pdata.playTime) or 0 
     if self.Config.BlockTeams and playtime < self.Config.MinPlaytime * 3600 then
