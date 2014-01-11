@@ -27,6 +27,7 @@ Plugin.DefaultConfig =
 {
     SendMapData = false, --Send Mapdata, only set true if minimap is missing at website or is incorrect
     Statusreport = true, -- send Status to NS2Stats every min
+    EnableHiveStats = true, -- should we enable UWE Hive Stats
     WebsiteUrl = "http://ns2stats.com", --this is the ns2stats url
     Awards = true, --show award
     ShowNumAwards = 4, --how many awards should be shown at the end of the game?
@@ -104,7 +105,7 @@ end
 
 -- NS2VanillaStats
 function Plugin:EnableNS2Ranking()
-    return self.StatsEnabled and Shine.GetGamemode() == "ns2"
+    return self.Config.EnableHiveStats and self.StatsEnabled and Shine.GetGamemode() == "ns2"
 end
 
 -- Events
@@ -1176,7 +1177,7 @@ end
 
 --send Log to NS2Stats Server
 function Plugin:sendData()
-    if self.LogPartNumber <= self.LogPartToSend and self.RoundFinished ~= 1 or self.working then return end
+    if not self.StatsEnabled or self.working or self.LogPartNumber <= self.LogPartToSend and self.RoundFinished ~= 1 then return end
     
     self.working = true
     
@@ -1188,7 +1189,16 @@ function Plugin:sendData()
         last_part = self.RoundFinished,
         map = Shared.GetMapName(),
     }    
-    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function() Plugin.working = false Plugin.ResendCount = Plugin.ResendCount + 1 Plugin:sendData() end, 30)
+    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function()
+        Plugin.working = false 
+        Plugin.ResendCount = Plugin.ResendCount + 1 
+        if Plugin.ResendCount > 10 then 
+            self.StatsEnabled = false
+            Notify("Ns2Stats.com seems to be not avaible at the moment. Disabling stats sending")
+            return
+        end
+        Plugin:sendData()
+    end, 30)
 end
 
 --Analyze the answer of server

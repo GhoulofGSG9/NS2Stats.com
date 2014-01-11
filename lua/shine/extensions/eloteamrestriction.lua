@@ -71,7 +71,7 @@ function Plugin:ClientConnect( Client )
     local URL = StringFormat("%s/api/player?ns2_id=%s",self.Config.WebsiteUrl,steamid)
     
     Shine.TimedHTTPRequest( URL, "GET",function(response)
-        Ns2statsData[steamid] = json.decode(response) and json.decode(response)[1] or 0
+        Ns2statsData[steamid] = json.decode(response) and json.decode(response)[1] or 1
         self:DestroyTimer(StringFormat("Wait_%s",steamid))
     end,function()
         self:ClientConnect( Client ) 
@@ -101,8 +101,11 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     
     local playerdata = Ns2statsData[steamid]
     
+    --check ns2stats timeouts
+    if playerdata == 0 then return end
+    
     --check if datas exist
-    if not playerdata or playerdata == 0 then
+    if not playerdata or playerdata == 1 then
         if self.Config.BlockNewPlayers then
             self:Notify( Player, self.Config.BlockMessage:sub(1, self.Config.BlockMessage:find(".", 1, true)))
             self:Kick(Player)
