@@ -20,7 +20,6 @@ Plugin.DefaultConfig =
     flags = true,
     steambadges = false,
 }
-
 Plugin.CheckConfig = true
 
 Plugin.Retries = {} 
@@ -57,7 +56,6 @@ local function AvoidEmptyBadge(Client, Badge)
 end
 
 local function SetSteamBagde( Client,ClientId,profileurl )
-
     --normal
     Shared.SendHTTPRequest( StringFormat("%s/gamecards/4920", profileurl), "GET", function(response)
         local badgename = GetSteamBadgeName( response )        
@@ -118,7 +116,7 @@ function Plugin:ClientConnect(Client)
     
     local function GetBadges()
         if not self.Retries[ ClientId ] then return end
-        if self.Retries[ ClientId ] >= 3 then
+        if self.Retries[ ClientId ] > 3 then
            SetBadges()
            return            
         end
@@ -140,7 +138,7 @@ function Plugin:ClientConnect(Client)
                SetSteamBagde(Client,ClientId,Data.steam_url)        
             end
                            
-        end,function() GetBadges() end,10)
+        end,function() GetBadges() end)
     end    
     GetBadges()
 end
