@@ -1488,8 +1488,8 @@ function Plugin:acceptKey(response)
         end
 end
 
-function Plugin:GetServerId()    
-    if not self.serverid then
+function Plugin:GetServerId()  
+    if not self.serverid and self.Config.ServerKey ~= "" then
         self.serverid = ""
         Shared.SendHTTPRequest(StringFormat("%s/api/server?key=%s", self.Config.WebsiteUrl,self.Config.ServerKey), "GET", function(response)
             local Data = JsonDecode( response )
@@ -1502,7 +1502,7 @@ function Plugin:GetServerId()
             end         
         end)
     end
-    return self.serverid    
+    return self.serverid  
 end
 --Other Ns2Stat functions end
 
