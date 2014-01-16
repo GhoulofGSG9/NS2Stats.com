@@ -1504,6 +1504,12 @@ function Plugin:GetServerId()
     end
     return self.serverid  
 end
+
+function Plugin:OnSuspend()
+    self.StatsEnabled = false
+    Shine:Notify( nil, "", "NS2Stats", "It's not possible to suspend NS2Stats, instead it will disable itself now!")
+end
+
 --Other Ns2Stat functions end
 
 --Commands
