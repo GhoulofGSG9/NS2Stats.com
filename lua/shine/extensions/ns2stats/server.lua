@@ -74,10 +74,10 @@ function Plugin:Initialise()
     if self.Config.ServerKey == "" then
         self.StatsEnabled = false
         Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",self.Config.WebsiteUrl), "GET", function(response) self:acceptKey(response) end)
-    end
-    
-    --get Serverid
-    self:GetServerId()
+    else    
+        --get Serverid
+        self:GetServerId()
+    end    
     
     --Timers
     
