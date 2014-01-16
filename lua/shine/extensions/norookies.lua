@@ -50,7 +50,14 @@ function Plugin:ClientConnect( Client )
     
     if not self:TimerExists(StringFormat("Wait_%s", steamid)) then
         self:CreateTimer(StringFormat("Wait_%s", steamid), self.Config.HTTPMaxWaitTime, 1, function()
-            PlayTime[steamid] = -1
+            if PlayTime[steamid] then return 
+            elseif Ns2StatsData[steamid] and Ns2StatsData[steamid].time_played then
+                PlayTime[steamid] = tonumber(Ns2StatsData[steamid].time_played) or 0
+            elseif HiveData[steamid] and HiveData[steamid].playTime then
+                PlayTime[steamid] = tonumber(HiveData[steamid].playTime) or 0
+            else    
+                PlayTime[steamid] = -1
+            end    
         end)
     end
     
@@ -62,7 +69,7 @@ function Plugin:ClientConnect( Client )
                 if HiveData[steamid] == 0 then
                     if Ns2StatsData[steamid] == 0 then
                         PlayTime[steamid] = -1
-                    else
+                    else 
                         PlayTime[steamid] = Ns2StatsData[steamid].time_played and tonumber(Ns2StatsData[steamid].time_played) or 0    
                     end                    
                 else

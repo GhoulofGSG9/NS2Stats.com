@@ -1493,7 +1493,13 @@ function Plugin:GetServerId()
         self.serverid = ""
         Shared.SendHTTPRequest(StringFormat("%s/api/server?key=%s", self.Config.WebsiteUrl,self.Config.ServerKey), "GET", function(response)
             local Data = JsonDecode( response )
-            if Data then self.serverid = Data.id or "" end            
+            if not Data then return end
+            if Data.error == "Invalid server key. Server not found." then
+                self.StatsEnabled = false
+                Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",self.Config.WebsiteUrl), "GET", function(response) self:acceptKey(response) end)
+            else
+                self.serverid = Data.id or "" 
+            end         
         end)
     end
     return self.serverid    

@@ -56,7 +56,7 @@ function Plugin:ClientConfirmConnect(Client)
 end
 
 function Plugin:ClientConnect( Client )
-    if not Shine:IsValidClient( Client ) then return end
+    if not Shine:IsValidClient( Client ) or Shine:HasAccess(Client, "sh_ignoreelo" ) then return end
     
     local steamid = Client:GetUserId()
     if not steamid or steamid <= 0 then return end   
@@ -88,6 +88,8 @@ end
 
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
     local client = Player:GetClient()
+    
+    if not Shine:IsValidClient( client ) or Shine:HasAccess(client, "sh_ignoreelo" ) then return end
     
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
