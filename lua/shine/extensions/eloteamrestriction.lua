@@ -19,6 +19,7 @@ Plugin.DefaultConfig = {
     WebsiteUrl = "http://ns2stats.com",
     HTTPMaxWaitTime = 20,
     RestrictionMode = 0,
+    AllowSpectating = true,
     TeamStats = true,
     MinElo = 1300, 
     MaxElo = 2000,
@@ -89,12 +90,12 @@ end
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
     local client = Player:GetClient()
     
-    if not Shine:IsValidClient( client ) or Shine:HasAccess(client, "sh_ignoreelo" ) then return end
+    if ShineForce or not Shine:IsValidClient( client ) or Shine:HasAccess(client, "sh_ignoreelo" ) then return end
     
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    if ShineForce or NewTeam == 0 or NewTeam > 2 then self:DestroyTimer(StringFormat("Kick_%s",steamid)) return end
+    if self.Config.AllowSpectating and NewTeam ~= 1 and NewTeam ~= 2 then self:DestroyTimer(StringFormat("Kick_%s",steamid)) return end
     
     if self:TimerExists(StringFormat("Wait_%s", steamid)) then
         self:Notify( Player, self.Config.WaitMessage )

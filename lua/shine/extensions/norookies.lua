@@ -22,14 +22,17 @@ Plugin.DefaultConfig =
     MinPlayer = 0,
     DisableAfterRoundtime = 0,
     MinPlaytime = 8,
+    InformAtConnect = true,
+    InformMessage = "This server is not rookie friendly",
     BlockTeams = true,
     BlockCC = true,
+    AllowSpectating = false,
     BlockMessage = "This server is not rookie friendly",
     Kick = true,
     Kicktime = 60,
     KickMessage = "You will be kicked in %s min",
     HTTPMaxWaitTime = 20,
-    WaitMessage2 = "Please wait while your player data is retrieved",
+    WaitMessage = "Please wait while your player data is retrieved",
 }
 Plugin.CheckConfig = true
 
@@ -46,6 +49,8 @@ function Plugin:ClientConnect( Client )
     local steamid = Client:GetUserId()
     if not steamid or steamid <= 0 then return end   
     
+    local Player = Client:GetControllingPlayer()
+    
     if PlayTime[steamid] then return end
     
     if not self:TimerExists(StringFormat("Wait_%s", steamid)) then
@@ -57,7 +62,11 @@ function Plugin:ClientConnect( Client )
                 PlayTime[steamid] = HiveData[steamid].playTime and tonumber(HiveData[steamid].playTime) or 0
             else    
                 PlayTime[steamid] = -1
-            end    
+            end
+            local playtime = PlayTime[steamid]
+            if self.Config.InformAtConnect and playtime >= 0 and playtime < self.Config.MinPlaytime * 3600 then
+               self:Notify(Player, self.Config.InformMessage) 
+            end  
         end)
     end
     
@@ -76,6 +85,10 @@ function Plugin:ClientConnect( Client )
                     local splaytime = Ns2StatsData[steamid].time_played and tonumber(Ns2StatsData[steamid].time_played) or 0
                     local hplaytime = HiveData[steamid].playTime and tonumber(HiveData[steamid].playTime) or 0
                     PlayTime[steamid] = splaytime > hplaytime and splaytime or hplaytime
+                end
+                local playtime = PlayTime[steamid]
+                if self.Config.InformAtConnect and playtime >= 0 and playtime < self.Config.MinPlaytime * 3600 then
+                   self:Notify(Player, self.Config.InformMessage) 
                 end
                 self:DestroyTimer(StringFormat("Wait_%s", steamid))
             end
@@ -97,6 +110,10 @@ function Plugin:ClientConnect( Client )
                     local splaytime = Ns2StatsData[steamid].time_played and tonumber(Ns2StatsData[steamid].time_played) or 0
                     local hplaytime = HiveData[steamid].playTime and tonumber(HiveData[steamid].playTime) or 0
                     PlayTime[steamid] = splaytime > hplaytime and splaytime or hplaytime
+                end
+                local playtime = PlayTime[steamid]
+                if self.Config.InformAtConnect and playtime >= 0 and playtime < self.Config.MinPlaytime * 3600 then
+                   self:Notify(Player, self.Config.InformMessage) 
                 end
                 self:DestroyTimer(StringFormat("Wait_%s", steamid))
             end
@@ -126,7 +143,7 @@ function Plugin:CheckComLogin( Chair, Player )
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    if self:TimerExists(StringFormat("Wait_%s", steamid)) then self:Notify(Player, self.Config.WaitMessage2) return false end
+    if self:TimerExists(StringFormat("Wait_%s", steamid)) then self:Notify(Player, self.Config.WaitMessage) return false end
         
     local playtime = PlayTime[steamid]
     if playtime >= 0 and playtime < self.Config.MinPlaytime * 3600 then
@@ -141,7 +158,9 @@ function Plugin:Notify( Player, Message )
 end
 
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
-    if not Enabled or not self.Config.BlockTeams or #Shine.GetAllPlayers() < self.Config.MinPlayer then return end
+    if not Enabled or ShineForce or not self.Config.BlockTeams or #Shine.GetAllPlayers() < self.Config.MinPlayer then return end
+    
+    if self.Config.AllowSpectating and NewTeam ~= 1 and NewTeam ~= 2 then return end
     
     local client = Player:GetClient()
     if not Shine:IsValidClient(client) or Shine:HasAccess(client, "sh_ignorestatus" ) then return end
@@ -149,7 +168,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    if self:TimerExists(StringFormat("Wait_%s",steamid)) then self:Notify(Player, self.Config.WaitMessage2) return false end
+    if self:TimerExists(StringFormat("Wait_%s",steamid)) then self:Notify(Player, self.Config.WaitMessage) return false end
     
     local playtime = PlayTime[steamid]
     if playtime >= 0 and playtime < self.Config.MinPlaytime * 3600 then
