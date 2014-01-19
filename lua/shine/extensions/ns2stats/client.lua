@@ -23,7 +23,9 @@ end )
 
 function Plugin:Initialise()
     self.Enabled = true
-    Shine.AddStartupMessage("Shine NS2Stats.com Plugin is running. Please use sh_verify to set yourself as server admin at NS2Stats.com")   
+    if Shine.AddStartupMessage then
+        Shine.AddStartupMessage("Shine NS2Stats.com Plugin is running. Please use sh_verify to set yourself as server admin at NS2Stats.com")
+    end 
     return true 
 end
 

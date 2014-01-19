@@ -1,5 +1,5 @@
 --[[
-    Shine Ns2Stats EloTeamRestriction
+    Shine Ns2Stats EloTeamRestriction - Server
 ]]
 
 local Shine = Shine
@@ -7,7 +7,10 @@ local Shine = Shine
 local Notify = Shared.Message
 local StringFormat = string.format
 
-local Plugin = {}
+local Decode = json.decode
+local HTTPRequest = Shared.SendHTTPRequest
+
+local Plugin = Plugin
 
 Plugin.Version = "1.5"
 Plugin.DefaultState = false
@@ -17,9 +20,11 @@ Plugin.ConfigName = "eloteamrestriction.json"
 
 Plugin.DefaultConfig = {
     WebsiteUrl = "http://ns2stats.com",
+    UseSteamTime = false,
     HTTPMaxWaitTime = 20,
     RestrictionMode = 0,
     AllowSpectating = true,
+    ShowSwitchAtBlock = false,
     TeamStats = true,
     MinElo = 1300, 
     MaxElo = 2000,
@@ -50,6 +55,7 @@ end
 
 local Kicktimes = {}
 local Ns2statsData = {}
+local SteamTime = {}
 
 function Plugin:ClientConfirmConnect(Client)
     local player = Client:GetControllingPlayer()
@@ -61,7 +67,8 @@ function Plugin:ClientConnect( Client )
     
     local steamid = Client:GetUserId()
     if not steamid or steamid <= 0 then return end   
-    
+    local steamid64 = StringFormat("%s%s",76561,steamid + 197960265728)
+
     if Ns2statsData[steamid] or not Shine:IsValidClient(Client) then return
     elseif not self:TimerExists(StringFormat("Wait_%s",steamid)) then
         self:CreateTimer(StringFormat("Wait_%s",steamid),self.Config.HTTPMaxWaitTime, 1, function()
@@ -69,10 +76,23 @@ function Plugin:ClientConnect( Client )
         end)
     end
     
-    local URL = StringFormat("%s/api/player?ns2_id=%s",self.Config.WebsiteUrl,steamid)
+    if self.Config.UseSteamTime and not SteamTime[steamid] then
+        HTTPRequest(StringFormat("http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=2EFCCE2AF701859CDB6BBA3112F95972&steamid=%s&format=json",steamid64),"GET",function(response)
+            local temp = json.decode(response)
+            temp = temp and temp.response and temp.response.games
+            if not temp then return end
+            for i = 1, #temp do
+                if temp[i].appid == 4920 then
+                    SteamTime[steamid] = temp[i].playtime_forever
+                    return
+                end
+            end
+        end)
+    end
     
+    local URL = StringFormat("%s/api/player?ns2_id=%s",self.Config.WebsiteUrl,steamid)    
     Shine.TimedHTTPRequest( URL, "GET",function(response)
-        Ns2statsData[steamid] = json.decode(response) and json.decode(response)[1] or 1
+        Ns2statsData[steamid] = Decode(response) and Decode(response)[1] or 1
         self:DestroyTimer(StringFormat("Wait_%s",steamid))
     end,function()
         self:ClientConnect( Client ) 
@@ -111,6 +131,9 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     if not playerdata or playerdata == 1 then
         if self.Config.BlockNewPlayers then
             self:Notify( Player, self.Config.BlockMessage:sub(1, self.Config.BlockMessage:find(".", 1, true)))
+            if self.Config.ShowSwitchAtBlock then
+                self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+            end
             self:Kick(Player)
             return false
         else
@@ -119,9 +142,12 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     end
           
     --check if player fits to MinPlayTime
-    local playtime = tonumber(playerdata.time_played) or 0
+    local playtime = SteamTime[steamid] or tonumber(playerdata.time_played) or 0
     if playtime / 60 < self.Config.MinPlayTime or playtime / 60 > self.Config.MaxPlayTime then
         self:Notify( Player, self.Config.BlockMessage:sub(1, self.Config.BlockMessage:find(".",1,true)))
+        if self.Config.ShowSwitchAtBlock then
+           self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+        end
         self:Kick(Player)
         return false
     end
@@ -153,14 +179,23 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     -- now check if player fits to config
     if self.Config.RestrictionMode == 0 and (elo < self.Config.MinElo or elo > self.Config.MaxElo) then
         self:Notify( Player, StringFormat(self.Config.BlockMessage,elo,self.Config.MinElo,self.Config.MaxElo))
+        if self.Config.ShowSwitchAtBlock then
+           self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+        end
         self:Kick(Player)
         return false
     elseif self.Config.RestrictionMode == 1 and (kd < self.Config.MinKD or kd > self.Config.MaxKD) then
         self:Notify( Player, StringFormat(self.Config.BlockMessage,kd,self.Config.MinKD,self.Config.MaxKD ))
+        if self.Config.ShowSwitchAtBlock then
+           self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+        end
         self:Kick(Player)
         return false 
     elseif self.Config.RestrictionMode == 2 and (kd < self.Config.MinKD or kd > self.Config.MaxKD) and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
         self:Notify(Player, StringFormat(self.Config.BlockMessage,elo,kd,self.Config.MinElo,self.Config.MaxElo,self.Config.MinKD,self.Config.MaxKD) )
+        if self.Config.ShowSwitchAtBlock then
+           self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+        end
         self:Kick(Player)
         return false
     end
@@ -194,8 +229,13 @@ function Plugin:Kick(player)
     
     self:Notify(player, StringFormat(self.Config.KickMessage,self.Config.Kicktime/60))
     Kicktimes[steamid] = self.Config.Kicktime
-    self:CreateTimer(StringFormat("Kick_%s",steamid),1, self.Config.Kicktime, function()        
-        Kicktimes[steamid] = Kicktimes[steamid]-1
+    self:CreateTimer(StringFormat("Kick_%s",steamid),1, self.Config.Kicktime, function()
+        if not Shine:IsValidClient( client ) then
+            Plugin:DestroyTimer("Player_" .. tostring(steamid))
+            return
+        end
+        
+        Kicktimes[steamid] = Kicktimes[steamid] - 1
         if Kicktimes[steamid] == 10 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end
         if Kicktimes[steamid] <= 5 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end        
         if Kicktimes[steamid] <= 0 then
@@ -205,5 +245,3 @@ function Plugin:Kick(player)
         end    
     end)    
 end
-
-Shine:RegisterExtension( "eloteamrestriction", Plugin )
