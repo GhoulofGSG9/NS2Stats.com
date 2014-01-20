@@ -83,7 +83,7 @@ function Plugin:ClientConnect( Client )
             if not temp then return end
             for i = 1, #temp do
                 if temp[i].appid == 4920 then
-                    SteamTime[steamid] = temp[i].playtime_forever
+                    SteamTime[steamid] = temp[i].playtime_forever * 60
                     return
                 end
             end
