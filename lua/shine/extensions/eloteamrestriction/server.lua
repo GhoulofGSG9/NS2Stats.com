@@ -110,12 +110,12 @@ end
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
     local client = Player:GetClient()
     
-    if ShineForce or not Shine:IsValidClient( client ) or Shine:HasAccess(client, "sh_ignoreelo" ) then return end
+    if ShineForce or not Shine:IsValidClient( client ) or Shine:HasAccess(client, "sh_ignoreelo" ) or NewTeam == kTeamReadyRoom then return end
     
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    if self.Config.AllowSpectating and NewTeam ~= 1 and NewTeam ~= 2 then self:DestroyTimer(StringFormat("Kick_%s",steamid)) return end
+    if self.Config.AllowSpectating and NewTeam == kSpectatorIndex then self:DestroyTimer(StringFormat("Kick_%s",steamid)) return end
     
     if self:TimerExists(StringFormat("Wait_%s", steamid)) then
         self:Notify( Player, self.Config.WaitMessage )
@@ -132,7 +132,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         if self.Config.BlockNewPlayers then
             self:Notify( Player, self.Config.BlockMessage:sub(1, self.Config.BlockMessage:find(".", 1, true)))
             if self.Config.ShowSwitchAtBlock then
-                self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+                self:SendNetworkMessage(client, "ShowSwitch", {}, true )
             end
             self:Kick(Player)
             return false
@@ -146,7 +146,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     if playtime / 60 < self.Config.MinPlayTime or playtime / 60 > self.Config.MaxPlayTime then
         self:Notify( Player, self.Config.BlockMessage:sub(1, self.Config.BlockMessage:find(".",1,true)))
         if self.Config.ShowSwitchAtBlock then
-           self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+           self:SendNetworkMessage(client, "ShowSwitch", {}, true )
         end
         self:Kick(Player)
         return false
@@ -180,21 +180,21 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     if self.Config.RestrictionMode == 0 and (elo < self.Config.MinElo or elo > self.Config.MaxElo) then
         self:Notify( Player, StringFormat(self.Config.BlockMessage,elo,self.Config.MinElo,self.Config.MaxElo))
         if self.Config.ShowSwitchAtBlock then
-           self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+           self:SendNetworkMessage(client, "ShowSwitch", {}, true )
         end
         self:Kick(Player)
         return false
     elseif self.Config.RestrictionMode == 1 and (kd < self.Config.MinKD or kd > self.Config.MaxKD) then
         self:Notify( Player, StringFormat(self.Config.BlockMessage,kd,self.Config.MinKD,self.Config.MaxKD ))
         if self.Config.ShowSwitchAtBlock then
-           self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+           self:SendNetworkMessage(client, "ShowSwitch", {}, true )
         end
         self:Kick(Player)
         return false 
     elseif self.Config.RestrictionMode == 2 and (kd < self.Config.MinKD or kd > self.Config.MaxKD) and (elo< self.Config.MinElo or elo > self.Config.MaxElo) then
         self:Notify(Player, StringFormat(self.Config.BlockMessage,elo,kd,self.Config.MinElo,self.Config.MaxElo,self.Config.MinKD,self.Config.MaxKD) )
         if self.Config.ShowSwitchAtBlock then
-           self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+           self:SendNetworkMessage(client, "ShowSwitch", {}, true )
         end
         self:Kick(Player)
         return false

@@ -179,7 +179,7 @@ function Plugin:Notify( Player, Message )
 end
 
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
-    if not Enabled or ShineForce or not self.Config.BlockTeams or #Shine.GetAllPlayers() < self.Config.MinPlayer then return end    
+    if not Enabled or ShineForce or not self.Config.BlockTeams or #Shine.GetAllPlayers() < self.Config.MinPlayer or NewTeam == kTeamReadyRoom then return end    
     
     local client = Player:GetClient()
     if not Shine:IsValidClient(client) or Shine:HasAccess(client, "sh_ignorestatus" ) then return end
@@ -187,7 +187,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     local steamid = client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    if self.Config.AllowSpectating and NewTeam ~= 1 and NewTeam ~= 2 then
+    if self.Config.AllowSpectating and NewTeam == kSpectatorIndex then
         self:DestroyTimer("Player_" .. tostring(steamid))
         return 
     end
