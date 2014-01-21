@@ -81,7 +81,7 @@ function Plugin:ClientConnect( Client )
             if not temp then return end
             for i = 1, #temp do
                 if temp[i].appid == 4920 then
-                    SteamTime[steamid] = temp[i].playtime_forever * 60
+                    SteamTime[steamid] = temp[i].playtime_forever and temp[i].playtime_forever * 60
                     return
                 end
             end
@@ -167,7 +167,7 @@ function Plugin:CheckComLogin( Chair, Player )
     if playtime >= 0 and playtime < self.Config.MinPlaytime * 3600 then
         self:Notify(Player, self.Config.BlockMessage)
         if self.Config.ShowSwitchAtBlock then
-           self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+           self:SendNetworkMessage(client, "ShowSwitch", {}, true )
         end
         self:Kick(Player)
         return false
@@ -198,7 +198,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     if playtime >= 0 and playtime < self.Config.MinPlaytime * 3600 then
         self:Notify(Player, self.Config.BlockMessage)
         if self.Config.ShowSwitchAtBlock then
-           self:SendNetworkMessage(Client, "ShowSwitch", {}, true )
+           self:SendNetworkMessage(client, "ShowSwitch", {}, true )
         end
         self:Kick(Player)
         return false 
@@ -216,6 +216,8 @@ function Plugin:Kick(player)
     local steamid = client:GetUserId() or 0
     if steamid <= 0 then return end
     
+    self:Notify(player, StringFormat("You have %s hours playtime at %s", SteamTime[steamid] or PlayTime[steamid] or "", SteamTime[steamid] and "Steam" or PlayTime[steamid] and "Ns2Stats/Hive" or ""))
+    
     self:DestroyTimer("Player_" .. tostring(steamid))
     self:Notify(player, StringFormat(self.Config.KickMessage, self.Config.Kicktime/60))
     Kicktimes[steamid] = self.Config.Kicktime
@@ -224,7 +226,8 @@ function Plugin:Kick(player)
             Plugin:DestroyTimer("Player_" .. tostring(steamid))
             return
         end
-    
+        local player = client:GetControllingPlayer()
+        
         Kicktimes[steamid] = Kicktimes[steamid]-1
         if Kicktimes[steamid] == 10 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end
         if Kicktimes[steamid] <= 5 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end        

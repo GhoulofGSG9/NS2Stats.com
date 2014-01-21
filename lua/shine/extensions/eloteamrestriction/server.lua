@@ -234,6 +234,7 @@ function Plugin:Kick(player)
             Plugin:DestroyTimer("Player_" .. tostring(steamid))
             return
         end
+        local player = client:GetControllingPlayer()
         
         Kicktimes[steamid] = Kicktimes[steamid] - 1
         if Kicktimes[steamid] == 10 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end

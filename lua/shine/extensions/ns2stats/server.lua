@@ -225,7 +225,7 @@ function Plugin:ClientDisconnect(Client)
     self:addLog(connect)
 end
 
---score changed (will change with 263)
+--score changed 
 function Plugin:OnPlayerScoreChanged(Player,state)    
     if not Player or not state then return end
     
@@ -294,7 +294,7 @@ function Plugin:OnBotRenamed(Bot)
     self:addLog(connect)        
 end
 
---Player shoots weapon (will change with 263)
+--Player shoots weapon
 function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)    
     local attacker 
     if DamageMixin:isa("Player") then
