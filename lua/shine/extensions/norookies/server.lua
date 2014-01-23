@@ -216,8 +216,6 @@ function Plugin:Kick(player)
     local steamid = client:GetUserId() or 0
     if steamid <= 0 then return end
     
-    self:Notify(player, StringFormat("You have %s hours playtime at %s", SteamTime[steamid] or PlayTime[steamid] or "", SteamTime[steamid] and "Steam" or PlayTime[steamid] and "Ns2Stats/Hive" or ""))
-    
     self:DestroyTimer("Player_" .. tostring(steamid))
     self:Notify(player, StringFormat(self.Config.KickMessage, self.Config.Kicktime/60))
     Kicktimes[steamid] = self.Config.Kicktime
@@ -232,7 +230,7 @@ function Plugin:Kick(player)
         if Kicktimes[steamid] == 10 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end
         if Kicktimes[steamid] <= 5 then self:Notify(player, StringFormat(self.Config.KickMessage, Kicktimes[steamid])) end        
         if Kicktimes[steamid] <= 0 then
-            Shine:Print( "Client %s[%s] was kicked by No Rookies. Kicking...", true, player:GetName(), steamid)
+            Shine:Print( "Client %s[%s] (%s h) was kicked by No Rookies. Kicking...", true, player:GetName(), steamid,(SteamTime[steamid] or PlayTime[steamid])/3600)
             client.DisconnectReason = "You didn't fit to the set min playtime"
             Server.DisconnectClient( client )
         end    
