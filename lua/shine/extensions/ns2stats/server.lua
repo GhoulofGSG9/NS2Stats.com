@@ -74,10 +74,10 @@ function Plugin:Initialise()
     if self.Config.ServerKey == "" then
         self.StatsEnabled = false
         Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",self.Config.WebsiteUrl), "GET", function(response) self:acceptKey(response) end)
-    end
-    
-    --get Serverid
-    self:GetServerId()
+    else    
+        --get Serverid
+        self:GetServerId()
+    end    
     
     --Timers
     
@@ -89,7 +89,7 @@ function Plugin:Initialise()
     
     -- every 30 sec send Server Status + Devour   
     if self.Config.Statusreport then
-       self:CreateTimer("SendStatus" , 60, -1, function() self:sendServerStatus(self.currentGameState) end) --Plugin:devourSendStatus()
+       self:CreateTimer("SendStatus" , 30, -1, function() self:sendServerStatus(self.currentGameState) end) --Plugin:devourSendStatus()
     end
     
     -- every 0.25 sec create Devour datas
@@ -225,7 +225,7 @@ function Plugin:ClientDisconnect(Client)
     self:addLog(connect)
 end
 
---score changed (will change with 263)
+--score changed 
 function Plugin:OnPlayerScoreChanged(Player,state)    
     if not Player or not state then return end
     
@@ -294,7 +294,7 @@ function Plugin:OnBotRenamed(Bot)
     self:addLog(connect)        
 end
 
---Player shoots weapon (will change with 263)
+--Player shoots weapon
 function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)    
     local attacker 
     if DamageMixin:isa("Player") then
@@ -1488,16 +1488,28 @@ function Plugin:acceptKey(response)
         end
 end
 
-function Plugin:GetServerId()    
-    if not self.serverid then
+function Plugin:GetServerId()  
+    if not self.serverid and self.Config.ServerKey ~= "" then
         self.serverid = ""
         Shared.SendHTTPRequest(StringFormat("%s/api/server?key=%s", self.Config.WebsiteUrl,self.Config.ServerKey), "GET", function(response)
             local Data = JsonDecode( response )
-            if Data then self.serverid = Data.id or "" end            
+            if not Data then return end
+            if Data.error == "Invalid server key. Server not found." then
+                self.StatsEnabled = false
+                Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",self.Config.WebsiteUrl), "GET", function(response) self:acceptKey(response) end)
+            else
+                self.serverid = Data.id or "" 
+            end         
         end)
     end
-    return self.serverid    
+    return self.serverid  
 end
+
+function Plugin:OnSuspend()
+    self.StatsEnabled = false
+    Shine:Notify( nil, "", "NS2Stats", "It's not possible to suspend NS2Stats, instead it will disable itself now!")
+end
+
 --Other Ns2Stat functions end
 
 --Commands
