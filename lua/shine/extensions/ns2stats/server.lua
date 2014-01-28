@@ -52,7 +52,8 @@ Shine.Hook.SetupClassHook("UpgradableMixin","RemoveUpgrade","addUpgradeLostToLog
 Shine.Hook.SetupClassHook("ResourceTower","CollectResources","OnTeamGetResources","PassivePost")
 Shine.Hook.SetupClassHook("DropPack","OnUpdate","OnPickableItemDropped","PassivePre")
 Shine.Hook.SetupClassHook("Player","OnJump","OnPlayerJump","PassivePost")
-Shine.Hook.SetupClassHook("Player","SetScoreboardChanged","OnPlayerScoreChanged","PassivePost")
+Shine.Hook.SetupClassHook("PlayerInfoEntity","UpdateScore","OnPlayerScoreChanged2","PassivePost") --263
+Shine.Hook.SetupClassHook("Player","SetScoreboardChanged","OnPlayerScoreChanged","PassivePost")  --262
 Shine.Hook.SetupClassHook("PlayerBot","UpdateNameAndGender","OnBotRenamed","PassivePost")
 Shine.Hook.SetupClassHook("NS2Gamerules","OnEntityDestroy","OnEntityDestroy","PassivePre")
 Shine.Hook.SetupClassHook("NS2Gamerules","ResetGame","OnGameReset","PassivePre")
@@ -223,6 +224,13 @@ function Plugin:ClientDisconnect(Client)
             score = taulu.score
     }
     self:addLog(connect)
+end
+
+--score changed (temp for 263)
+function Plugin:OnPlayerScoreChanged2(PlayerInfoEntity)
+    local Player = Shared.GetEntity(PlayerInfoEntity.playerId)  
+    if not Player then return end
+    self:OnPlayerScoreChanged(Player,true)
 end
 
 --score changed 

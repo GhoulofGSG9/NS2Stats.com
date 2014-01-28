@@ -231,7 +231,7 @@ function Plugin:Kick(player)
     Kicktimes[steamid] = self.Config.Kicktime
     self:CreateTimer(StringFormat("Kick_%s",steamid),1, self.Config.Kicktime, function()
         if not Shine:IsValidClient( client ) then
-            Plugin:DestroyTimer("Player_" .. tostring(steamid))
+            Plugin:DestroyTimer("Kick_" .. tostring(steamid))
             return
         end
         local player = client:GetControllingPlayer()
