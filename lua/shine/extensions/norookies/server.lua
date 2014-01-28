@@ -188,7 +188,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     if not steamid or steamid <= 0 then return end
     
     if self.Config.AllowSpectating and NewTeam == kSpectatorIndex then
-        self:DestroyTimer("Player_" .. tostring(steamid))
+        self:DestroyTimer("Kick_" .. tostring(steamid))
         return 
     end
     
@@ -216,12 +216,12 @@ function Plugin:Kick(player)
     local steamid = client:GetUserId() or 0
     if steamid <= 0 then return end
     
-    self:DestroyTimer("Player_" .. tostring(steamid))
+    if self:TimerExists("Kick_" .. tostring(steamid)) then return end
     self:Notify(player, StringFormat(self.Config.KickMessage, self.Config.Kicktime/60))
     Kicktimes[steamid] = self.Config.Kicktime
-    self:CreateTimer("Player_" .. tostring(steamid), 1, self.Config.Kicktime, function()
+    self:CreateTimer("Kick_" .. tostring(steamid), 1, self.Config.Kicktime, function()
         if not Shine:IsValidClient( client ) then
-            Plugin:DestroyTimer("Player_" .. tostring(steamid))
+            Plugin:DestroyTimer("Kick_" .. tostring(steamid))
             return
         end
         local player = client:GetControllingPlayer()
@@ -241,5 +241,5 @@ function Plugin:ClientDisconnect(Client)
     local steamid = Client:GetUserId()
     if not steamid or steamid <= 0 then return end
     
-    self:DestroyTimer("Player_" .. tostring(steamid))
+    self:DestroyTimer("Kick_" .. tostring(steamid))
 end
