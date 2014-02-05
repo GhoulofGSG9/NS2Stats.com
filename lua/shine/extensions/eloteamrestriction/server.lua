@@ -12,7 +12,7 @@ local HTTPRequest = Shared.SendHTTPRequest
 
 local Plugin = Plugin
 
-Plugin.Version = "1.5"
+Plugin.Version = "1.6"
 Plugin.DefaultState = false
 
 Plugin.HasConfig = true
@@ -21,6 +21,7 @@ Plugin.ConfigName = "eloteamrestriction.json"
 Plugin.DefaultConfig = {
     WebsiteUrl = "http://ns2stats.com",
     UseSteamTime = false,
+    ForceSteamTime = false,
     HTTPMaxWaitTime = 20,
     RestrictionMode = 0,
     AllowSpectating = true,
@@ -140,10 +141,10 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
             return
         end 
     end
-          
+    
     --check if player fits to MinPlayTime
-    local playtime = SteamTime[steamid] or tonumber(playerdata.time_played) or 0
-    if playtime / 60 < self.Config.MinPlayTime or playtime / 60 > self.Config.MaxPlayTime then
+    local playtime = SteamTime[steamid] or tonumber(playerdata.time_played) or 0    
+    if self.Config.ForceSteamTime and not SteamTime[steamid] or playtime / 60 < self.Config.MinPlayTime or playtime / 60 > self.Config.MaxPlayTime then
         self:Notify( Player, self.Config.BlockMessage:sub(1, self.Config.BlockMessage:find(".",1,true)))
         if self.Config.ShowSwitchAtBlock then
            self:SendNetworkMessage(client, "ShowSwitch", {}, true )
