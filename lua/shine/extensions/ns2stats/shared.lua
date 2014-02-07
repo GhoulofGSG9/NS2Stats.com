@@ -9,7 +9,7 @@ Plugin.DefaultState = true
 function Plugin:SetupDataTable()
 
     local AwardMessage = {
-    message = "string (255)",
+    message = "string (800)",
     duration = "integer (0 to 1800)",
     colourr = "integer (0 to 255)",
     colourg = "integer (0 to 255)",
