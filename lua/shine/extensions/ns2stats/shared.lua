@@ -22,7 +22,7 @@ function Plugin:SetupDataTable()
         WebsiteApiUrl = "string(255)",
         SendMapData = "boolean",
     }
-    self:AddNetworkMessage("StatsConfig", Config, "Client" )
+    self:AddNetworkMessage( "StatsConfig", Config, "Client" )
 end
 
 Shine:RegisterExtension( "ns2stats", Plugin )

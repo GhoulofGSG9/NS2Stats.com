@@ -15,7 +15,7 @@ Shine.Hook.Add( "Think", "MinimapHook", function()
     if GUIMinimap then
         --wait for Config from Server
         if SendMapData then                
-            Shine.Hook.SetupClassHook("GUIMinimap","ShowMap","Mapdata","PassivePost" ) 
+            Shine.Hook.SetupClassHook( "GUIMinimap", "ShowMap", "Mapdata", "PassivePost" ) 
             Shine.Hook.Remove( "Think", "MinimapHook" )
         end    
     end
@@ -24,7 +24,7 @@ end )
 function Plugin:Initialise()
     self.Enabled = true
     if Shine.AddStartupMessage then
-        Shine.AddStartupMessage("Shine NS2Stats.com Plugin is running. Please use sh_verify to set yourself as server admin at NS2Stats.com")
+        Shine.AddStartupMessage( "Shine NS2Stats.com Plugin is running. Please use sh_verify to set yourself as server admin at NS2Stats.com" )
     end 
     return true 
 end
@@ -38,14 +38,14 @@ function Plugin:ReceiveStatsAwards( Message )
     local AwardMessage = Message.message
     local Duration = Message.duration
     local ScreenText = Shine:AddMessageToQueue( 2, 0.95, 0.4, AwardMessage, Duration, Message.colourr, Message.colourg, Message.colourb, 2 )
-    ScreenText.Obj:SetText(ScreenText.Text)
+    ScreenText.Obj:SetText( ScreenText.Text )
 end
 
 local a
-function Plugin:Mapdata(GUIMinimap)
+function Plugin:Mapdata( GUIMinimap )
     if a then return end
     a = true   
-    if SendMapData or math.random(1,100) == 50 then
+    if SendMapData or math.random( 100 ) == 50 then
                     
         local jsonvalues = {
             scaleX = Client.minimapExtentScale.x,
@@ -67,31 +67,31 @@ function Plugin:Mapdata(GUIMinimap)
         {
             secret = "jokukovasalasana",
             mapName = Shared.GetMapName(),
-            jsonvalues = json.encode(jsonvalues)
+            jsonvalues = json.encode( jsonvalues )
         }
-        Shared.SendHTTPRequest(WebsiteApiUrl .."/updatemapdata", "POST", params, function() end)       
+        Shared.SendHTTPRequest( WebsiteApiUrl .. "/updatemapdata", "POST", params, function() end)       
     end
  end
  
 --Votemenu    
 Shine.VoteMenu:AddPage( "Stats", function( self )
     self:AddSideButton( "Show my Stats", function()
-       Shared.ConsoleCommand("sh_showplayerstats")
+       Shared.ConsoleCommand( "sh_showplayerstats" )
        self:SetPage( "Main" )
        self:SetIsVisible( false )
     end )
     self:AddSideButton( "Show extended Scoreboard", function()
-       Shared.ConsoleCommand("sh_showlivestats")
+       Shared.ConsoleCommand( "sh_showlivestats" )
        self:SetPage( "Main" )
        self:SetIsVisible( false )
     end )      
     self:AddSideButton( "Show Server Stats", function()
-        Shared.ConsoleCommand("sh_showserverstats")
+        Shared.ConsoleCommand( "sh_showserverstats" )
         self:SetPage( "Main" )
         self:SetIsVisible( false )
     end )
     self:AddSideButton( "Show Last Round Stats", function()
-        Shared.ConsoleCommand("sh_showlastround")
+        Shared.ConsoleCommand( "sh_showlastround" )
         self:SetPage( "Main" )
         self:SetIsVisible( false )
     end )  
