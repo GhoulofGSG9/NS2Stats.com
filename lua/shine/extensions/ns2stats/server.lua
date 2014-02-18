@@ -7,17 +7,24 @@ local Notify = Shared.Message
 
 local Plugin = Plugin
 
-local tostring = tostring
+local Floor = math.floor
+
+local ToString = tostring
 local StringFind = string.find
 local StringFormat = string.format
 local StringSub = string.UTF8Sub
 local StringLen = string.len
 local StringLower = string.lower
+local StringReverse = string.UTF8Reverse
+
+local TableInsert = table.insert
 
 local GetOwner = Server.GetOwner
 
 local JsonEncode = json.encode
 local JsonDecode = json.decode
+
+local HTTPRequest = Shared.SendHTTPRequest
 
 Plugin.Version = "shine"
 
@@ -29,10 +36,10 @@ Plugin.DefaultConfig =
     Statusreport = true, -- send Status to NS2Stats every min
     EnableHiveStats = true, -- should we enable UWE Hive Stats
     WebsiteUrl = "http://ns2stats.com", --this is the ns2stats url
-    Awards = true, --show award
-    ShowNumAwards = 4, --how many awards should be shown at the end of the game?
-    AwardMsgTime = 20, -- secs to show awards
-    AwardMsgColour = {255,215,0},
+    Awards = true, --show Award
+    ShowNumAwards = 4, --how many Awards should be shown at the end of the game?
+    AwardMsgTime = 20, -- secs to show Awards
+    AwardMsgColour = { 255, 215, 0 },
     LogChat = false, --log the chat?
     ServerKey = "", -- Serverkey given by ns2stats.com
     Tags = {}, --Tags added to log
@@ -43,22 +50,22 @@ Plugin.CheckConfig = true
 
 --All needed Hooks
 
-Shine.Hook.SetupClassHook("DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
-Shine.Hook.SetupClassHook("ResearchMixin","TechResearched","OnTechResearched","PassivePost")
-Shine.Hook.SetupClassHook("ResearchMixin","SetResearching","OnTechStartResearch","PassivePre")
-Shine.Hook.SetupClassHook("ConstructMixin","SetConstructionComplete","OnFinishedBuilt","PassivePost")
-Shine.Hook.SetupClassHook("ResearchMixin","OnResearchCancel","addUpgradeAbortedToLog","PassivePost")
-Shine.Hook.SetupClassHook("UpgradableMixin","RemoveUpgrade","addUpgradeLostToLog","PassivePost")
-Shine.Hook.SetupClassHook("ResourceTower","CollectResources","OnTeamGetResources","PassivePost")
-Shine.Hook.SetupClassHook("DropPack","OnUpdate","OnPickableItemDropped","PassivePre")
-Shine.Hook.SetupClassHook("Player","OnJump","OnPlayerJump","PassivePost")
-Shine.Hook.SetupClassHook("PlayerInfoEntity","UpdateScore","OnPlayerScoreChanged2","PassivePost") --263
-Shine.Hook.SetupClassHook("Player","SetScoreboardChanged","OnPlayerScoreChanged","PassivePost")  --262
-Shine.Hook.SetupClassHook("PlayerBot","UpdateNameAndGender","OnBotRenamed","PassivePost")
-Shine.Hook.SetupClassHook("NS2Gamerules","OnEntityDestroy","OnEntityDestroy","PassivePre")
-Shine.Hook.SetupClassHook("NS2Gamerules","ResetGame","OnGameReset","PassivePre")
+Shine.Hook.SetupClassHook( "DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
+Shine.Hook.SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
+Shine.Hook.SetupClassHook( "ResearchMixin", "SetResearching", "OnTechStartResearch", "PassivePre" )
+Shine.Hook.SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
+Shine.Hook.SetupClassHook( "ResearchMixin", "OnResearchCancel", "AddUpgradeAbortedToLog", "PassivePost" )
+Shine.Hook.SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
+Shine.Hook.SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
+Shine.Hook.SetupClassHook( "DropPack", "OnUpdate", "OnPickableItemDropped", "PassivePre" )
+Shine.Hook.SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
+Shine.Hook.SetupClassHook( "PlayerInfoEntity", "UpdateScore", "OnPlayerScoreChanged2", "PassivePost" ) --263
+Shine.Hook.SetupClassHook( "Player", "SetScoreboardChanged", "OnPlayerScoreChanged", "PassivePost" )  --262
+Shine.Hook.SetupClassHook( "PlayerBot", "UpdateNameAndGender","OnBotRenamed", "PassivePost" )
+Shine.Hook.SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
+Shine.Hook.SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
 --NS2Ranking
-Shine.Hook.SetupClassHook("PlayerRanking","GetTrackServer","EnableNS2Ranking","ActivePre")
+Shine.Hook.SetupClassHook( "PlayerRanking", "GetTrackServer", "EnableNS2Ranking", "ActivePre" )
 
 function Plugin:Initialise()
     self.Enabled = true
@@ -74,7 +81,7 @@ function Plugin:Initialise()
     
     if self.Config.ServerKey == "" then
         self.StatsEnabled = false
-        Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",self.Config.WebsiteUrl), "GET", function(response) self:acceptKey(response) end)
+        HTTPRequest( StringFormat( "%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj", self.Config.WebsiteUrl ), "GET", function(Response) self:AcceptKey( Response ) end )
     else    
         --get Serverid
         self:GetServerId()
@@ -86,21 +93,22 @@ function Plugin:Initialise()
     --to update Weapondatas
     self:CreateTimer( "WeaponUpdate", 1, -1, function()
        self:UpdateWeaponTable()
-    end)
+    end )
     
     -- every 30 sec send Server Status + Devour   
     if self.Config.Statusreport then
-       self:CreateTimer("SendStatus" , 30, -1, function() self:sendServerStatus(self.currentGameState) end) --Plugin:devourSendStatus()
+       self:CreateTimer( "SendStatus" , 30, -1, function() self:SendServerStatus( self.CurrentGameState ) end) --Plugin:DevourSendStatus()
     end
     
-    -- every 0.25 sec create Devour datas
-    -- self:CreateTimer("Devour",0.25,-1, function()
-        --if self.roundStarted then
-            --Plugin:createDevourMovementFrame()
-            --if self.Devour.Frame % 20 == 0 then Plugin:createDevourEntityFrame() end
-            --self.Devour.Frame = self.Devour.Frame + 1
-        --end 
-    --end)
+    /* every 0.25 sec create Devour datas
+    self:CreateTimer( "Devour", 0.25, -1, function()
+        if self.RoundStarted then
+            Plugin:CreateDevourMovementFrame()
+            if self.Devour.Frame % 20 == 0 then Plugin:CreateDevourEntityFrame() end
+            self.Devour.Frame = self.Devour.Frame + 1
+        end 
+    end)
+    */
     return true
 end
 
@@ -116,19 +124,20 @@ end
 --Game reset
 function Plugin:OnGameReset()
     --Resets all Stats
-    self.working = true
+    self.Working = true
     self.Log = {}
     self.LogPartNumber = 1
     self.LogPartToSend  = 1
     self.GameStartTime = 0
     self.RoundFinished = 0
-    self.nextAwardId= 0
+    self.nextAwardId = 0
     self.Awards = {}
-    self.roundStarted = false
-    self.currentGameState = 0
+    self.RoundStarted = false
+    self.CurrentGameState = 0
     self.PlayersInfos = {}
     self.ItemInfos = {}
     self.BuildingsInfos = {}
+    self.OldUpgrade = -1
     
     --Reset Devour
     self.Devour = {}
@@ -137,320 +146,328 @@ function Plugin:OnGameReset()
     self.Devour.MovementInfos = {}
     
     -- update stats all connected players
-    for _, client in ipairs(Shine.GetAllClients()) do
-        self:addPlayerToTable(client)
+    for _, Client in ipairs( Shine.GetAllClients() ) do
+        self:AddPlayerToTable( Client )
     end
     
-    self:addLog({action="game_reset"})
+    self:AddLog( { action = "game_reset" } )
 end
 
 --Gamestart
 function Plugin:SetGameState( Gamerules, NewState, OldState )
-    self.currentGameState = NewState
+    self.CurrentGameState = NewState
     if NewState == kGameState.Started then
-        self.working = false             
-        self.roundStarted = true
+        self.Working = false             
+        self.RoundStarted = true
         self.GameStartTime = Shared.GetTime()
-        self:addLog({action = "game_start"})
+        self:AddLog( { action = "game_start" } )
        
         --add Playerlist to Log           
-        self:addPlayersToLog(0)
+        self:AddPlayersToLog( 0 )
     end
 end
 
 --Gameend
 function Plugin:EndGame( Gamerules, WinningTeam )         
-        if self.Config.Awards then Plugin:sendAwardListToClients() end               
-        self:addPlayersToLog(1)
+        if self.Config.Awards then Plugin:SendAwardListToClients() end               
+        self:AddPlayersToLog( 1 )
         
         local initialHiveTechIdString = "None"
         if Gamerules.initialHiveTechId then
-        	initialHiveTechIdString = EnumToString(kTechId, Gamerules.initialHiveTechId)
+        	initialHiveTechIdString = EnumToString( kTechId, Gamerules.initialHiveTechId )
         end
           
-        local params =
+        local Params =
             {
-                version = tostring(Shared.GetBuildNumber()),
+                version = ToString( Shared.GetBuildNumber() ),
                 winner = WinningTeam:GetTeamNumber(),
-                length = StringFormat("%.2f", Shared.GetTime() - Gamerules.gameStartTime),
+                length = StringFormat( "%.2f", Shared.GetTime() - Gamerules.gameStartTime ),
                 map = Shared.GetMapName(),
                 start_location1 = Gamerules.startingLocationNameTeam1,
                 start_location2 = Gamerules.startingLocationNameTeam2,
                 start_path_distance = Gamerules.startingLocationsPathDistance,
                 start_hive_tech = initialHiveTechIdString,
             }
-        Plugin:AddServerInfos(params)
+        Plugin:AddServerInfos( Params )
         
         self.RoundFinished = 1
         
-        if self.StatsEnabled then self:sendData() end
-        self.roundStarted = false
+        if self.StatsEnabled then self:SendData() end
+        self.RoundStarted = false
 end
 
 --Player Events
 
 --Player Connected
-function Plugin:ClientConfirmConnect(Client)
+function Plugin:ClientConfirmConnect( Client )
     if not Client or Client:GetIsVirtual() then return end
     
-    local connect=
+    local Params =
     {
         action = "connect",
-        steamId = Plugin:GetId(Client)
+        steamId = Plugin:GetId( Client )
     }
-    self:addLog(connect)
+    self:AddLog( Params )
     
-    --player disconnected and came back
-    local taulu = self:getPlayerByClient(Client)
+    --Player disconnected and came back
+    local PlayerInfo = self:GetPlayerByClient( Client )
     
-    if not taulu then Plugin:addPlayerToTable(Client)  
-    else taulu.dc = false end
+    if not PlayerInfo then Plugin:AddPlayerToTable( Client )  
+    else PlayerInfo.dc = false end
     
-    self:SendNetworkMessage(Client,"StatsConfig",{WebsiteApiUrl = StringFormat("%s/api",self.Config.WebsiteUrl),SendMapData = self.Config.SendMapData } ,true)   
+    self:SendNetworkMessage( Client, "StatsConfig", { WebsiteApiUrl = StringFormat( "%s/api", self.Config.WebsiteUrl ), SendMapData = self.Config.SendMapData } , true )   
 end
 
 --Player Disconnect
-function Plugin:ClientDisconnect(Client)
+function Plugin:ClientDisconnect( Client )
     if not Client then return end
     
-    local taulu = self:getPlayerByClient(Client)    
-    if not taulu then return end
+    local PlayerInfo = self:GetPlayerByClient( Client )    
+    if not PlayerInfo then return end
     
-    taulu.dc = true
+    PlayerInfo.dc = true
     
-    local connect={
+    local Params = {
             action = "disconnect",
-            steamId = taulu.steamId,
-            score = taulu.score
+            steamId = PlayerInfo.steamId,
+            score = PlayerInfo.score
     }
-    self:addLog(connect)
+    self:AddLog( Params )
 end
 
 --score changed (temp for 263)
-function Plugin:OnPlayerScoreChanged2(PlayerInfoEntity)
-    local Player = Shared.GetEntity(PlayerInfoEntity.playerId)  
+function Plugin:OnPlayerScoreChanged2( PlayerInfoEntity )
+    local Player = Shared.GetEntity( PlayerInfoEntity.playerId )  
     if not Player then return end
-    self:OnPlayerScoreChanged(Player,true)
+    self:OnPlayerScoreChanged( Player, true )
 end
 
 --score changed 
-function Plugin:OnPlayerScoreChanged(Player,state)    
-    if not Player or not state then return end
+function Plugin:OnPlayerScoreChanged( Player, State )    
+    if not Player or not State then return end
     
     local Client = Player:GetClient()
     if not Client then return end
     
-    local taulu = self:getPlayerByClient(Client)
-    if not taulu then return end
+    local PlayerInfo = self:GetPlayerByClient( Client )
+    if not PlayerInfo then return end
     
-    local lifeform = Player:GetMapName()
+    local Lifeform = Player:GetMapName()
     
-    --check team
-    local team = Player:GetTeamNumber() or 0    
-    if team < 0 then return end
+    --check teamnumber
+    local Teamnumber = Player:GetTeamNumber() or 0    
+    if Teamnumber < 0 then return end
     
-    if taulu.teamnumber == 3 and team > 0 then return end   --filter spectator
+    if PlayerInfo.teamnumber == 3 and Teamnumber > 0 then return end   --filter spectator
     
-    if team >= 0 and taulu.teamnumber ~= team then
-        taulu.teamnumber = team
+    if Teamnumber >= 0 and PlayerInfo.teamnumber ~= Teamnumber then
+        PlayerInfo.teamnumber = Teamnumber
     
-        local playerJoin =
+        local Params =
         {
             action="player_join_team",
-            name = taulu.name,
-            team = taulu.teamnumber,
-            steamId = taulu.steamId,
-            score = taulu.score
+            name = PlayerInfo.name,
+            teamnumber = PlayerInfo.teamnumber,
+            steamId = PlayerInfo.steamId,
+            score = PlayerInfo.score
         }
-        self:addLog(playerJoin) 
+        self:AddLog( Params ) 
     end
     
-    --check if lifeform changed    
-    if not Player:GetIsAlive() and (team == 1 or team == 2) then lifeform = "dead" end
-    if taulu.lifeform ~= lifeform then
-        taulu.lifeform = lifeform
-        self:addLog({action = "lifeform_change", name = taulu.name, lifeform = taulu.lifeform, steamId = taulu.steamId})      
+    --check if Lifeform changed    
+    if not Player:GetIsAlive() and (teamnumber == 1 or teamnumber == 2) then Lifeform = "dead" end
+    if PlayerInfo.lifeform ~= Lifeform then
+        PlayerInfo.lifeform = Lifeform
+        self:AddLog(
+        {
+            action = "lifeform_change",
+            name = PlayerInfo.name, 
+            lifeform = Lifeform, 
+            steamId = PlayerInfo.steamId
+        })      
     end
     
-    self:UpdatePlayerInTable(Client,Player,taulu)
+    self:UpdatePlayerInTable( Client, Player, PlayerInfo )
 end
 
 --Bots renamed
-function Plugin:OnBotRenamed(Bot)
-    local player = Bot:GetPlayer()
-    local name = player:GetName()
-    if not name or not string.find(name, "[BOT]", nil, true) then return end
+function Plugin:OnBotRenamed( Bot )
+    local Player = Bot:GetPlayer()
+    local Name = Player:GetName()
+    if not Name or not StringFind( Name, "[BOT]", nil, true ) then return end
     
-    local client = player:GetClient()
-    if not client then return end
+    local Client = Player:GetClient()
+    if not Client then return end
         
-    local taulu = Plugin:getPlayerByClient(client)
-    if not taulu then
-        self:addPlayerToTable(client)
-        taulu = self:getPlayerByClient(client)
+    local PlayerInfo = Plugin:GetPlayerByClient( Client )
+    if not PlayerInfo then
+        self:AddPlayerToTable( Client )
+        PlayerInfo = self:GetPlayerByClient( Client )
     else
-        taulu.dc = false
+        PlayerInfo.dc = false
         return
     end
     
     --Bot connects
-    local connect={
+    local Params = {
             action = "connect",
-            steamId = taulu.steamId
+            steamId = PlayerInfo.steamId
     }
     
-    self:addLog(connect)        
+    self:AddLog( Params )        
 end
 
 --Player shoots weapon
-function Plugin:OnDamageDealt(DamageMixin, damage, target, point, direction, surface, altMode, showtracer)    
-    local attacker 
+function Plugin:OnDamageDealt( DamageMixin, Damage, Target, Point )    
+    local Attacker 
     if DamageMixin:isa("Player") then
-        attacker = DamageMixin
-    elseif DamageMixin:GetParent() and DamageMixin:GetParent():isa("Player") then
-        attacker = DamageMixin:GetParent()
-    elseif HasMixin(DamageMixin, "Owner") and DamageMixin:GetOwner() and DamageMixin:GetOwner():isa("Player") then
-        attacker = DamageMixin:GetOwner()
+        Attacker = DamageMixin
+    elseif DamageMixin:GetParent() and DamageMixin:GetParent():isa( "Player" ) then
+        Attacker = DamageMixin:GetParent()
+    elseif HasMixin( DamageMixin, "Owner" ) and DamageMixin:GetOwner() and DamageMixin:GetOwner():isa( "Player" ) then
+        Attacker = DamageMixin:GetOwner()
     else return end
     
-    local damageType = kDamageType.Normal
-    if DamageMixin.GetDamageType then damageType = DamageMixin:GetDamageType()
-    elseif HasMixin(DamageMixin, "Tech") then damageType = LookupTechData(DamageMixin:GetTechId(), kTechDataDamageType, kDamageType.Normal) end
+    local DamageType = kDamageType.Normal
+    if DamageMixin.GetDamageType then DamageType = DamageMixin:GetDamageType()
+    elseif HasMixin( DamageMixin, "Tech" ) then DamageType = LookupTechData( DamageMixin:GetTechId(), kTechDataDamageType, kDamageType.Normal) end
             
-    local doer = DamageMixin
+    local Doer = DamageMixin
     
-    local hit = false
-    if target and HasMixin(target, "Live") and damage > 0 then
+    local Hit = false
+    if Target and HasMixin( Target, "Live" ) and Damage > 0 then
     
         local armorUsed = 0
         local healthUsed = 0        
-        damage, armorUsed, healthUsed = GetDamageByType(target, attacker, doer, damage, damageType, point)
+        Damage, armorUsed, healthUsed = GetDamageByType( Target, Attacker, Doer, Damage, DamageType, Point )
         
-        if damage > 0 and attacker:isa("Player")then
-            Plugin:addHitToLog(target, attacker, doer, damage, damageType)
-            hit = true
+        if Damage > 0 and Attacker:isa( "Player" )then
+            Plugin:AddHitToLog( Target, Attacker, Doer, Damage, DamageType )
+            Hit = true
         end            
     end
     
-    if not hit then self:addMissToLog(attacker) end 
+    if not Hit then self:AddMissToLog( Attacker ) end 
 end
 
 --add Hit
-function Plugin:addHitToLog(target, attacker, doer, damage, damageType)
-    if target:isa("Player") then
-        local attacker_id = Plugin:GetId(attacker:GetClient())
-        local target_id = Plugin:GetId(target:GetClient())        
-        if not attacker_id or not target_id then return end
+function Plugin:AddHitToLog( Target, Attacker, Doer, Damage, DamageType )
+    if Target:isa( "Player" ) then
+        local AttackerId = Plugin:GetId( Attacker:GetClient() )
+        local TargetId = Plugin:GetId( Target:GetClient() )        
+        if not AttackerId or not TargetId then return end
         
-        local aOrigin = attacker:GetOrigin()
-        local tOrigin = target:GetOrigin()
-        if not attacker:GetIsAlive() then aOrigin = tOrigin end
+        local aOrigin = Attacker:GetOrigin()
+        local tOrigin = Target:GetOrigin()
+        if not Attacker:GetIsAlive() then aOrigin = tOrigin end
         
-        local weapon = "none"
-        if target:GetActiveWeapon() then
-            weapon = StringLower(target:GetActiveWeapon():GetMapName()) end        
-        local hitLog =
+        local Weapon = "none"
+        if Target:GetActiveWeapon() then
+            Weapon = StringLower( Target:GetActiveWeapon():GetMapName() ) end
+       
+        local Params =
         {
             --general
             action = "hit_player",	
             
             --Attacker
-            attacker_steamId = attacker_id,
-            attacker_team = attacker:GetTeamNumber(),
-            attacker_weapon = StringLower(doer:GetMapName()),
-            attacker_lifeform =  StringLower(attacker:GetMapName()),
-            attacker_hp = attacker:GetHealth(),
-            attacker_armor = attacker:GetArmorAmount(),
-            attackerx = StringFormat("%.4f", aOrigin.x),
-            attackery = StringFormat("%.4f", aOrigin.y),
-            attackerz = StringFormat("%.4f", aOrigin.z),
+            attacker_steamId = AttackerId,
+            attacker_team = Attacker:GetTeamNumber(),
+            attacker_weapon = StringLower( Doer:GetMapName() ),
+            attacker_lifeform =  StringLower( Attacker:GetMapName() ),
+            attacker_hp = Attacker:GetHealth(),
+            attacker_armor = Attacker:GetArmorAmount(),
+            attackerx = StringFormat( "%.4f", aOrigin.x ),
+            attackery = StringFormat( "%.4f", aOrigin.y ),
+            attackerz = StringFormat( "%.4f", aOrigin.z ),
             
             --Target
-            target_steamId = target_id,
-            target_team = target:GetTeamNumber(),
-            target_weapon = weapon,
-            target_lifeform = StringLower(target:GetMapName()),
-            target_hp = target:GetHealth(),
-            target_armor = target:GetArmorAmount(),
-            targetx = StringFormat("%.4f", tOrigin.x),
-            targety = StringFormat("%.4f", tOrigin.y),
-            targetz = StringFormat("%.4f", tOrigin.z),
+            target_steamId = TargetId,
+            target_team = Target:GetTeamNumber(),
+            target_weapon = Weapon,
+            target_lifeform = StringLower( Target:GetMapName() ),
+            target_hp = Target:GetHealth(),
+            target_armor = Target:GetArmorAmount(),
+            targetx = StringFormat( "%.4f", tOrigin.x ),
+            targety = StringFormat( "%.4f", tOrigin.y ),
+            targetz = StringFormat( "%.4f", tOrigin.z ),
             
-            damageType = damageType,
-            damage = damage            
+            DamageType = DamageType,
+            Damage = Damage            
         }
-        self:addLog(hitLog)
-        self:weaponsAddHit(attacker, StringLower(doer:GetMapName()), damage)                
+        self:AddLog( Params )
+        self:WeaponsAddHit( Attacker, StringLower( Doer:GetMapName()), Damage )                
         
-    else --target is a structure
-        local structureOrigin = target:GetOrigin()
-        local aOrigin = attacker:GetOrigin()
-        local hitLog =
+    else --Target is a Structure
+        local tOrigin = Target:GetOrigin()
+        local aOrigin = Attacker:GetOrigin()
+        
+        local Params =
         {
             
             --general
             action = "hit_structure",	
             
             --Attacker
-            attacker_steamId =  attacker_id,
-            attacker_team = attacker:GetTeamNumber(),
-            attacker_weapon = StringLower(doer:GetMapName()),
-            attacker_lifeform = StringLower(attacker:GetMapName()),
-            attacker_hp = attacker:GetHealth(),
-            attacker_armor = attacker:GetArmorAmount(),
-            attackerx = StringFormat("%.4f",  aOrigin.x),
-            attackery = StringFormat("%.4f",  aOrigin.y),
-            attackerz = StringFormat("%.4f",  aOrigin.z),
+            attacker_steamId =  AttackerId,
+            attacker_team = Attacker:GetTeamNumber(),
+            attacker_weapon = StringLower( Doer:GetMapName() ),
+            attacker_lifeform = StringLower( Attacker:GetMapName() ),
+            attacker_hp = Attacker:GetHealth(),
+            attacker_armor = Attacker:GetArmorAmount(),
+            attackerx = StringFormat( "%.4f",  aOrigin.x ),
+            attackery = StringFormat( "%.4f",  aOrigin.y ),
+            attackerz = StringFormat( "%.4f",  aOrigin.z ),
                         
-            structure_id = target:GetId(),
-            structure_name = StringLower(target:GetMapName()),	
-            structure_x = StringFormat("%.4f", structureOrigin.x),
-            structure_y = StringFormat("%.4f", structureOrigin.y),
-            structure_z = StringFormat("%.4f", structureOrigin.z),	
+            structure_id = Target:GetId(),
+            structure_name = StringLower( Target:GetMapName() ),	
+            structure_x = StringFormat( "%.4f", tOrigin.x ),
+            structure_y = StringFormat( "%.4f", tOrigin.y ),
+            structure_z = StringFormat( "%.4f", tOrigin.z ),	
 
-            damageType = damageType,
-            damage = damage
+            DamageType = DamageType,
+            Damage = Damage
         }        
-        self:addLog(hitLog)
-        self:weaponsAddStructureHit(attacker, StringLower(doer:GetMapName()), damage)        
+        self:AddLog( Params )
+        self:WeaponsAddStructureHit( Attacker, StringLower( Doer:GetMapName() ), Damage )        
     end
 end
 
 --Add miss
-function Plugin:addMissToLog(attacker)                
-    local client = attacker:GetClient()
-    if not client then return end
+function Plugin:AddMissToLog( Attacker )                
+    local Client = Attacker:GetClient()
+    if not Client then return end
 
-    local player = Plugin:getPlayerByClient(client)
-    if not player then return end
+    local Player = Plugin:GetPlayerByClient( Client )
+    if not Player then return end
 
-    local weapon = StringLower(attacker:GetActiveWeaponName()) or "none"
+    local Weapon = StringLower( Attacker:GetActiveWeaponName() ) or "none"
     
     --gorge fix
-    if weapon == "spitspray" then
-        weapon = "spit"
+    if Weapon == "spitspray" then
+        Weapon = "spit"
     end
     
-    self:weaponsAddMiss(client,weapon)
+    self:WeaponsAddMiss( Client, Weapon )
 end
 
 --weapon add miss
-function Plugin:weaponsAddMiss(client, weapon)    
-    local player = self:getPlayerByClient(client)    
-    if not player then return end
+function Plugin:WeaponsAddMiss( Client, Weapon )    
+    local PlayerInfo = self:GetPlayerByClient( Client )    
+    if not PlayerInfo then return end
      
-    local foundId = false      
-    for i=1, #player.weapons do
-        if player.weapons[i].name == weapon then
-            foundId=i
+    local FoundId      
+    for i=1, #PlayerInfo.weapons do
+        if PlayerInfo.weapons[ i ].name == weapon then
+            FoundId = i
             break
         end
     end
 
-    if foundId then
-        player.weapons[foundId].miss = player.weapons[foundId].miss + 1
+    if FoundId then
+        PlayerInfo.weapons[ FoundId ].miss = Player.weapons[ FoundId ].miss + 1
     else --add new weapon
-        table.insert(player.weapons,
+        TableInsert( PlayerInfo.weapons,
         {
             name = weapon,
             time = 0,
@@ -463,64 +480,64 @@ function Plugin:weaponsAddMiss(client, weapon)
     end        
 end
 
---weapon addhit to player
-function Plugin:weaponsAddHit(player, weapon, damage)
-    local client = player:GetClient()
-    if not client then return end
+--weapon addhit to Player
+function Plugin:WeaponsAddHit(Player, Weapon, Damage)
+    local Client = Player:GetClient()
+    if not Client then return end
     
-    local taulu = Plugin:getPlayerByClient(client)
-    if not taulu then return end
+    local PlayerInfo = Plugin:GetPlayerByClient( Client )
+    if not PlayerInfo then return end
     
-    local foundId = false
+    local FoundId
       
-    for i=1, #taulu.weapons do
-        if taulu.weapons[i].name == weapon then
-            foundId=i
+    for i=1, #PlayerInfo.weapons do
+        if PlayerInfo.weapons[ i ].name == Weapon then
+            FoundId = i
             break
         end
     end
 
-    if foundId then
-        taulu.weapons[foundId].player_hit = taulu.weapons[foundId].player_hit + 1
-        taulu.weapons[foundId].player_damage = taulu.weapons[foundId].player_damage + damage
+    if FoundId then
+        PlayerInfo.weapons[ FoundId ].player_hit = PlayerInfo.weapons[ FoundId ].player_hit + 1
+        PlayerInfo.weapons[ FoundId ].player_damage = PlayerInfo.weapons[ FoundId ].player_damage + Damage
         
     else --add new weapon
-        table.insert(taulu.weapons,
+        TableInsert( PlayerInfo.weapons,
         {
             name = weapon,
             time = 0,
             miss = 0,
             player_hit = 1,
             structure_hit = 0,
-            player_damage = damage,
+            player_damage = Damage,
             structure_damage = 0
         })
     end        
 end
 
---weapon addhit to structure
-function Plugin:weaponsAddStructureHit(player,weapon, damage)
-    local client = player:GetClient()
-    if not client then return end
+--weapon addhit to Structure
+function Plugin:WeaponsAddStructureHit( Player, Weapon, Damage)
+    local Client = Player:GetClient()
+    if not Client then return end
     
-    local taulu = Plugin:getPlayerByClient(client)
-    if not taulu then return end
+    local PlayerInfo = Plugin:GetPlayerByClient( Client )
+    if not PlayerInfo then return end
     
-    local foundId = false
+    local FoundId
       
-    for i=1, #taulu.weapons do
-        if taulu.weapons[i].name == weapon then
-            foundId=i
+    for i=1, #PlayerInfo.weapons do
+        if PlayerInfo.weapons[ i ].name == Weapon then
+            FoundId = i
             break
         end
     end
 
-    if foundId then
-        taulu.weapons[foundId].structure_hit = taulu.weapons[foundId].structure_hit + 1
-        taulu.weapons[foundId].structure_damage = taulu.weapons[foundId].structure_damage + damage
+    if FoundId then
+        PlayerInfo.weapons[ FoundId ].structure_hit = PlayerInfo.weapons[ FoundId ].structure_hit + 1
+        PlayerInfo.weapons[ FoundId ].structure_damage = PlayerInfo.weapons[ FoundId ].structure_damage + Damage
 
     else --add new weapon
-        table.insert(taulu.weapons,
+        TableInsert(PlayerInfo.weapons,
         {
             name = weapon,
             time = 0,
@@ -528,7 +545,7 @@ function Plugin:weaponsAddStructureHit(player,weapon, damage)
             player_hit = 0,
             structure_hit = 1,
             player_damage = 0,
-            structure_damage = damage
+            structure_damage = Damage
         })
     end
         
@@ -536,25 +553,25 @@ end
 --OnDamagedealt end
 
 --Player jumps
-function Plugin:OnPlayerJump(Player)
-    local taulu = self:getPlayerByName(Player.name)
-    if not taulu then return end
-    taulu.jumps = taulu.jumps + 1   
+function Plugin:OnPlayerJump( Player )
+    local PlayerInfo = self:GetPlayerByName( Player.name )
+    if not PlayerInfo then return end
+    PlayerInfo.jumps = PlayerInfo.jumps + 1   
 end
 
 --Chatlogging
 function Plugin:PlayerSay( Client, Message )
     if not Plugin.Config.LogChat then return end
     
-    local player = Client:GetControllingPlayer()
-    if not player then return end
+    local Player = Client:GetControllingPlayer()
+    if not Player then return end
     
-    self:addLog({
+    self:AddLog({
         action = "chat_message",
-        team = player:GetTeamNumber(),
-        steamid = Plugin:GetId(Client),
-        name = player:GetName(),
-        message = Message.message,
+        teamnumber = Player:GetTeamNumber(),
+        steamid = Plugin:GetId( Client ),
+        name = Player:GetName(),
+        Message = Message.message,
         toteam = Message.teamOnly
     })
 end
@@ -562,140 +579,140 @@ end
 --Team Events
 
 --Item is dropped
-function Plugin:OnPickableItemCreated(item, techId, player) 
+function Plugin:OnPickableItemCreated( Item, TechId, Player ) 
     
-    local itemname = EnumToString(kTechId, techId)
-    if not itemname or itemname == "None" then return end 
+    local Itemname = EnumToString( kTechId, TechId )
+    if not Itemname or Itemname == "None" then return end 
     
-    local itemOrigin = item:GetOrigin()
+    local ItemOrigin = Item:GetOrigin()
     
-    local steamid = self:getTeamCommanderSteamid(item:GetTeamNumber()) or 0
+    local SteamId = self:GetTeamCommanderSteamid( Item:GetTeamNumber() ) or 0
           
-    local newItem =
+    local Params =
     {
-        commander_steamid = steamid,
-        instanthit = ihit,
-        id = item:GetId(),
-        cost = GetCostForTech(techId),
-        team = item:GetTeamNumber(),
-        name = itemname,
+        commander_steamid = SteamId,
+        instanthit = Player ~= nil,
+        id = Item:GetId(),
+        cost = GetCostForTech( TechId ),
+        teamnumber = Item:GetTeamNumber(),
+        name = Itemname,
         action = "pickable_item_dropped",
-        x = StringFormat("%.4f", itemOrigin.x),
-        y = StringFormat("%.4f", itemOrigin.y),
-        z = StringFormat("%.4f", itemOrigin.z)
+        x = StringFormat( "%.4f", ItemOrigin.x ),
+        y = StringFormat( "%.4f", ItemOrigin.y ),
+        z = StringFormat( "%.4f", ItemOrigin.z )
     }
 
-    Plugin:addLog(newItem)
+    Plugin:AddLog( Params )
 	
 	--istanthit pick
-    if player then     
-        local client = player:GetClient()
-        local steamId = self:GetId(client) or 0
+    if Player then     
+        local Client = Player:GetClient()
+        SteamId = self:GetId( Client )
         
-        newItem.action = "pickable_item_picked"
-        newItem.steamId = steamId
-        newItem.commander_steamid = nil
-        newItem.instanthit = nil        
-        self:addLog(newItem)
-    else self.ItemInfos[item:GetId()] = true end    
+        Params.action = "pickable_item_picked"
+        Params.steamId = SteamId
+        Params.commander_steamid = nil
+        Params.instanthit = nil        
+        self:AddLog( Params )
+    else self.ItemInfos[ Item:GetId() ] = true end    
 end
 
 --Item is picked
-function Plugin:OnPickableItemPicked(item,player)
-    if not item or not player then return end
+function Plugin:OnPickableItemPicked( Item, Player )
+    if not Item or not Player then return end
     
-    local techId = item:GetTechId()    
-    if not techId or not self.ItemInfos[item:GetId()] then return end
+    local TechId = Item:GetTechId()    
+    if not TechId or not self.ItemInfos[ Item:GetId() ] then return end
     
-    self.ItemInfos[item:GetId()] = nil
+    self.ItemInfos[ Item:GetId() ] = nil
     
-    local techId = item:GetTechId()
+    local TechId = Item:GetTechId()
     
-    local itemname = EnumToString(kTechId, techId)
-    if not itemname or itemname == "None" then return end 
+    local Itemname = EnumToString(kTechId, TechId)
+    if not Itemname or Itemname == "None" then return end 
     
-    local itemOrigin = item:GetOrigin()
+    local itemOrigin = Item:GetOrigin()
 
-    local client = player:GetClient()
-    local steamId = self:GetId(client) or 0
-    local newItem =
+    local Client = Player:GetClient()
+    local SteamId = self:GetId(Client) or 0
+    
+    local Params =
     {
-        steamId = steamId,
-        id = item:GetId(),
-        cost = GetCostForTech(techId),
-        team = player:GetTeamNumber(),
-        name = itemname,
+        steamId = SteamId,
+        id = Item:GetId(),
+        cost = GetCostForTech(TechId),
+        teamnumber = Player:GetTeamNumber(),
+        name = Itemname,
         action = "pickable_item_picked",
         x = StringFormat("%.4f", itemOrigin.x),
         y = StringFormat("%.4f", itemOrigin.y),
         z = StringFormat("%.4f", itemOrigin.z)
     }
-    Plugin:addLog(newItem)	
+    Plugin:AddLog( Params )	
 
 end
 
-function Plugin:OnPickableItemDropped(item,deltaTime)
-    if not item then return end    
+function Plugin:OnPickableItemDropped(Item,deltaTime)
+    if not Item then return end    
     
-    local techId = item:GetTechId()
-    if not techId or techId < 180 then return end
+    local TechId = Item:GetTechId()
+    if not TechId or TechId < 180 then return end
     
     --from dropack.lua
-    local marinesNearby = GetEntitiesForTeamWithinRange("Marine", item:GetTeamNumber(), item:GetOrigin(), item.pickupRange)
-    Shared.SortEntitiesByDistance(item:GetOrigin(), marinesNearby)
+    local MarinesNearby = GetEntitiesForTeamWithinRange("Marine", Item:GetTeamNumber(), Item:GetOrigin(), Item.pickupRange)
+    Shared.SortEntitiesByDistance( Item:GetOrigin(), MarinesNearby )
     
-    local player
-    for _, marine in ipairs(marinesNearby) do    
-        if item:GetIsValidRecipient(marine) then
-            player = marine
+    local Player
+    for _, marine in ipairs( MarinesNearby ) do    
+        if Item:GetIsValidRecipient( marine ) then
+            Player = marine
             break
         end
     end    
     
     --check if droppack is new
     if deltaTime == 0 then
-        if player then self:OnPickableItemCreated(item, techId, player)       
-        else self:OnPickableItemCreated(item, techId, nil) end
+        self:OnPickableItemCreated( Item, TechId, Player )
         return
     end
     
-    if player then self:OnPickableItemPicked(item,player) end        
+    if Player then self:OnPickableItemPicked( Item, Player ) end        
 end
 
 --Item gets destroyed
-function Plugin:OnPickableItemDestroyed(item)  
-    if item and item.GetId and item:GetId() and self.ItemInfos[item:GetId()] then    
-        self.ItemInfos[item:GetId()] = nil
+function Plugin:OnPickableItemDestroyed( Item )  
+    if Item and Item.GetId and Item:GetId() and self.ItemInfos[ Item:GetId() ] then    
+        self.ItemInfos[ Item:GetId() ] = nil
         
-        local techId = item:GetTechId()
+        local TechId = Item:GetTechId()
         
-        local structureOrigin = item:GetOrigin()
+        local tOrigin = Item:GetOrigin()
 
-        local newItem =
+        local Params =
         {
-            id = item:GetId(),
-            cost = GetCostForTech(techId),
-            team = item:GetTeamNumber(),
-            name = EnumToString(kTechId, techId),
+            id = Item:GetId(),
+            cost = GetCostForTech( TechId ),
+            teamNumber = Item:GetTeamNumber(),
+            name = EnumToString( kTechId, TechId ),
             action = "pickable_item_destroyed",
-            x = StringFormat("%.4f", structureOrigin.x),
-            y = StringFormat("%.4f", structureOrigin.y),
-            z = StringFormat("%.4f", structureOrigin.z)
+            x = StringFormat( "%.4f", tOrigin.x ),
+            y = StringFormat( "%.4f", tOrigin.y ),
+            z = StringFormat( "%.4f", tOrigin.z )
         }
-        self:addLog(newItem)	
+        self:AddLog( Params )	
     end
 end
 --Pickable Stuff end
 
 --Resource gathered
-function Plugin:OnTeamGetResources(ResourceTower)    
-    local newResourceGathered =
+function Plugin:OnTeamGetResources( ResourceTower )    
+    local Params =
     {
-        team = ResourceTower:GetTeam():GetTeamNumber(),
+        teamnumber = ResourceTower:GetTeam():GetTeamNumber(),
         action = "resources_gathered",
         amount = kTeamResourcePerTick
     }
-    self:addLog(newResourceGathered)
+    self:AddLog( Params )
 end
 
 --Structure Events
@@ -703,331 +720,335 @@ end
 --Building Dropped
 function Plugin:OnConstructInit( Building )
     
-    if not self.roundStarted then return end    
-    local techId = Building:GetTechId()
-    local name = EnumToString(kTechId, techId)
+    if not self.RoundStarted then return end    
+    local TechId = Building:GetTechId()
+    local name = EnumToString( kTechId, TechId )
     
     if name == "Hydra" or name == "GorgeTunnel"  or name == "BabblerEgg" then return end --Gorge Building Fix
     
-    self.BuildingsInfos[Building:GetId()] = true
+    self.BuildingsInfos[ Building:GetId() ] = true
     
     local strloc = Building:GetOrigin()
-    local build=
+    local build =
     {
         action = "structure_dropped",
         id = Building:GetId(),
-        steamId = Plugin:getTeamCommanderSteamid(Building:GetTeamNumber()) or 0,       
-        team = Building:GetTeamNumber(),        
-        structure_cost = GetCostForTech(techId),
+        steamId = self:GetTeamCommanderSteamid( Building:GetTeamNumber() ) or 0,       
+        teamNumber = Building:GetTeamNumber(),        
+        structure_cost = GetCostForTech( TechId ),
         structure_name = name,
-        structure_x = StringFormat("%.4f",strloc.x),
-        structure_y = StringFormat("%.4f",strloc.y),
-        structure_z = StringFormat("%.4f",strloc.z),
+        structure_x = StringFormat("%.4f", strloc.x ),
+        structure_y = StringFormat("%.4f", strloc.y ),
+        structure_z = StringFormat( "%.4f", strloc.z ),
     }
-    Plugin:addLog(build)
-    if Building.isGhostStructure then self:OnGhostCreated(Building) end
+    Plugin:AddLog(build)
+    if Building.isGhostStructure then self:OnGhostCreated( Building ) end
 end
 
 --Building built
-function Plugin:OnFinishedBuilt(ConstructMixin, builder)
-    self.BuildingsInfos[ConstructMixin:GetId()] = true 
+function Plugin:OnFinishedBuilt( ConstructMixin, Builder )
+    self.BuildingsInfos[ ConstructMixin:GetId() ] = true 
   
-    local techId = ConstructMixin:GetTechId()    
+    local TechId = ConstructMixin:GetTechId()    
     local strloc = ConstructMixin:GetOrigin()
     
-    if builder and builder.GetName then
-        local taulu = Plugin:getPlayerByName(builder:GetName())
+    if Builder and Builder.GetName then
+        local PlayerInfo = Plugin:GetPlayerByName( Builder:GetName() )
     end
     
-    local team = ConstructMixin:GetTeamNumber()
-    local steamId = Plugin:getTeamCommanderSteamid(team) or 0    
-    local buildername = ""
+    local Teamnumber = ConstructMixin:GetTeamNumber()
+    local SteamId = Plugin:GetTeamCommanderSteamid(teamnumber) or 0    
+    local Buildername = ""
         
-    if taulu then
-        steamId = taulu.steamId
-        buildername = taulu.name
-        taulu.total_constructed = taulu.total_constructed + 1           
+    if PlayerInfo then
+        SteamId = PlayerInfo.steamId
+        Buildername = PlayerInfo.name
+        PlayerInfo.total_constructed = PlayerInfo.total_constructed + 1           
     end
     
-    local build=
+    local Params =
     {
         action = "structure_built",
         id = ConstructMixin:GetId(),
-        builder_name = buildername,
-        steamId = steamId,
-        structure_cost = GetCostForTech(techId),
-        team = team,
-        structure_name = EnumToString(kTechId, techId),
-        structure_x = StringFormat("%.4f",strloc.x),
-        structure_y = StringFormat("%.4f",strloc.y),
-        structure_z = StringFormat("%.4f",strloc.z),
+        builder_name = Buildername,
+        steamId = SteamId,
+        structure_cost = GetCostForTech( TechId ),
+        teamnumber = Teamnumber,
+        structure_name = EnumToString( kTechId, TechId ),
+        structure_x = StringFormat( "%.4f", strloc.x ),
+        structure_y = StringFormat( "%.4f", strloc.y ),
+        structure_z = StringFormat( "%.4f", strloc.z ),
     }
-    self:addLog(build)
+    self:AddLog( Params )
 end
 
 --Ghost Buildings (Blueprints)
 function Plugin:OnGhostCreated(GhostStructureMixin)
-     self:ghostStructureAction("ghost_create",GhostStructureMixin,nil)
+     self:GhostStructureAction( "ghost_create", GhostStructureMixin )
 end
 
 function Plugin:OnGhostDestroyed(GhostStructureMixin)
-   self.BuildingsInfos[GhostStructureMixin:GetId()] = nil
-   self:ghostStructureAction("ghost_destroy",GhostStructureMixin,nil)
+   self.BuildingsInfos[ GhostStructureMixin:GetId() ] = nil
+   self:GhostStructureAction( "ghost_destroy", GhostStructureMixin )
 end
 
 --addfunction
 
-function Plugin:ghostStructureAction(action,structure,doer)        
-    if not structure then return end
-    local techId = structure:GetTechId()
-    local structureOrigin = structure:GetOrigin()
+function Plugin:GhostStructureAction( Action, Structure )        
+    if not Structure then return end
+    local TechId = Structure:GetTechId()
+    local tOrigin = Structure:GetOrigin()
    
-    local log =
+    local Params =
     {
-        action = action,
-        structure_name = EnumToString(kTechId, techId),
-        team = structure:GetTeamNumber(),
-        id = structure:GetId(),
-        structure_x = StringFormat("%.4f", structureOrigin.x),
-        structure_y = StringFormat("%.4f", structureOrigin.y),
-        structure_z = StringFormat("%.4f", structureOrigin.z)
+        action = Action,
+        structure_name = EnumToString( kTechId, TechId),
+        teamnumber = Structure:GetTeamNumber(),
+        id = Structure:GetId(),
+        structure_x = StringFormat( "%.4f", tOrigin.x ),
+        structure_y = StringFormat( "%.4f", tOrigin.y ),
+        structure_z = StringFormat( "%.4f", tOrigin.z )
     }
-    self:addLog(log)    
+    self:AddLog( Params )    
 end
 
 --Upgrade Stuff
 
---UpgradesStarted
-function Plugin:OnTechStartResearch(ResearchMixin, researchNode, player)
-    if player:isa("Commander") then
-    	local client = player:GetClient()        
-        local steamId = self:GetId(client) or 0
-        local techId = researchNode:GetTechId()
+--Upgrades Started
+function Plugin:OnTechStartResearch( ResearchMixin, ResearchNode, Player )
+    if Player:isa( "Commander" ) then
+    	local Client = Player:GetClient()        
+        local SteamId = self:GetId( Client ) or 0
+        local TechId = ResearchNode:GetTechId()
 
-        local newUpgrade =
+        local Params =
         {
 	        structure_id = ResearchMixin:GetId(),
-	        commander_steamid = steamId,
-	        team = player:GetTeamNumber(),
-	        cost = GetCostForTech(techId),
-	        upgrade_name = EnumToString(kTechId, techId),
+	        commander_steamid = SteamId,
+	        teamnumber = Player:GetTeamNumber(),
+	        cost = GetCostForTech( TechId ),
+	        upgrade_name = EnumToString( kTechId, TechId ),
 	        action = "upgrade_started"
         }
 
-        self:addLog(newUpgrade)
+        self:AddLog( Params )
     end
 end
 
---temp to fix Uprades loged multiple times
-OldUpgrade = -1
-
 --Upgradefinished
-function Plugin:OnTechResearched( ResearchMixin, structure, researchId)
-    if not structure then return end
-    local researchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode(researchId)
-    local techId = researchNode:GetTechId()
+function Plugin:OnTechResearched( ResearchMixin, Structure, ResearchId)
+    if not Structure then return end
+    local ResearchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode( ResearchId )
+    local TechId = ResearchNode:GetTechId()
     
-    if techId == OldUpgrade then return end
-    OldUpgrade = techId
+    if TechId == self.OldUpgrade then return end
+    self.OldUpgrade = TechId
     
-    local newUpgrade =
+    local Params =
     {
-        structure_id = structure:GetId(),
-        team = structure:GetTeamNumber(),
-        commander_steamid = Plugin:getTeamCommanderSteamid(structure:GetTeamNumber()),
-        cost = GetCostForTech(techId),
-        upgrade_name = EnumToString(kTechId, techId),
+        structure_id = Structure:GetId(),
+        teamnumber = Structure:GetTeamNumber(),
+        commander_steamid = Plugin:GetTeamCommanderSteamid( Structure:GetTeamNumber() ),
+        cost = GetCostForTech( TechId ),
+        upgrade_name = EnumToString( kTechId, TechId ),
         action = "upgrade_finished"
     }
-    self:addLog(newUpgrade)
+    self:AddLog( Params )
 end
 
 --Upgrade lost
-function Plugin:addUpgradeLostToLog(UpgradableMixin, techId)
-    local newUpgrade =
+function Plugin:AddUpgradeLostToLog( UpgradableMixin, TechId )
+    local Params =
     {
-        team = UpgradableMixin:GetTeamNumber(),
-        cost = GetCostForTech(techId),
-        upgrade_name = EnumToString(kTechId, techId), 
+        teamnumber = UpgradableMixin:GetTeamNumber(),
+        cost = GetCostForTech( TechId ),
+        upgrade_name = EnumToString( kTechId, TechId ), 
         action = "upgrade_lost"
     }
-    self:addLog(newUpgrade)
+    self:AddLog( Params )
 
 end
 
 --Research canceled
-function Plugin:addUpgradeAbortedToLog(ResearchMixin, researchNode)
-    local techId = researchNode:GetTechId()
-    local steamid = self:getTeamCommanderSteamid(ResearchMixin:GetTeamNumber())
+function Plugin:AddUpgradeAbortedToLog( ResearchMixin, ResearchNode )
+    local TechId = ResearchNode:GetTechId()
+    local SteamId = self:GetTeamCommanderSteamid( ResearchMixin:GetTeamNumber() )
 
-    local newUpgrade =
+    local Params =
     {
         structure_id = ResearchMixin:GetId(),
-        team = ResearchMixin:GetTeamNumber(),
-        commander_steamid = steamid,
-        cost = GetCostForTech(techId),
-        upgrade_name = EnumToString(kTechId, techId),
+        teamnumber = ResearchMixin:GetTeamNumber(),
+        commander_steamid = SteamId,
+        cost = GetCostForTech( TechId ),
+        upgrade_name = EnumToString( kTechId, TechId ),
         action = "upgrade_aborted"
     }
-    self:addLog(newUpgrade)
+    self:AddLog( Params )
 end
 
 --Building recyled
-function Plugin:OnBuildingRecycled( structure, ResearchID )
-    local structureOrigin = structure:GetOrigin()
-    local techId = structure:GetTechId()
+function Plugin:OnBuildingRecycled( Structure, ResearchID )
+    local tOrigin = Structure:GetOrigin()
+    local TechId = Structure:GetTechId()
     
     --from RecyleMixin.lua
-        local upgradeLevel = 0
-        if structure.GetUpgradeLevel then
-            upgradeLevel = structure:GetUpgradeLevel()
+        local UpgradeLevel = 0
+        if Structure.GetUpgradeLevel then
+            UpgradeLevel = Structure:GetUpgradeLevel()
         end        
-        local amount = GetRecycleAmount(techId, upgradeLevel) or 0
-        -- returns a scalar from 0-1 depending on health the structure has (at the present moment)
-        local scalar = structure:GetRecycleScalar() * kRecyclePaybackScalar
+        local Amount = GetRecycleAmount( TechId, UpgradeLevel ) or 0
+        -- returns a scalar from 0-1 depending on health the Structure has (at the present moment)
+        local Scalar = Structure:GetRecycleScalar() * kRecyclePaybackScalar
         
         -- We round it up to the nearest value thus not having weird
         -- fracts of costs being returned which is not suppose to be
         -- the case.
-        local finalRecycleAmount = math.round(amount * scalar)
+        local FinalRecycleAmount = math.round( Amount * Scalar )
     --end   
 
-    local newUpgrade =
+    local Params =
     {
-        id = structure:GetId(),
-        team = structure:GetTeamNumber(),
-        givenback = finalRecycleAmount,
-        structure_name = EnumToString(kTechId, techId),
+        id = Structure:GetId(),
+        teamnumber = Structure:GetTeamNumber(),
+        givenback = FinalRecycleAmount,
+        structure_name = EnumToString( kTechId, TechId ),
         action = "structure_recycled",
-        structure_x = StringFormat("%.4f", structureOrigin.x),
-        structure_y = StringFormat("%.4f", structureOrigin.y),
-        structure_z = StringFormat("%.4f", structureOrigin.z)
+        structure_x = StringFormat( "%.4f", tOrigin.x ),
+        structure_y = StringFormat( "%.4f", tOrigin.y ),
+        structure_z = StringFormat( "%.4f", tOrigin.z )
     }
-    self:addLog(newUpgrade)
+    self:AddLog( Params )
 end
 
 --Structure gets killed
-function Plugin:OnStructureKilled(structure, attacker , doer)
-    if not self.BuildingsInfos[structure:GetId()] then return end
-    self.BuildingsInfos[structure:GetId()] = nil                
-    local structureOrigin = structure:GetOrigin()
-    local techId = structure:GetTechId()        
-    if not doer then doer = "none" end
+function Plugin:OnStructureKilled( Structure, Attacker , Doer )
+    if not self.BuildingsInfos[ Structure:GetId() ] then return end
+    self.BuildingsInfos[ Structure:GetId() ] = nil
+               
+    local tOrigin = Structure:GetOrigin()
+    local TechId = Structure:GetTechId()        
+    if not Doer then Doer = "none" end
     --Structure killed
-    if attacker then 
-        if not attacker:isa("Player") then 
-            local realKiller = (attacker.GetOwner and attacker:GetOwner()) or nil
-            if realKiller and realKiller:isa("Player") then
-                attacker = realKiller
-            else return
+    if Attacker then 
+        if not Attacker:isa( "Player ") then 
+            local RealKiller = Attacker.GetOwner and Attacker:GetOwner()
+            if RealKiller and RealKiller:isa( "Player" ) then
+                Attacker = RealKiller
+            else 
+                return
             end
         end
         
-        local player = attacker                 
-        local client = player:GetClient()
-        local steamId = self:GetId(client) or -1
+        local Player = Attacker                 
+        local Client = Player:GetClient()
+        local SteamId = self:GetId( Client ) or -1
         
-        local weapon = doer and doer:GetMapName() or "self"      
+        local Weapon = Doer and Doer:GetMapName() or "self"      
 
-        local newStructure =
+        local Params =
         {
-            id = structure:GetId(),
-            killer_steamId = steamId,
-            killer_lifeform = player:GetMapName() or "none",
-            killer_team = player:GetTeamNumber() or 0,
-            structure_team = structure:GetTeamNumber(),
-            killerweapon = weapon,
-            structure_cost = GetCostForTech(techId),
-            structure_name = EnumToString(kTechId, techId),
+            id = Structure:GetId(),
+            killer_steamId = SteamId,
+            killer_lifeform = Player:GetMapName() or "none",
+            killer_team = Player:GetTeamNumber() or 0,
+            structure_team = Structure:GetTeamNumber(),
+            killerweapon = Weapon,
+            structure_cost = GetCostForTech( TechId ),
+            structure_name = EnumToString( kTechId, TechId ),
             action = "structure_killed",
-            structure_x = StringFormat("%.4f", structureOrigin.x),
-            structure_y = StringFormat("%.4f", structureOrigin.y),
-            structure_z = StringFormat("%.4f", structureOrigin.z)
+            structure_x = StringFormat( "%.4f", tOrigin.x ),
+            structure_y = StringFormat( "%.4f", tOrigin.y ),
+            structure_z = StringFormat( "%.4f", tOrigin.z )
         }
-        self:addLog(newStructure)
+        self:AddLog( Params )
             
     --Structure suicide
     else
-        local newStructure =
+        local Params =
         {
-            id = structure:GetId(),
-            structure_team = structure:GetTeamNumber(),
-            structure_cost = GetCostForTech(techId),
-            structure_name = EnumToString(kTechId, techId),
+            id = Structure:GetId(),
+            structure_team = Structure:GetTeamNumber(),
+            structure_cost = GetCostForTech( TechId ),
+            structure_name = EnumToString( kTechId, TechId ),
             action = "structure_suicide",
-            structure_x = StringFormat("%.4f", structureOrigin.x),
-            structure_y = StringFormat("%.4f", structureOrigin.y),
-            structure_z = StringFormat("%.4f", structureOrigin.z)
+            structure_x = StringFormat( "%.4f", tOrigin.x ),
+            structure_y = StringFormat( "%.4f", tOrigin.y ),
+            structure_z = StringFormat( "%.4f", tOrigin.z )
         }
-        self:addLog(newStructure)
+        self:AddLog( Params )
     end 
 end
 
 --Mixed Events 
 
 --Entity Killed
-function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor, Point, Direction)   
-    if TargetEntity:isa("Player") then self:addDeathToLog(TargetEntity, Attacker, Inflictor)     
-    elseif self.BuildingsInfos[TargetEntity:GetId()] and not TargetEntity.isGhostStructure then self:OnStructureKilled(TargetEntity, Attacker, Inflictor)      
+function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor)   
+    if TargetEntity:isa( "Player" ) then
+        self:AddDeathToLog( TargetEntity, Attacker, Inflictor )     
+    elseif self.BuildingsInfos[ TargetEntity:GetId() ] and not TargetEntity.isGhostStructure then 
+        self:OnStructureKilled( TargetEntity, Attacker, Inflictor )      
     end   
 end
 
-function Plugin:OnEntityDestroy(entity)
-    if entity:isa("DropPack") and entity:GetTechId() > 180 then  Plugin:OnPickableItemDestroyed(entity) end
-    if self.BuildingsInfos[entity:GetId()] and entity.isGhostStructure then self:OnGhostDestroyed(entity) end
+function Plugin:OnEntityDestroy( Entity )
+    if Entity.isGhostStructure and self.BuildingsInfos[ Entity:GetId() ] then 
+        self:OnGhostDestroyed( Entity )
+    elseif Entity:isa( "DropPack" ) and Entity:GetTechId() > 180 then
+        self:OnPickableItemDestroyed( Entity )
+    end    
 end
 
 --add Player death to Log
-function Plugin:addDeathToLog(target, attacker, doer)
-    if attacker and doer and target then
-        local attackerOrigin = attacker:GetOrigin()
-        local targetOrigin = target:GetOrigin()        
-        local target_client = target:GetClient()
-        if not target_client then return end
+function Plugin:AddDeathToLog(Target, Attacker, Doer)
+    if Attacker and Doer and Target then
+        local aOrigin = Attacker:GetOrigin()
+        local tOrigin = Target:GetOrigin()        
+        local TargetClient = Target:GetClient()
+        if not TargetClient then return end
 
-        local targetWeapon = target:GetActiveWeapon() and target:GetActiveWeapon():GetMapName() or "None"
+        local TargetWeapon = Target:GetActiveWeapon() and Target:GetActiveWeapon():GetMapName() or "None"
 
-        if attacker:isa("Player") then            
-            local attacker_client = attacker:GetClient()                
-            if not attacker_client then return end
+        if Attacker:isa( "Player" ) then            
+            local AttackerClient = Attacker:GetClient()                
+            if not AttackerClient then return end
             
-            local deathLog =
+            local Params =
             {                
-            --general
-            action = "death",	
-            
-            --Attacker
-            attacker_steamId = Plugin:GetId(attacker_client) or 0,
-            attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
-            attacker_weapon = StringLower(doer:GetMapName()),
-            attacker_lifeform = StringLower(attacker:GetMapName()), 
-            attacker_hp = attacker:GetHealth(),
-            attacker_armor = attacker:GetArmorAmount(),
-            attackerx = StringFormat("%.4f", attackerOrigin.x),
-            attackery = StringFormat("%.4f", attackerOrigin.y),
-            attackerz = StringFormat("%.4f", attackerOrigin.z),
-            
-            --Target
-            target_steamId = Plugin:GetId(target_client) or 0,
-            target_team = target:GetTeamType(),
-            target_weapon = StringLower(targetWeapon),
-            target_lifeform = StringLower(target:GetMapName()), 
-            target_hp = target:GetHealth(),
-            target_armor = target:GetArmorAmount(),
-            targetx = StringFormat("%.4f", targetOrigin.x),
-            targety = StringFormat("%.4f", targetOrigin.y),
-            targetz = StringFormat("%.4f", targetOrigin.z),
-            target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
-            }
-            Plugin:addLog(deathLog)
+                --general
+                action = "death",	
                 
-            if attacker:GetTeamNumber() ~= target:GetTeamNumber() then                   
+                --Attacker
+                attacker_steamId = Plugin:GetId( AttackerClient ) or 0,
+                attacker_team = HasMixin( Attacker, "Team" ) and Attacker:GetTeamType() or kNeutralTeamType,
+                attacker_weapon = StringLower( Doer:GetMapName() ),
+                attacker_lifeform = StringLower( Attacker:GetMapName() ), 
+                attacker_hp = Attacker:GetHealth(),
+                attacker_armor = Attacker:GetArmorAmount(),
+                attackerx = StringFormat( "%.4f", aOrigin.x ),
+                attackery = StringFormat( "%.4f", aOrigin.y ),
+                attackerz = StringFormat( "%.4f", aOrigin.z ),
+                
+                --Target
+                target_steamId = Plugin:GetId(TargetClient) or 0,
+                target_team = Target:GetTeamType(),
+                target_weapon = StringLower(TargetWeapon),
+                target_lifeform = StringLower(Target:GetMapName()), 
+                target_hp = Target:GetHealth(),
+                target_armor = Target:GetArmorAmount(),
+                targetx = StringFormat("%.4f", tOrigin.x),
+                targety = StringFormat("%.4f", tOrigin.y),
+                targetz = StringFormat("%.4f", tOrigin.z),
+                target_lifetime = StringFormat( "%.4f", Shared.GetTime() - Target:GetCreationTime() )
+            }
+            Plugin:AddLog(Params)
+                
+            if Attacker:GetTeamNumber() ~= Target:GetTeamNumber() then                   
                 --addkill
-                Plugin:addKill(Plugin:GetId(attacker_client), Plugin:GetId(target_client))                  
+                Plugin:AddKill( Plugin:GetId(AttackerClient) )                  
             end            
 	    else
 	        --natural causes death
-	        local deathLog =
+	        local Params =
 	        {
 	            --general
 	            action = "death",
@@ -1036,66 +1057,67 @@ function Plugin:addDeathToLog(target, attacker, doer)
 	            attacker_weapon	= "natural causes",
 	
 	            --Target
-	            target_steamId = Plugin:GetId(target_client),
-	            target_team = target:GetTeamType(),
-	            target_weapon = targetWeapon,
-	            target_lifeform = target:GetMapName(), --target:GetPlayerStatusDesc(),
-	            target_hp = target:GetHealth(),
-	            target_armor = target:GetArmorAmount(),
-	            targetx = StringFormat("%.4f", targetOrigin.x),
-	            targety = StringFormat("%.4f", targetOrigin.y),
-	            targetz = StringFormat("%.4f", targetOrigin.z),
-	            target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())	
+	            target_steamId = Plugin:GetId( TargetClient ),
+	            target_team = Target:GetTeamType(),
+	            target_weapon = TargetWeapon,
+	            target_lifeform = Target:GetMapName(),
+	            target_hp = Target:GetHealth(),
+	            target_armor = Target:GetArmorAmount(),
+	            targetx = StringFormat( "%.4f", tOrigin.x),
+	            targety = StringFormat( "%.4f", tOrigin.y),
+	            targetz = StringFormat( "%.4f", tOrigin.z),
+	            target_lifetime = StringFormat( "%.4f", Shared.GetTime() - Target:GetCreationTime() )	
 	        }
-	        self:addLog(deathLog)       
+	        self:AddLog( Params )       
 	    end
-    elseif target then --suicide
-        local target_client = target:GetClient()       
-        local targetWeapon = "none"
-        local targetOrigin = target:GetOrigin()
-        local attacker_client = target_client --easy way out        
-        local attackerOrigin = targetOrigin
-        local attacker = target
-         local deathLog =
+    elseif Target then --suicide
+        local TargetClient = Target:GetClient()       
+        local TargetWeapon = "none"
+        local tOrigin = Target:GetOrigin()
+        local AttackerClient = TargetClient --easy way out        
+        local aOrigin = tOrigin
+        local Attacker = Target
+        local Params =
             {                
                 --general
                 action = "death",	
                 
                 --Attacker
                 attacker_weapon = "self",
-                attacker_lifeform = attacker:GetMapName(),
-                attacker_steamId = Plugin:GetId(attacker_client),
-                attacker_team = ((HasMixin(attacker, "Team") and attacker:GetTeamType()) or kNeutralTeamType),
-                attacker_hp = attacker:GetHealth(),
-                attacker_armor = attacker:GetArmorAmount(),
-                attackerx = StringFormat("%.4f", attackerOrigin.x),
-                attackery = StringFormat("%.4f", attackerOrigin.y),
-                attackerz = StringFormat("%.4f", attackerOrigin.z),
+                attacker_lifeform = Attacker:GetMapName(),
+                attacker_steamId = Plugin:GetId(AttackerClient),
+                attacker_team = HasMixin( Attacker, "Team" ) and Attacker:GetTeamType() or kNeutralTeamType,
+                attacker_hp = Attacker:GetHealth(),
+                attacker_armor = Attacker:GetArmorAmount(),
+                attackerx = StringFormat( "%.4f", aOrigin.x ),
+                attackery = StringFormat( "%.4f", aOrigin.y ),
+                attackerz = StringFormat( "%.4f", aOrigin.z ),
                 
                 --Target
-                target_steamId = Plugin:GetId(target_client),
-                target_team = target:GetTeamType(),
-                target_weapon = targetWeapon,
-                target_lifeform = target:GetMapName(),
-                target_hp = target:GetHealth(),
-                target_armor = target:GetArmorAmount(),
-                targetx = StringFormat("%.4f", targetOrigin.x),
-                targety = StringFormat("%.4f", targetOrigin.y),
-                targetz = StringFormat("%.4f", targetOrigin.z),
-                target_lifetime = StringFormat("%.4f", Shared.GetTime() - target:GetCreationTime())
+                target_steamId = Plugin:GetId( TargetClient ),
+                target_team = Target:GetTeamType(),
+                target_weapon = TargetWeapon,
+                target_lifeform = Target:GetMapName(),
+                target_hp = Target:GetHealth(),
+                target_armor = Target:GetArmorAmount(),
+                targetx = StringFormat( "%.4f", tOrigin.x ),
+                targety = StringFormat( "%.4f", tOrigin.y ),
+                targetz = StringFormat( "%.4f", tOrigin.z ),
+                target_lifetime = StringFormat( "%.4f", Shared.GetTime() - Target:GetCreationTime() )
             }            
-            self:addLog(deathLog)  
+        self:AddLog( Params )  
     end
 end
 
 --Check Killstreaks
-function Plugin:addKill(attacker_steamId,target_steamId)
-    for key,taulu in pairs(self.PlayersInfos) do	
-        if taulu.steamId == attacker_steamId then	
-            taulu.killstreak = taulu.killstreak + 1	
-            if taulu.killstreak > taulu.highestKillstreak then
-                taulu.highestKillstreak = taulu.killstreak
-            end 
+function Plugin:AddKill( AttackerSteamId )
+    for _,PlayerInfo in pairs(self.PlayersInfos) do	
+        if PlayerInfo.steamId == AttackerSteamId then	
+            PlayerInfo.killstreak = PlayerInfo.killstreak + 1	
+            if PlayerInfo.killstreak > PlayerInfo.highestKillstreak then
+                PlayerInfo.highestKillstreak = PlayerInfo.killstreak
+            end
+            return    
         end            
     end
 end
@@ -1105,143 +1127,144 @@ end
 --Log functions
 
 --add to log
-function Plugin:addLog(tbl)    
-    if self.RoundFinished == 1 or not tbl then return end
+function Plugin:AddLog( Params )    
+    if self.RoundFinished == 1 or not Params then return end
     
     if not Plugin.Log then Plugin.Log = {} end
-    if not Plugin.Log[Plugin.LogPartNumber] then Plugin.Log[Plugin.LogPartNumber] = "" end
+    if not Plugin.Log[ Plugin.LogPartNumber ] then Plugin.Log[ Plugin.LogPartNumber ] = "" end
    
     if Shared.GetCheatsEnabled() and self.StatsEnabled then 
         self.StatsEnabled = false
         Shine:Notify( nil, "", "NS2Stats", "Cheats were enabled! NS2Stats will disable itself now!")
     end
     
-    tbl.time = Shared.GetGMTString(false)
-    tbl.gametime = Shared.GetTime() - self.GameStartTime
-    Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(tbl))	
+    Params.time = Shared.GetGMTString(false)
+    Params.gametime = Shared.GetTime() - self.GameStartTime
+    Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(Params))	
     
     --avoid that log gets too long
     if StringLen(self.Log[self.LogPartNumber]) > 250000 then
         self.LogPartNumber = self.LogPartNumber + 1    
-        if self.StatsEnabled then self:sendData() end        
+        if self.StatsEnabled then self:SendData() end        
     end
 end
 
 --add playerlist to log
-function Plugin:addPlayersToLog(type) 
-    local tmp = {}
+function Plugin:AddPlayersToLog( Type ) 
+    local Temp = {}
     
-    if type == 0 then
-        tmp.action = "player_list_start"
+    if Type == 0 then
+        Temp.action = "player_list_start"
     else
-        tmp.action = "player_list_end"
+        Temp.action = "player_list_end"
     end
   
     --reset codes
     for p = 1, #self.PlayersInfos do	
-        local player = self.PlayersInfos[p]	
-        player.code = 0
+        local Player = self.PlayersInfos[ p ]	
+        Player.code = 0
     end
     
-    tmp.list = self.PlayersInfos    
-    self:addLog(tmp)
+    Temp.list = self.PlayersInfos    
+    self:AddLog( Temp )
 end
 
 --Add server infos
-function Plugin:AddServerInfos(params)
-    local mods = {}
-    local getMod = Server.GetActiveModId
+function Plugin:AddServerInfos( Params )
+    local Mods = {}
+    local GetMod = Server.GetActiveModId
     for i = 1, Server.GetNumActiveMods() do
-        local Mod = getMod( i )
+        local Mod = GetMod( i )
         for j = 1, Server.GetNumMods() do
             if Server.GetModId(j) == Mod then
-                mods[i] = Server.GetModTitle(j)
+                Mods[ i ] = Server.GetModTitle( j )
                 break
             end
         end 
     end
     
-    params.action = "game_ended"
-    params.statsVersion = Plugin.Version
-    params.serverName = Server.GetName()
-    params.gamemode = Shine.GetGamemode()
-    params.successfulSends = self.SuccessfulSends 
-    params.resendCount = self.ResendCount
-    params.mods = mods
-    params.awards = self.Awards
-    params.tags = self.Config.Tags    
-    params.private = self.Config.Competitive
-    params.autoarrange = false --use Shine plugin settings later?
-    local ip = IPAddressToString(Server.GetIpAddress()) 
-    if not StringFind(ip,":") then ip = StringFormat("%s:%s",ip,Server.GetPort()) end
-    params.serverInfo =
+    Params.action = "game_ended"
+    Params.statsVersion = Plugin.Version
+    Params.serverName = Server.GetName()
+    Params.gamemode = Shine.GetGamemode()
+    Params.successfulSends = self.SuccessfulSends 
+    Params.resendCount = self.ResendCount
+    Params.mods = mods
+    Params.Awards = self.Awards
+    Params.tags = self.Config.Tags    
+    Params.private = self.Config.Competitive
+    Params.autoarrange = false --use Shine plugin settings later?
+    local Ip = IPAddressToString( Server.GetIpAddress() ) 
+    if not StringFind( Ip, ":" ) then Ip = StringFormat( "%s:%s", Ip, Server.GetPort() ) end
+    Params.serverInfo =
     {
         password = "",
-        IP = ip,
+        IP = Ip,
         count = 30 --servertick?
     }    
-    self:addLog(params)
+    self:AddLog( Params )
 end
 
 --send Log to NS2Stats Server
-function Plugin:sendData()
-    if not self.StatsEnabled or self.working or self.LogPartNumber <= self.LogPartToSend and self.RoundFinished ~= 1 then return end
+function Plugin:SendData()
+    if not self.StatsEnabled or self.Working or self.LogPartNumber <= self.LogPartToSend and self.RoundFinished ~= 1 then return end
     
-    self.working = true
+    self.Working = true
     
-    local params =
+    local Params =
     {
         key = self.Config.ServerKey,
-        roundlog = self.Log[Plugin.LogPartToSend],
+        roundlog = self.Log[ Plugin.LogPartToSend ],
         part_number = self.LogPartToSend ,
         last_part = self.RoundFinished,
         map = Shared.GetMapName(),
-    }    
-    Shine.TimedHTTPRequest(StringFormat("%s/api/sendlog", self.Config.WebsiteUrl), "POST", params, function(response) Plugin:onHTTPResponseFromSend(response) end,function()
+    }
+    
+    Shine.TimedHTTPRequest( StringFormat( "%s/api/sendlog", self.Config.WebsiteUrl ), "POST", Params, function( Response ) Plugin:OnHTTPResponseFromSend( Response ) end, function()
         Plugin.working = false 
         Plugin.ResendCount = Plugin.ResendCount + 1 
-        if Plugin.ResendCount > 10 then 
+        if Plugin.ResendCount > 5 then 
             self.StatsEnabled = false
-            Notify("Ns2Stats.com seems to be not avaible at the moment. Disabling stats sending")
+            Notify( "Ns2Stats.com seems to be not avaible at the moment. Disabling stats sending" )
             return
         end
-        Plugin:sendData()
+        Plugin:SendData()
     end, 30)
 end
 
 --Analyze the answer of server
-function Plugin:onHTTPResponseFromSend(response)	
-    local message = JsonDecode(response)
+function Plugin:OnHTTPResponseFromSend( Response )	
+    local Message = JsonDecode( Response )
     
-    if message then        
-        if message.other then
-            Notify("[NSStats]: ".. message.other)
+    if Message then        
+        if Message.other then
+            Notify( StringFormat( "[NSStats]: %s", Message.other ))
             return
         end
     
-        if message.error == "NOT_ENOUGH_PLAYERS" then
-            Notify("[NS2Stats]: Send failed because of too less players ")
+        if Message.error == "NOT_ENOUGH_PLAYERS" then
+            Notify( "[NS2Stats]: Send failed because of too less players " )
             return
         end	
 
-        if message.link then
-            local link = StringFormat("%s%s",self.Config.WebsiteUrl, message.link)
+        if Message.link then
+            local Link = StringFormat( "%s%s", self.Config.WebsiteUrl, Message.link)
             Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
-            self.Config.Lastroundlink = link
+            self.Config.Lastroundlink = Link
             self:SaveConfig()
             return       
         end
     end
     
-    if StringLen(response)>1 and StringFind(response,"LOG_RECEIVED_OK",nil, true) then
-         self.Log[Plugin.LogPartToSend ] = nil
+    if StringLen( Response ) > 1 and StringFind( Response, "LOG_RECEIVED_OK", nil, true ) then
+         self.Log[ Plugin.LogPartToSend ] = nil
          self.LogPartToSend = Plugin.LogPartToSend  + 1
          self.SuccessfulSends  = self.SuccessfulSends  + 1
-         self.working = false
-         Plugin:sendData()
+         self.Working = false
+         Plugin:SendData()
     else --we couldn't reach the NS2Stats Servers
-        self.working = false                                
-        self:SimpleTimer(5, function() self:sendData() end)             
+        self.Working = false                                
+        self:SimpleTimer( 5, function() self:SendData() end)             
     end    
 end
 
@@ -1250,115 +1273,115 @@ end
 --Player table functions
     
 --add Player to table
-function Plugin:addPlayerToTable(client)
-    if not client then return end
-    local entry = self:createPlayerTable(client)
-    if not entry then return end
+function Plugin:AddPlayerToTable( Client )
+    if not Client then return end
+    local Entry = self:CreatePlayerEntry( Client )
+    if not Entry then return end
     
-    table.insert(self.PlayersInfos, entry )    
+    TableInsert( self.PlayersInfos, Entry )    
 end
 
 --create new entry
-function Plugin:createPlayerTable(client)
-    if not client.GetControllingPlayer then
-        Notify("[NS2Stats Debug]: Tried to create nil player")
+function Plugin:CreatePlayerEntry(Client)
+    if not Client.GetControllingPlayer then
+        Notify( "[NS2Stats Debug]: Tried to create nil Player" )
         return
     end
-    local player = client:GetControllingPlayer()
-    if not player then return end
-    local taulu= {}
+    local Player = Client:GetControllingPlayer()
+    if not Player then return end
+    local PlayerInfo= {}
        
-    taulu.teamnumber = player:GetTeamNumber() or 0
-    taulu.lifeform = player:GetMapName()
-    taulu.score = 0
-    taulu.assists = 0
-    taulu.deaths = 0
-    taulu.kills = 0
-    taulu.totalKills = player.totalKills or 0
-    taulu.totalAssists = player.totalAssists or 0
-    taulu.totalDeaths = player.totalDeaths or 0
-    taulu.playerSkill = player.playerSkill or 0
-    taulu.totalScore = player.totalScore or 0
-    taulu.totalPlayTime = player.totalPlayTime or 0
-    taulu.playerLevel = player.playerLevel or 0   
-    taulu.steamId = Plugin:GetId(client) or 0
-    taulu.name = player:GetName() or ""
-    taulu.ping = client:GetPing() or 0
-    taulu.isbot = client:GetIsVirtual() or false	
-    taulu.isCommander = false           
-    taulu.dc = false
-    taulu.total_constructed = 0        
-    taulu.weapons = {}      
-    taulu.killstreak =0
-    taulu.highestKillstreak =0
-    taulu.jumps = 0    
+    PlayerInfo.teamnumber = Player:GetTeamNumber() or 0
+    PlayerInfo.Lifeform = Player:GetMapName()
+    PlayerInfo.score = 0
+    PlayerInfo.assists = 0
+    PlayerInfo.deaths = 0
+    PlayerInfo.kills = 0
+    PlayerInfo.totalKills = Player.totalKills or 0
+    PlayerInfo.totalAssists = Player.totalAssists or 0
+    PlayerInfo.totalDeaths = Player.totalDeaths or 0
+    PlayerInfo.playerSkill = Player.playerSkill or 0
+    PlayerInfo.totalScore = Player.totalScore or 0
+    PlayerInfo.totalPlayTime = Player.totalPlayTime or 0
+    PlayerInfo.playerLevel = Player.playerLevel or 0   
+    PlayerInfo.steamId = Plugin:GetId(Client) or 0
+    PlayerInfo.name = Player:GetName() or ""
+    PlayerInfo.ping = Client:GetPing() or 0
+    PlayerInfo.isbot = Client:GetIsVirtual() or false	
+    PlayerInfo.isCommander = false           
+    PlayerInfo.dc = false
+    PlayerInfo.total_constructed = 0        
+    PlayerInfo.weapons = {}      
+    PlayerInfo.killstreak =0
+    PlayerInfo.highestKillstreak =0
+    PlayerInfo.jumps = 0    
             
     --for bots
-    if taulu.isbot then
-        taulu.ping = 0
-        taulu.ipaddress = "127.0.0.1"
+    if PlayerInfo.isbot then
+        PlayerInfo.ping = 0
+        PlayerInfo.ipaddress = "127.0.0.1"
     else
-        taulu.ping = client:GetPing()
-        taulu.ipaddress = IPAddressToString(Server.GetClientAddress(client))
+        PlayerInfo.ping = Client:GetPing()
+        PlayerInfo.ipaddress = IPAddressToString( Server.GetClientAddress( Client ))
     end
     
-    return taulu
+    return PlayerInfo
 end
 
 --Update Player Entry
-function Plugin:UpdatePlayerInTable(client,player,taulu)
-    if taulu.dc then return end
+function Plugin:UpdatePlayerInTable(Client, Player, PlayerInfo)
+    if PlayerInfo.dc then return end
     
-    taulu.name = player:GetName()
-    taulu.score = player.score or 0
-    taulu.assists = player.assistkills or 0
-    taulu.deaths = player.deaths or 0
-    taulu.kills = player.kills or 0
-    taulu.totalKills = player.totalKills or 0
-    taulu.totalAssists = player.totalAssists or 0
-    taulu.totalDeaths = player.totalDeaths or 0
-    taulu.playerSkill = player.playerSkill or 0
-    taulu.totalScore = player.totalScore or 0
-    taulu.totalPlayTime = player.totalPlayTime or 0
-    taulu.playerLevel = player.playerLevel or 0
-    taulu.isCommander = player:GetIsCommander() or false    
-    --if player is dead
-    if not player:GetIsAlive() then
-        taulu.killstreak = 0        
+    PlayerInfo.name = Player:GetName()
+    PlayerInfo.score = Player.score or 0
+    PlayerInfo.assists = Player.assistkills or 0
+    PlayerInfo.deaths = Player.deaths or 0
+    PlayerInfo.kills = Player.kills or 0
+    PlayerInfo.totalKills = Player.totalKills or 0
+    PlayerInfo.totalAssists = Player.totalAssists or 0
+    PlayerInfo.totalDeaths = Player.totalDeaths or 0
+    PlayerInfo.playerSkill = Player.playerSkill or 0
+    PlayerInfo.totalScore = Player.totalScore or 0
+    PlayerInfo.totalPlayTime = Player.totalPlayTime or 0
+    PlayerInfo.playerLevel = Player.playerLevel or 0
+    PlayerInfo.isCommander = Player:GetIsCommander() or false    
+    --if Player is dead
+    if not Player:GetIsAlive() then
+        PlayerInfo.killstreak = 0        
     end
-    if not taulu.isbot then taulu.ping = client:GetPing() end        
+    if not PlayerInfo.isbot then PlayerInfo.ping = Client:GetPing() end        
 end
 
 --All search functions
-function Plugin:getTeamCommanderSteamid(teamNumber)
-    for key,taulu in pairs(self.PlayersInfos) do	
-        if taulu.isCommander and taulu.teamnumber == teamNumber then
-            return taulu.steamId
+function Plugin:GetTeamCommanderSteamid(teamNumber)
+    for key,PlayerInfo in pairs(self.PlayersInfos) do	
+        if PlayerInfo.isCommander and PlayerInfo.teamnumber == teamNumber then
+            return PlayerInfo.steamId
         end	
     end
     return 0
 end
 
-function Plugin:getPlayerByName(name)
-    if not name then return end
-    for key,taulu in pairs(self.PlayersInfos) do        
-        if taulu.name == name then return taulu end	
+function Plugin:GetPlayerByName( Name )
+    if not Name then return end
+    for _,PlayerInfo in pairs( self.PlayersInfos ) do        
+        if PlayerInfo.name == Name then return PlayerInfo end	
     end
     return
 end
 
-function Plugin:getPlayerByClient(client)
-    if not client then return end
+function Plugin:GetPlayerByClient(Client)
+    if not Client then return end
     
-    if client.GetUserId then
-        local steamId = self:GetId(client)
-        for key,taulu in pairs(self.PlayersInfos) do	
-          if taulu.steamId == steamId then return taulu end
+    if Client.GetUserId then
+        local steamId = self:GetId( Client )
+        for _,PlayerInfo in pairs( self.PlayersInfos ) do	
+          if PlayerInfo.steamId == steamId then return PlayerInfo end
         end
-    elseif client.GetControllingPlayer then
-        local player = client:GetControllingPlayer()
-        local name = player:GetName()
-        self:getPlayerByName(name)
+    elseif Client.GetControllingPlayer then
+        local Player = Client:GetControllingPlayer()
+        local name = Player:GetName()
+        self:GetPlayerByName( Name )
     end
     return
 end
@@ -1367,47 +1390,47 @@ end
 --GetIds
 function Plugin:GetId(Client)
     if Client and Client.GetUserId then     
-        if Client:GetIsVirtual() then return Plugin:GetIdbyName(Client:GetControllingPlayer():GetName()) or 0
+        if Client:GetIsVirtual() then return Plugin:GetIdbyName( Client:GetControllingPlayer():GetName() ) or 0
         else return Client:GetUserId() end
     end
     return
 end
 
 --For Bots
-local fakeids = {}
+Plugin.FakeIds = {}
 
-function Plugin:GetIdbyName(Name)    
+function Plugin:GetIdbyName( Name )    
     if not Name then return end
     
     --disable Onlinestats
     if self.StatsEnabled then
-        Notify( "NS2Stats won't store game with bots. Disabling online stats now!")
+        Notify( "NS2Stats won't store game with bots. Disabling online stats now!" )
         self.StatsEnabled = false 
     end
     
-    if fakeids[Name] then return fakeids[Name] end
+    if self.FakeIds[ Name ] then return self.FakeIds[ Name ] end
     
-    local NewId=""
+    local NewId = ""
     local Letters = " []+-*/!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
     
     --to differ between e.g. name and name (2)   
-    local Input = string.UTF8Reverse(Name)
+    local Input = StringReverse( Name )
     
     for i=1,6 do
         local Num = 99
         if #Input >=i then
             local Char = StringSub(Input,i,i)
-            Num = StringFind(Letters,Char,nil,true) or 99
-            if Num < 10 then Num = 80+Num end
+            Num = StringFind(Letters, Char, nil, true) or 99
+            if Num < 10 then Num = 80 + Num end
         end
-        NewId = StringFormat("%s%s",NewId,Num)        
+        NewId = StringFormat( "%s%s", NewId, Num)        
     end
     
     
     --make a int
-    NewId = tonumber(NewId)
+    NewId = tonumber( NewId )
     
-    fakeids[Name] = NewId    
+    self.Fakeids[ Name ] = NewId    
     return NewId
 end
 --Ids end
@@ -1416,33 +1439,33 @@ end
 
 --Update Weapontable
 function Plugin:UpdateWeaponTable() 
-        if not self.roundStarted then return end         
-        for _, client in ipairs(Shine.GetAllClients()) do
-            Plugin:updateWeaponData(client)                 
+        if not self.RoundStarted then return end         
+        for _, Client in ipairs( Shine.GetAllClients() ) do
+            Plugin:UpdateWeaponData( Client )                 
         end       
 end   
 
-function Plugin:updateWeaponData(client) 
-    if not client then return end
+function Plugin:UpdateWeaponData( Client ) 
+    if not Client then return end
     
-    local taulu = self:getPlayerByClient(client)
-    if not taulu then return end
+    local PlayerInfo = self:GetPlayerByClient( Client )
+    if not PlayerInfo then return end
     
-    local player = client:GetControllingPlayer()
-    if not player then return end
+    local Player = Client:GetControllingPlayer()
+    if not Player then return end
    
-    local weapon = player.GetActiveWeaponName and player:GetActiveWeaponName() or "none"
+    local weapon = Player.GetActiveWeaponName and Player:GetActiveWeaponName() or "none"
     weapon = StringLower(weapon)
     
-    local foundId
-    for i=1, #taulu.weapons do
-        if taulu.weapons[i].name == weapon then foundId=i end
+    local FoundId
+    for i=1, #PlayerInfo.weapons do
+        if PlayerInfo.weapons[i].name == weapon then FoundId = i end
     end
     
-    if foundId then
-        taulu.weapons[foundId].time = taulu.weapons[foundId].time + 1
+    if FoundId then
+        PlayerInfo.weapons[FoundId].time = PlayerInfo.weapons[FoundId].time + 1
     else --add new weapon
-        table.insert(taulu.weapons,
+        TableInsert(PlayerInfo.weapons,
         {
             name = weapon,
             time = 1,
@@ -1456,61 +1479,61 @@ function Plugin:updateWeaponData(client)
 end
 
 --send Status report to NS2Stats
-function Plugin:sendServerStatus(gameState)
-    local stime = Shared.GetGMTString(false)
+function Plugin:SendServerStatus( GameState )
+    local stime = Shared.GetGMTString( false )
     local gameTime = Shared.GetTime() - self.GameStartTime
-    local params =
+    local Params =
     {
         key = self.Config.ServerKey,
-        players = JsonEncode(self.PlayersInfos),
-        state = gameState,
+        players = JsonEncode( self.PlayersInfos ),
+        state = GameState,
         time = stime,
         gametime = gameTime,
         map = Shared.GetMapName(),
     }
-    Shared.SendHTTPRequest(StringFormat("%s/api/sendstatus", self.Config.WebsiteUrl), "POST", params, function() end)	
+    HTTPRequest( StringFormat( "%s/api/sendstatus", self.Config.WebsiteUrl ), "POST", Params, function() end )	
 end
 --Timer end
 
 -- Other ns2stats functions
 
 --gets server key
-function Plugin:acceptKey(response)
-        if not response or response == "" then
-            Notify("NS2Stats: Unable to receive unique key from server, stats wont work yet. ")
-            Notify("NS2Stats: Server restart might help.")
+function Plugin:AcceptKey( Response )
+        if not Response or Response == "" then
+            Notify( "NS2Stats: Unable to receive unique key from server, stats wont work yet. " )
+            Notify( "NS2Stats: Server restart might help." )
         else
-            local decoded = JsonDecode(response)
-            if decoded and decoded.key then
-                self.Config.ServerKey = decoded.key
-                Notify(StringFormat("NS2Stats: Key %s has been assigned to this server ", self.Config.ServerKey))
-                Notify("NS2Stats: You may use admin command sh_verity to claim this server.")
-                Notify("NS2Stats setup complete.")
+            local Decoded = JsonDecode( Response )
+            if Decoded and Decoded.key then
+                self.Config.ServerKey = Decoded.key
+                Notify( StringFormat("NS2Stats: Key %s has been assigned to this server ", self.Config.ServerKey ))
+                Notify( "NS2Stats: You may use admin command sh_verity to claim this server." )
+                Notify( "NS2Stats setup complete." )
                 self.StatsEnabled = true
                 self:SaveConfig()                                              
             else
-                Notify("NS2Stats: Unable to receive unique key from server, stats wont work yet. ")
-                Notify("NS2Stats: Server restart might help.")
-                Notify(StringFormat("NS2Stats: Server responded: %s", response))
+                Notify( "NS2Stats: Unable to receive unique key from server, stats wont work yet." )
+                Notify( "NS2Stats: Server restart might help." )
+                Notify( StringFormat( "NS2Stats: Server responded: %s", Response ))
             end
         end
 end
 
 function Plugin:GetServerId()  
-    if not self.serverid and self.Config.ServerKey ~= "" then
-        self.serverid = ""
-        Shared.SendHTTPRequest(StringFormat("%s/api/server?key=%s", self.Config.WebsiteUrl,self.Config.ServerKey), "GET", function(response)
-            local Data = JsonDecode( response )
+    if not self.ServerId and self.Config.ServerKey ~= "" then
+        self.ServerId = ""
+        HTTPRequest(StringFormat("%s/api/server?key=%s", self.Config.WebsiteUrl,self.Config.ServerKey), "GET", function(Response)
+            local Data = JsonDecode( Response )
             if not Data then return end
             if Data.error == "Invalid server key. Server not found." then
                 self.StatsEnabled = false
-                Shared.SendHTTPRequest(StringFormat("%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj",self.Config.WebsiteUrl), "GET", function(response) self:acceptKey(response) end)
+                HTTPRequest( StringFormat( "%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj", self.Config.WebsiteUrl), "GET", function( Response ) self:AcceptKey( Response ) end )
             else
-                self.serverid = Data.id or "" 
+                self.ServerId = Data.id or "" 
             end         
         end)
     end
-    return self.serverid  
+    return self.ServerId  
 end
 
 function Plugin:OnSuspend()
@@ -1522,79 +1545,80 @@ end
 
 --Commands
 function Plugin:CreateCommands()    
-     local ShowPStats = self:BindCommand( "sh_showplayerstats", {"showplayerstats","showstats" }, function(Client)
-        Shared.SendHTTPRequest( StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET",function(response)
-            local Data = JsonDecode(response)
+     local ShowPStats = self:BindCommand( "sh_showplayerstats", { "showplayerstats", "showstats" }, function( Client )
+        HTTPRequest( StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId(Client)), "GET", function(Response)
+            local Data = JsonDecode( Response )
             local playerid = ""
             if Data then playerid = Data.id or "" end
-            local url = StringFormat( "%s/player/player/%s", self.Config.WebsiteUrl, playerid)
+            local url = StringFormat( "%s/Player/Player/%s", self.Config.WebsiteUrl, playerid )
             Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "My Stats" }, true )
             end)
     end,true)
-    ShowPStats:Help("Shows stats from yourself")
+    ShowPStats:Help( "Shows stats from yourself" )
     
-    local ShowLastRound = self:BindCommand( "sh_showlastround", {"showlastround","lastround" }, function(Client)
-        if Plugin.Config.Lastroundlink == "" then Shine:Notify(Client, "", "", "[NS2Stats]: Last round was not saved at NS2Stats")       
+    local ShowLastRound = self:BindCommand( "sh_showlastround", { "showlastround", "lastround" }, function(Client)
+        if Plugin.Config.Lastroundlink == "" then Shine:Notify( Client, "", "", "[NS2Stats]: Last round was not saved at NS2Stats" )       
         else Server.SendNetworkMessage( Client, "Shine_Web", { URL = Plugin.Config.Lastroundlink, Title = "Last Rounds Stats" }, true )
         end     
     end,true)   
     ShowLastRound:Help("Shows stats of last round played on this server")
     
     local ShowSStats = self:BindCommand( "sh_showserverstats", "showserverstats", function(Client)                     
-        local url= StringFormat("%s/server/server/%s",self.Config.WebsiteUrl,Plugin:GetServerId())           
+        local url = StringFormat( "%s/server/server/%s",self.Config.WebsiteUrl,Plugin:GetServerId() )           
         Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Server Stats" }, true )       
     end,true)
     ShowSStats:Help("Shows server stats") 
     
     local ShowLStats = self:BindCommand( "sh_showlivestats", "showlivestats", function(Client)                    
-        local url= StringFormat("%s/live/scoreboard/%s", self.Config.WebsiteUrl, Plugin:GetServerId())           
+        local url = StringFormat( "%s/live/scoreboard/%s", self.Config.WebsiteUrl, Plugin:GetServerId() )           
         Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Scoreboard" }, true )       
     end,true)
-    ShowLStats:Help("Shows server live stats") 
+    ShowLStats:Help( "Shows server live stats" ) 
     
     local Verify = self:BindCommand( "sh_verify", {"verifystats","verify"},function(Client)
-            Shared.SendHTTPRequest(StringFormat("%s/api/verifyServer/%s?s=479qeuehq2829&key=%s", self.Config.WebsiteUrl, Plugin:GetId(Client), self.Config.ServerKey), "GET",
-            function(response) ServerAdminPrint(Client,response) end)       
+            HTTPRequest(StringFormat("%s/api/verifyServer/%s?s=479qeuehq2829&key=%s", self.Config.WebsiteUrl, Plugin:GetId(Client), self.Config.ServerKey), "GET",
+            function(Response) ServerAdminPrint(Client,Response) end)       
     end)
-    Verify:Help ("Sets yourself as serveradmin at NS2Stats.com")
+    Verify:Help( "Sets yourself as serveradmin at NS2Stats.com" )
     
-    local Tag = self:BindCommand( "sh_addtag","addtag",function(Client,tag)
-        table.insert(Plugin.Config.Tags, tag)
-        Notify( StringFormat("[NS2Stats]: %s  has been added as Tag to this roundlog", tag))       
+    local Tag = self:BindCommand( "sh_addtag", "addtag", function(Client,tag)
+        TableInsert(Plugin.Config.Tags, tag)
+        Notify( StringFormat( "[NS2Stats]: %s  has been added as Tag to this roundlog", tag ))       
     end)    
     Tag:AddParam{ Type = "string",TakeRestOfLine = true,Error = "Please specify a tag to be added.", MaxLength = 30}
-    Tag:Help ("Adds the given tag to the Stats")
+    Tag:Help( "Adds the given tag to the Stats" )
     
-    local Debug = self:BindCommand( "sh_statsdebug","statsdebug",function(Client)
+    local Debug = self:BindCommand( "sh_statsdebug", "statsdebug", function(Client)
         Shine:AdminPrint( Client,"NS2Stats Debug Report:")
         Shine:AdminPrint( Client, StringFormat("Ns2Stats is%s sending datas to website",Plugin.StatsEnabled and " " or " not"))
         Shine:AdminPrint( Client, StringFormat("Status: %s",Plugin.working and "working" or "not working"))
         Shine:AdminPrint( Client, StringFormat("%s Players in PlayerTable.",#Plugin.PlayersInfos))
         Shine:AdminPrint( Client, StringFormat("Current Logparts %s / %s . Length of ToSend: %s",Plugin.LogPartToSend,Plugin.LogPartNumber ,StringLen(Plugin.Log[Plugin.LogPartToSend])))
     end,true)
+    Debug:Help( "Prints some ns2stats debug values into the console (only usefull for debugging)" )
 end
 
 --Awards
-function Plugin:makeAwardsList()
-    --DO NOT CHANGE ORDER HERE
-    self:addAward(Plugin:awardMostDamage())
-    self:addAward(Plugin:awardMostKillsAndAssists())
-    self:addAward(Plugin:awardMostConstructed())
-    self:addAward(Plugin:awardMostStructureDamage())
-    self:addAward(Plugin:awardMostPlayerDamage())
-    self:addAward(Plugin:awardBestAccuracy())
-    self:addAward(Plugin:awardMostJumps())
-    self:addAward(Plugin:awardHighestKillstreak())    
+function Plugin:MakeAwardsList()
+    self:AddAward( Plugin:AwardMostDamage() )
+    self:AddAward( Plugin:AwardMostKillsAndAssists() )
+    self:AddAward( Plugin:AwardMostConstructed() )
+    self:AddAward( Plugin:AwardMostStructureDamage() )
+    self:AddAward( Plugin:AwardMostPlayerDamage() )
+    self:AddAward( Plugin:AwardBestAccuracy() )
+    self:AddAward( Plugin:AwardMostJumps() )
+    self:AddAward( Plugin:AwardHighestKillstreak() )    
 end
 
-function Plugin:sendAwardListToClients()
+function Plugin:SendAwardListToClients()
     --reset and generates Awardlist
     self.nextAwardId = 0
     self.Awards = {}
-    self:makeAwardsList()        
-    --send highest 10 rating awards
-    table.sort(self.Awards, function(a, b)
-        return a.rating > b.rating
+    self:MakeAwardsList()
+        
+    --send Highest 10 Rating Awards
+    table.sort(self.Awards, function( a, b )
+        return a.Rating > b.Rating
     end)
     
     local AwardMessage = {}
@@ -1604,221 +1628,220 @@ function Plugin:sendAwardListToClients()
     AwardMessage.colourg = Plugin.Config.AwardMsgColour[2]
     AwardMessage.colourb = Plugin.Config.AwardMsgColour[3]
     
-    for i=1,self.Config.ShowNumAwards do
+    for i = 1, self.Config.ShowNumAwards do
         if i > #self.Awards then break end
-        if self.Awards[i].message then 
-            AwardMessage.message = StringFormat("%s%s\n", AwardMessage.message, self.Awards[i].message )
+        if self.Awards[ i ].Message then 
+            AwardMessage.message = StringFormat("%s%s\n", AwardMessage.Message, self.Awards[ i ].Message )
         end
     end 
     self:SendNetworkMessage(nil, "StatsAwards", AwardMessage, true )
  end
 
-function Plugin:addAward(award)
-    self.nextAwardId = self.nextAwardId +1
-    award.id = self.nextAwardId
+function Plugin:AddAward(Award)
+    self.nextAwardId = self.nextAwardId + 1
+    Award.id = self.nextAwardId
     
-    self.Awards[#self.Awards +1] = award
+    self.Awards[ #self.Awards + 1] = Award
 end
 
-function Plugin:awardMostDamage()
-    local highestDamage = 0
-    local highestPlayer = "nobody"
-    local highestSteamId = ""
-    local totalDamage = nil
-    local rating = 0
+function Plugin:AwardMostDamage()
+    local HighestDamage = 0
+    local HighestPlayer = "nobody"
+    local HighestSteamId = ""
+    local Rating = 0
     
-    for key,taulu in pairs(self.PlayersInfos) do
-        totalDamage = 0
+    for key,PlayerInfo in pairs(self.PlayersInfos) do
+        local TotalDamage = 0
         
-        for i=1, #taulu.weapons do
-            totalDamage = totalDamage + taulu.weapons[i].structure_damage
-            totalDamage = totalDamage + taulu.weapons[i].player_damage
+        for i=1, #PlayerInfo.weapons do
+            TotalDamage = TotalDamage + PlayerInfo.weapons[i].structure_damage
+            TotalDamage = TotalDamage + PlayerInfo.weapons[i].player_damage
         end
         
-        if math.floor(totalDamage) > math.floor(highestDamage) then
-            highestDamage = totalDamage
-            highestPlayer = taulu.name
-            highestSteamId = taulu.steamId
+        if Floor(TotalDamage) > Floor(HighestDamage) then
+            HighestDamage = TotalDamage
+            HighestPlayer = PlayerInfo.name
+            HighestSteamId = PlayerInfo.steamId
         end
     end
     
-    rating = (highestDamage+1)/350
+    Rating = ( HighestDamage + 1 ) / 350
     
-    return {steamId = highestSteamId, rating = rating, message = StringFormat("Most damage done by %s with total damage of %s !", highestPlayer, math.floor(highestDamage))}
+    return { steamId = HighestSteamId, rating = Rating, message = StringFormat("Most Damage done by %s with total Damage of %s !", HighestPlayer, Floor( HighestDamage )) }
 end
 
-function Plugin:awardMostKillsAndAssists()
-    local total = 0
-    local rating = 0
-    local highestTotal = 0
-    local highestPlayer = "Nobody"
-    local highestSteamId = ""
+function Plugin:AwardMostKillsAndAssists()
+    local Rating = 0
+    local HighestTotal = 0
+    local HighestPlayer = "Nobody"
+    local HighestSteamId = ""
     
-    for key,taulu in pairs(self.PlayersInfos) do
-        total = taulu.kills + taulu.assists
-        if total > highestTotal then
-            highestTotal = total
-            highestPlayer = taulu.name
-            highestSteamId = taulu.steamId
+    for _, PlayerInfo in pairs(self.PlayersInfos) do
+        local Total = PlayerInfo.kills + PlayerInfo.assists
+        if Total > HighestTotal then
+            HighestTotal = Total
+            HighestPlayer = PlayerInfo.name
+            HighestSteamId = PlayerInfo.steamId
         end
     
     end
     
-    rating = highestTotal
+    Rating = HighestTotal
     
-    return {steamId = highestSteamId, rating = rating, message = StringFormat("%s is deathbringer with total of %s  kills and assists!", highestPlayer, highestTotal)}
+    return { steamId = HighestSteamId, rating = Rating, message = StringFormat( "%s is deathbringer with total of %s  kills and assists!", HighestPlayer, HighestTotal ) }
 end
 
-function Plugin:awardMostConstructed()
-    local highestTotal = 0
-    local rating = 0
-    local highestPlayer = "was not present"
-    local highestSteamId = ""
+function Plugin:AwardMostConstructed()
+    local HighestTotal = 0
+    local Rating = 0
+    local HighestPlayer = "was not present"
+    local HighestSteamId = ""
     
-    for key,taulu in pairs(self.PlayersInfos) do
-        if taulu.total_constructed > highestTotal then
-            highestTotal = taulu.total_constructed
-            highestPlayer = taulu.name
-            highestSteamId = taulu.steamId
+    for _,PlayerInfo in pairs( self.PlayersInfos ) do
+        if PlayerInfo.total_constructed > HighestTotal then
+            HighestTotal = PlayerInfo.total_constructed
+            HighestPlayer = PlayerInfo.name
+            HighestSteamId = PlayerInfo.steamId
         end
     end
     
-    rating = (highestTotal+1)/30
+    Rating = ( HighestTotal + 1 ) / 30
     
-    return {steamId = highestSteamId, rating = rating, message = StringFormat("Bob the builder: %s !", highestPlayer)}
+    return { steamId = HighestSteamId, rating = Rating, message = StringFormat("Bob the builder: %s !", HighestPlayer ) }
 end
 
 
-function Plugin:awardMostStructureDamage()
-    local highestTotal = 0
-    local highestPlayer = "nobody"
-    local highestSteamId = ""
-    local total = 0
-    local rating = 0
+function Plugin:AwardMostStructureDamage()
+    local HighestTotal = 0
+    local HighestPlayer = "nobody"
+    local HighestSteamId = ""
+    local Rating = 0
     
-    for key,taulu in pairs(self.PlayersInfos) do
-        total = 0
+    for key,PlayerInfo in pairs(self.PlayersInfos) do
+        local Total = 0
         
-        for i=1, #taulu.weapons do
-            total = total + taulu.weapons[i].structure_damage
+        for i=1, #PlayerInfo.weapons do
+            Total = Total + PlayerInfo.weapons[i].structure_damage
         end
         
-        if math.floor(total) > math.floor(highestTotal) then
-            highestTotal = total
-            highestPlayer = taulu.name
-            highestSteamId = taulu.steamId
+        if Floor(total) > Floor(HighestTotal) then
+            HighestTotal = Total
+            HighestPlayer = PlayerInfo.name
+            HighestSteamId = PlayerInfo.steamId
         end
     end
     
-    rating = (highestTotal+1)/150
+    Rating = ( HighestTotal + 1 ) / 150
     
-    return {steamId = highestSteamId, rating = rating, message = StringFormat("Demolition man: %s with %s  structure damage.", highestPlayer, math.floor(highestTotal))}
+    return {steamId = HighestSteamId, rating = Rating, message = StringFormat( "Demolition man: %s with %s  Structure Damage.", HighestPlayer, Floor(HighestTotal))}
 end
 
 
-function Plugin:awardMostPlayerDamage()
-    local highestTotal = 0
-    local highestPlayer = "nobody"
-    local highestSteamId = ""
-    local total = 0
-    local rating = 0
+function Plugin:AwardMostPlayerDamage()
+    local HighestTotal = 0
+    local HighestPlayer = "nobody"
+    local HighestSteamId = ""
+    local Rating = 0
     
-    for key,taulu in pairs(self.PlayersInfos) do
-        total = 0
+    for key,PlayerInfo in pairs(self.PlayersInfos) do
+        local Total = 0
         
-        for i=1, #taulu.weapons do
-            total = total + taulu.weapons[i].player_damage
+        for i = 1, #PlayerInfo.weapons do
+            Total = Total + PlayerInfo.weapons[i].player_damage
         end
         
-        if math.floor(total) > math.floor(highestTotal) then
-            highestTotal = total
-            highestPlayer = taulu.name
-            highestSteamId = taulu.steamId
+        if Floor(Total) > Floor(HighestTotal) then
+            HighestTotal = total
+            HighestPlayer = PlayerInfo.name
+            HighestSteamId = PlayerInfo.steamId
         end
     end
     
-    rating = (highestTotal+1)/90
+    Rating = ( HighestTotal + 1 ) / 90
     
-    return {steamId = highestSteamId, rating = rating, message = StringFormat( " %s was spilling blood worth of %s damage.",highestPlayer, math.floor(highestTotal))}
+    return { steamId = HighestSteamId, rating = Rating, message = StringFormat( " %s was spilling blood worth of %s Damage.",HighestPlayer, Floor( HighestTotal )) }
 end
 
 
-function Plugin:awardBestAccuracy()
-    local highestTotal = 0
-    local highestPlayer = "nobody"
-    local highestSteamId = ""
-    local highestTeam = 0
-    local total = 0
-    local rating = 0
+function Plugin:AwardBestAccuracy()
+    local HighestTotal = 0
+    local HighestPlayer = "nobody"
+    local HighestSteamId = ""
+    local HighestTeam = 0
+    local Rating = 0
     
-    for key,taulu in pairs(self.PlayersInfos) do
-        total = 0
+    for key,PlayerInfo in pairs(self.PlayersInfos) do
+        local Total = 0
         
-        for i=1, #taulu.weapons do
-            total = total + taulu.weapons[i].player_hit/(taulu.weapons[i].miss+1)
+        for i = 1, #PlayerInfo.weapons do
+            if i == 1 then 
+                Total = PlayerInfo.weapons[i].player_hit / ( PlayerInfo.weapons[i].miss + 1 )
+            else    
+                Total = 0.5 * ( Total + PlayerInfo.weapons[i].player_hit / ( PlayerInfo.weapons[i].miss + 1 ) )
+            end    
         end
         
-        if total > highestTotal then
-            highestTotal = total
-            highestPlayer = taulu.name
-            highestTeam = taulu.teamnumber
-            highestSteamId = taulu.steamId
+        if Total > HighestTotal then
+            HighestTotal = Total
+            HighestPlayer = PlayerInfo.name
+            HighestTeam = PlayerInfo.teamnumber
+            HighestSteamId = PlayerInfo.steamId
         end
     end
     
-    rating = highestTotal*10
+    Rating = HighestTotal * 100
     
-    if highestTeam == 2 then
-        return {steamId = highestSteamId, rating = rating, message = StringFormat("Versed: %s", highestPlayer)}
+    if HighestTeam == 2 then
+        return {steamId = HighestSteamId, rating = Rating, message = StringFormat( "Versed: %s", HighestPlayer )}
     else --marine or ready room
-         return {steamId = highestSteamId, rating = rating, message = StringFormat("Weapon specialist: %s", highestPlayer)}
+         return { steamId = HighestSteamId, rating = Rating, message = StringFormat( "Weapon specialist: %s", HighestPlayer )}
     end
 end
 
 
-function Plugin:awardMostJumps()
-    local highestTotal = 0
-    local highestPlayer = "nobody"
-    local highestSteamId = ""
-    local rating = 0
+function Plugin:AwardMostJumps()
+    local HighestTotal = 0
+    local HighestPlayer = "nobody"
+    local HighestSteamId = ""
+    local Rating = 0
     
-    for key,taulu in pairs(self.PlayersInfos) do
+    for key,PlayerInfo in pairs(self.PlayersInfos) do
        
-        total = taulu.jumps or 0
+        total = PlayerInfo.jumps or 0
       
-        if total > highestTotal then
-            highestTotal = total
-            highestPlayer = taulu.name
-            highestSteamId = taulu.steamId
+        if total > HighestTotal then
+            HighestTotal = total
+            HighestPlayer = PlayerInfo.name
+            HighestSteamId = PlayerInfo.steamId
         end
     end
     
-    rating = highestTotal/30
+    Rating = HighestTotal / 30
         
-    return {steamId = highestSteamId, rating = rating, message = StringFormat("%s is jump maniac with %s jumps!", highestPlayer,  highestTotal)}
+    return {steamId = HighestSteamId, rating = Rating, message = StringFormat("%s is jump maniac with %s jumps!", HighestPlayer,  HighestTotal)}
     
 end
 
 
-function Plugin:awardHighestKillstreak()
-    local highestTotal = 0
-    local highestPlayer = "nobody"
-    local highestSteamId = ""
+function Plugin:AwardHighestKillstreak()
+    local HighestTotal = 0
+    local HighestPlayer = "nobody"
+    local HighestSteamId = ""
     
-    for key,taulu in pairs(self.PlayersInfos) do
+    for _,PlayerInfo in pairs(self.PlayersInfos) do
                   
-        local total = taulu.highestKillstreak or 0
+        local Total = PlayerInfo.highestKillstreak or 0
         
-        if total > highestTotal then
-            highestTotal = total
-            highestPlayer = taulu.name
-            highestSteamId = taulu.steamId
+        if Total > HighestTotal then
+            HighestTotal = total
+            HighestPlayer = PlayerInfo.name
+            HighestSteamId = PlayerInfo.steamId
         end
     end
     
-    local rating = highestTotal
+    local Rating = HighestTotal
         
-    return {steamId = highestSteamId, rating = rating, message = StringFormat("%s became unstoppable with streak of %s kills", highestPlayer, highestTotal)}
+    return { steamId = HighestSteamId, rating = Rating, message = StringFormat( "%s became unstoppable with streak of %s kills", HighestPlayer, HighestTotal )}
 end
 
 --Url Method
@@ -1828,17 +1851,17 @@ end
 
 --Devour System Methods (see also Timers)
 
-function Plugin:devourClearBuffer()
+function Plugin:DevourClearBuffer()
     self.Devour.Entities = {}
     self.Devour.MovementInfos = {}
 end
 
-function Plugin:devourSendStatus()
-    if not self.roundStarted then return end
+function Plugin:DevourSendStatus()
+    if not self.RoundStarted then return end
     
     local stime = Shared.GetGMTString(false)
     
-    local state = {
+    local State = {
         time = stime,
         gametime = Shared.GetTime() - self.GameStartTime,
         map = Shared.GetMapName(),
@@ -1847,47 +1870,47 @@ function Plugin:devourSendStatus()
     local dataset = {
         Entity = self.Devour.Entities,
         Movement =  self.Devour.MovementInfos,
-        state = state
+        State = State
     }
 
-    local params =
+    local Params =
     {
         key = self.Config.ServerKey,
-        data = json.encode(dataset)
+        data = JsonEncode( dataset )
     }
         
-    Shared.SendHTTPRequest(StringFormat("%s/api/sendstatusDevour",self.Config.WebsiteUrl), "POST", params, function(response,status) Plugin:onHTTPResponseFromSendStatus(client,"sendstatus",response,status) end)
-    self:devourClearBuffer()    
+    HTTPRequest( StringFormat( "%s/api/sendstatusDevour", self.Config.WebsiteUrl ), "POST", Params, function() end )
+    self:DevourClearBuffer()    
 end
 
-function Plugin:createDevourMovementFrame()
+function Plugin:CreateDevourMovementFrame()
 
     local data = {}
     
-    for key,Client in pairs(Shine.GetAllClients()) do
+    for _,Client in pairs( Shine.GetAllClients() ) do
         local Player = Client:GetControllingPlayer()
         local PlayerPos = Player:GetOrigin()
 	    
-	    if Player:GetTeamNumber()>0 then
+	    if Player:GetTeamNumber() > 0 then
             local movement =
             {
-                id = Plugin:GetId(Client),
-                x = Plugin:RoundNumber(PlayerPos.x),
-                y = Plugin:RoundNumber(PlayerPos.y),
-                z = Plugin:RoundNumber(PlayerPos.z),
-                wrh = Plugin:RoundNumber(Plugin:GetViewAngle(Player)),
+                id = Plugin:GetId( Client ),
+                x = Plugin:RoundNumber( PlayerPos.x ),
+                y = Plugin:RoundNumber( PlayerPos.y ),
+                z = Plugin:RoundNumber( PlayerPos.z ),
+                wrh = Plugin:RoundNumber( Plugin:GetViewAngle( Player ) ),
             }
-            table.insert(data, movement)
+            TableInsert( data, movement )
         end	
     end
  
-    self.Devour.MovementInfos[self.Devour.Frame] = data
+    self.Devour.MovementInfos[ self.Devour.Frame ] = data
 end
 
-function Plugin:createDevourEntityFrame()
-    local devourPlayers = {}
+function Plugin:CreateDevourEntityFrame()
+    local DevourPlayers = {}
     
-    for key,Client in pairs(Shine.GetAllClients()) do	
+    for _, Client in pairs( Shine.GetAllClients() ) do	
         local Player = Client:GetControllingPlayer()        
         if not Player then return end
         
@@ -1899,46 +1922,46 @@ function Plugin:createDevourEntityFrame()
         end
         
         if Player:GetTeamNumber()>0 then
-            local devourPlayer =
+            local DevourPlayer =
             {
-                id = self:GetId(Client),
+                id = self:GetId( Client ),
                 name = Player:GetName(),
-                team = Player:GetTeamNumber(),
-                x = self:RoundNumber(PlayerPos.x),
-                y = self:RoundNumber(PlayerPos.y),
-                z = self:RoundNumber(PlayerPos.z),
-                wrh = self:RoundNumber(Plugin:GetViewAngle(Player)),
+                teamnumber = Player:GetTeamNumber(),
+                x = self:RoundNumber( PlayerPos.x ),
+                y = self:RoundNumber( PlayerPos.y ),
+                z = self:RoundNumber( PlayerPos.z ),
+                wrh = self:RoundNumber( Plugin:GetViewAngle( Player ) ),
                 weapon = weapon,
-                health = aelf:RoundNumber(Player:GetHealth()),
-                armor = self:RoundNumber(Player:GetArmor()),
+                health = aelf:RoundNumber( Player:GetHealth() ),
+                armor = self:RoundNumber( Player:GetArmor() ),
                 pdmg = 0,
                 sdmg = 0,
-                lifeform = Player:GetMapName(),
+                Lifeform = Player:GetMapName(),
                 score = Player:GetScore(),
                 kills = Player.kills,
                 deaths = Player.deaths or 0,
                 assists = Player:GetAssistKills(),
-                pres = self:RoundNumber(Player:GetResources()),
+                pres = self:RoundNumber( Player:GetResources() ),
                 ping = Client:GetPing() or 0,
                 acc = 0,
 
             }
-            table.insert(devourPlayers, devourPlayer)
+            TableInsert( DevourPlayers, DevourPlayer)
         end	
     end
     
-    self.Devour.Entities[self.Devour.Frame]= devourPlayers     
+    self.Devour.Entities[ self.Devour.Frame ] = DevourPlayers     
 end
 
-function Plugin:GetViewAngle(Player)
+function Plugin:GetViewAngle( Player )
     
-    local angle = Player:GetDirectionForMinimap()/math.pi * 180
-    if angle < 0 then angle = 360 + angle end
-    if angle > 360 then angle = angle%360 end
-    return angle
+    local Angle = Player:GetDirectionForMinimap() / math.pi * 180
+    if Angle < 0 then Angle = 360 + Angle end
+    if Angle > 360 then Angle = Angle % 360 end
+    return Angle
 end
 
-function Plugin:RoundNumber(number)
-    local temp = StringFormat("%.2f",number)
-    return tonumber(temp)
+function Plugin:RoundNumber( Number )
+    local Temp = StringFormat( "%.2f", Number )
+    return tonumber( Temp )
 end
