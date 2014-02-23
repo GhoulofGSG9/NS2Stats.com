@@ -35,7 +35,7 @@ function Plugin:ReceiveStatsConfig( Message )
 end
 
 function Plugin:ReceiveStatsAwards( Message )
-    local ScreenText = Shine:AddMessageToQueue( 2, 0.95, 0.3, Message.Message, Message.Duration, Message.ColourR, Message.ColourG, Message.ColourB, 2, nil, nil, true )
+    local ScreenText = Shine:AddMessageToQueue( 2, 0.95, 0.3, Message.Message, Message.Duration, Message.ColourR, Message.ColourG, Message.ColourB, 2 )
     ScreenText.Obj:SetText( ScreenText.Text )
 end
 
