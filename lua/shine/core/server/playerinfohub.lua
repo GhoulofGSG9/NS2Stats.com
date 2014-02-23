@@ -6,14 +6,11 @@ local Shine = Shine
 local StringFormat = string.format
 
 local HTTPRequest = Shared.SendHTTPRequest
-
 local JsonDecode = json.decode
 
 local Add = Shine.Hook.Add
-local Call = Shine.Hook.Call
 
 Shine.PlayerInfoHub = {}
-
 local PlayerInfoHub = Shine.PlayerInfoHub
 
 PlayerInfoHub.Ns2StatsData = {}
@@ -22,6 +19,11 @@ PlayerInfoHub.SteamData = {}
 
 PlayerInfoHub.WaitTime = 20
 PlayerInfoHub.RetryIntervall = 5
+
+local function Call( Name, Client, ... )
+    if not Shine:IsValidClient( Client ) then return end
+    Shine.Hook.Call( Name, Client, ... )
+end
 
 local function FindCharactersBetween( Response, OpeningCharacters, ClosingCharacters )
         local Result
