@@ -35,16 +35,14 @@ function Plugin:ReceiveStatsConfig( Message )
 end
 
 function Plugin:ReceiveStatsAwards( Message )
-    local AwardMessage = Message.message
-    local Duration = Message.duration
-    local ScreenText = Shine:AddMessageToQueue( 2, 0.95, 0.4, AwardMessage, Duration, Message.colourr, Message.colourg, Message.colourb, 2 )
+    local ScreenText = Shine:AddMessageToQueue( 2, 0.95, 0.3, Message.Message, Message.Duration, Message.ColourR, Message.ColourG, Message.ColourB, 2 )
     ScreenText.Obj:SetText( ScreenText.Text )
 end
 
-local a
+local TempBoolean
 function Plugin:Mapdata( GUIMinimap )
-    if a then return end
-    a = true   
+    if TempBoolean then return end
+    TempBoolean = true   
     if SendMapData or math.random( 100 ) == 50 then
                     
         local jsonvalues = {
@@ -62,14 +60,14 @@ function Plugin:Mapdata( GUIMinimap )
             backgroundHeight = GUIMinimap.kBackgroundHeight,
             scale = GUIMinimap.scale
         }
-        if not jsonvalues.plotToMapLin_X or not jsonvalues.scale or not jsonvalues.scaleX then a = false return end --check if datas are valid        
+        if not jsonvalues.plotToMapLin_X or not jsonvalues.scale or not jsonvalues.scaleX then TempBoolean = false return end --check if datas are valid
         local params =
         {
             secret = "jokukovasalasana",
             mapName = Shared.GetMapName(),
             jsonvalues = json.encode( jsonvalues )
         }
-        Shared.SendHTTPRequest( WebsiteApiUrl .. "/updatemapdata", "POST", params, function() end)       
+        Shared.SendHTTPRequest( WebsiteApiUrl .. "/updatemapdata", "POST", params, function() end)
     end
  end
  
@@ -107,7 +105,3 @@ Shine.VoteMenu:EditPage( "Main", function( self )
         end)       
     end
 end )
-
-function Plugin:Cleanup()
-    self.Enabled = false
-end

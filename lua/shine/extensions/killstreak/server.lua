@@ -12,8 +12,8 @@ Plugin.ConfigName = "Killstreak.json"
 Plugin.DefaultConfig =
 {
     SendSounds = false,
-    AlienColour = {255,125,0},
-    MarineColour = {0,125,255},
+    AlienColour = { 255, 125, 0 },
+    MarineColour = { 0, 125, 255 },
     KillstreakMinValue = 3,
     StoppedValue = 5,
     StoppedMsg = "%s has been stopped by %s " -- first victim then killer
@@ -23,11 +23,11 @@ Plugin.CheckConfig = true
 Plugin.Killstreaks = {}
 
 function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, Dir )
-    if not Attacker or not Victim or not Victim:isa("Player") then return end
+    if not Attacker or not Victim or not Victim:isa( "Player" ) then return end
     
-    if not Attacker:isa("Player") then 
+    if not Attacker:isa( "Player" ) then 
          local RealKiller = Attacker.GetOwner and Attacker:GetOwner() or nil
-         if RealKiller and RealKiller:isa("Player") then
+         if RealKiller and RealKiller:isa( "Player" ) then
             Attacker = RealKiller
          else return end
     end
@@ -35,27 +35,27 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, D
     local VictimClient = Victim:GetClient()
     if not VictimClient then return end
       
-    if self.Killstreaks[VictimClient] and self.Killstreaks[VictimClient] >= self.Config.StoppedValue then
-        local colour = {255,0,0}
+    if self.Killstreaks[ VictimClient ] and self.Killstreaks[ VictimClient ] >= self.Config.StoppedValue then
+        local Colour = { 255, 0, 0 }
         local team = Victim:GetTeamNumber()
         
-        if team == 1 then colour = self.Config.MarineColour
-        elseif team == 2 then colour = self.Config.AlienColour end
+        if team == 1 then Colour = self.Config.MarineColour
+        elseif team == 2 then Colour = self.Config.AlienColour end
         
-        Shine:NotifyColour(nil,colour[1],colour[2],colour[3],StringFormat(self.Config.StoppedMsg,Victim:GetName(),Attacker:GetName()))
+        Shine:NotifyColour(nil, Colour[ 1 ], Colour[ 2 ], Colour[ 3 ], StringFormat( self.Config.StoppedMsg, Victim:GetName(), Attacker:GetName() ))
     end
-    self.Killstreaks[VictimClient] = nil
+    self.Killstreaks[ VictimClient ] = nil
     
     local AttackerClient = Attacker:GetClient()
     if not AttackerClient then return end
     
-    if not self.Killstreaks[AttackerClient] then self.Killstreaks[AttackerClient] = 1
-    else self.Killstreaks[AttackerClient] = self.Killstreaks[AttackerClient] + 1 end    
+    if not self.Killstreaks[ AttackerClient ] then self.Killstreaks[ AttackerClient ] = 1
+    else self.Killstreaks[ AttackerClient ] = self.Killstreaks[ AttackerClient ] + 1 end    
 
-    Plugin:CheckForMultiKills(Attacker:GetName(), self.Killstreaks[AttackerClient], Attacker:GetTeamNumber())      
+    Plugin:CheckForMultiKills( Attacker:GetName(), self.Killstreaks[ AttackerClient ], Attacker:GetTeamNumber() )      
 end
 
-Shine.Hook.SetupGlobalHook("RemoveAllObstacles","OnGameReset","PassivePost")
+Shine.Hook.SetupGlobalHook( "RemoveAllObstacles", "OnGameReset", "PassivePost" )
 
 --Gamereset
 function Plugin:OnGameReset()
@@ -63,14 +63,14 @@ function Plugin:OnGameReset()
 end
 
 function Plugin:ClientDisconnect( Client )
-    self.Killstreaks[Client] = nil
+    self.Killstreaks[ Client ] = nil
 end
 
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
     local Client = Player:GetClient()
     if not Client then return end
     
-    self.Killstreaks[Client] = nil
+    self.Killstreaks[ Client ] = nil
 end
 
 local Streaks = {
@@ -136,15 +136,15 @@ local Streaks = {
     }
 }
 
-Streaks[27] = Streaks[25]
-Streaks[30] = Streaks[25]
-Streaks[34] = Streaks[25]
-Streaks[40] = Streaks[25]
-Streaks[48] = Streaks[25]
-Streaks[58] = Streaks[25]
-Streaks[70] = Streaks[25]
-Streaks[80] = Streaks[25]
-Streaks[100] = Streaks[25]
+Streaks[ 27 ] = Streaks[ 25 ]
+Streaks[ 30 ] = Streaks[ 25 ]
+Streaks[ 34 ] = Streaks[ 25 ]
+Streaks[ 40 ]  = Streaks[25]
+Streaks[ 48 ] = Streaks[ 25 ]
+Streaks[ 58 ] = Streaks[ 25 ]
+Streaks[ 70 ] = Streaks[ 25 ]
+Streaks[ 80 ] = Streaks[ 25 ]
+Streaks[ 100 ] = Streaks[ 25 ]
         
 function Plugin:CheckForMultiKills( Name, Streak, Teamnumber )
     if Streak < self.Config.KillstreakMinValue then return end
@@ -153,18 +153,18 @@ function Plugin:CheckForMultiKills( Name, Streak, Teamnumber )
 
     if not StreakData then return end
     
-    local colour= {250,0,0}
+    local Colour = { 250, 0, 0 }
     
     if Teamnumber then
-        if Teamnumber == 1 then colour = self.Config.MarineColour
-        else colour = self.Config.AlienColour end
+        if Teamnumber == 1 then Colour = self.Config.MarineColour
+        else Colour = self.Config.AlienColour end
     end
-    Shine:NotifyColour( nil, colour[1], colour[2], colour[3], StringFormat( StreakData.Text, Name ) )
-    self:PlaySoundForEveryPlayer(StreakData.Sound)
+    Shine:NotifyColour( nil, Colour[ 1 ], Colour[ 2 ], Colour[ 3 ], StringFormat( StreakData.Text, Name ) )
+    self:PlaySoundForEveryPlayer( StreakData.Sound )
 end
 
-function Plugin:PlaySoundForEveryPlayer(name)
+function Plugin:PlaySoundForEveryPlayer( SoundName )
     if self.Config.SendSounds then
-        self:SendNetworkMessage(nil,"PlaySound",{Name = name } ,true)
+        self:SendNetworkMessage(nil, "PlaySound",{ Name = SoundName } , true)
     end
 end   
