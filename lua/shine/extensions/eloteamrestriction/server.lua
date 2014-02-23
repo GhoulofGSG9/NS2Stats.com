@@ -1,7 +1,7 @@
 --[[
     Shine Ns2Stats EloTeamRestriction - Server
 ]]
-Script.Load( "lua/shine/extensions/playerinfohub.lua" )
+Script.Load( "lua/shine/core/server/playerinfohub.lua" )
 
 local Shine = Shine
 
