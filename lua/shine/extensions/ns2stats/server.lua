@@ -130,7 +130,7 @@ function Plugin:OnGameReset()
     self.LogPartToSend  = 1
     self.GameStartTime = 0
     self.RoundFinished = 0
-    self.nextAwardId = 0
+    self.NextAwardId = 0
     self.Awards = {}
     self.RoundStarted = false
     self.CurrentGameState = 0
@@ -265,7 +265,7 @@ function Plugin:OnPlayerScoreChanged( Player, State )
     
         local Params =
         {
-            action="player_join_team",
+            action = "player_join_team",
             name = PlayerInfo.name,
             team = PlayerInfo.teamnumber,
             steamId = PlayerInfo.steamId,
@@ -1610,7 +1610,7 @@ end
 
 function Plugin:SendAwardListToClients()
     --reset and generates Awardlist
-    self.nextAwardId = 0
+    self.NextAwardId = 0
     self.Awards = {}
     self:MakeAwardsList()
         
@@ -1636,8 +1636,8 @@ function Plugin:SendAwardListToClients()
  end
 
 function Plugin:AddAward(Award)
-    self.nextAwardId = self.nextAwardId + 1
-    Award.id = self.nextAwardId
+    self.NextAwardId = self.NextAwardId + 1
+    Award.id = self.NextAwardId
     
     self.Awards[ #self.Awards + 1] = Award
 end

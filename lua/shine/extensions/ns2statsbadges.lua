@@ -30,6 +30,8 @@ end
 
 function Plugin:OnReceiveSteamData( Client, SteamData )
     if not self.Config.SteamBadges then return end
+    
+    if not Shine:IsValidClient( Client ) then return end
  
     local ClientId = Client:GetUserId()
     if ClientId <= 0 then return end
@@ -67,6 +69,8 @@ end
 
 function Plugin:OnReceiveNs2StatsData( Client, Ns2StatsData )
     if not self.Config.Flags then return end
+    
+    if not Shine:IsValidClient( Client ) then return end
     
     local ClientId = Client:GetUserId()
     if ClientId <= 0 then return end
