@@ -72,7 +72,7 @@ function Plugin:OnReceiveNs2StatsData( Client, Ns2StatsData )
     if ClientId <= 0 then return end
     
     local SetBagde
-    local Nationality = tostring( Ns2StatsData.nationality )
+    local Nationality = type( Ns2StatsData ) == "table" and tostring( Ns2StatsData.nationality ) or "UNO"
     
     SetBagde = GiveBadge( ClientId, Nationality )
     

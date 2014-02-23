@@ -68,9 +68,9 @@ function Plugin:CheckComLogin( Chair, Player )
     
     if not InfoHub:GetIsRequestFinished( SteamId ) then self:Notify( Player, self.Config.WaitMessage ) return false end
     
-    local SteamTime = tonumber( InfoHub:GetSteamData( SteamId ).PlayTime )
-    local HiveTime = tonumber( InfoHub:GetHiveData( SteamId ).playTime )
-    local Ns2StatsTime = tonumber( InfoHub:GetNs2StatsData( SteamId ).time_played )
+    local SteamTime = type( InfoHub:GetSteamData( SteamId ) ) == "table" and tonumber( InfoHub:GetSteamData( SteamId ).PlayTime ) or 0
+    local HiveTime = type( InfoHub:GetHiveData( SteamId ) ) == "table" and tonumber( InfoHub:GetHiveData( SteamId ).playTime ) or 0
+    local Ns2StatsTime = type( InfoHub:GetNs2StatsData( SteamId ) ) == "table" and tonumber( InfoHub:GetNs2StatsData( SteamId ).time_played ) or 0
     
     local PlayTime = 0
     if self.Config.UseSteamTime and SteamTime > PlayTime then PlayTime = SteamTime end
@@ -104,9 +104,9 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         return 
     end
     
-    local SteamTime = tonumber( InfoHub:GetSteamData( SteamId ).PlayTime )
-    local HiveTime = tonumber( InfoHub:GetHiveData( SteamId ).playTime )
-    local Ns2StatsTime = tonumber( InfoHub:GetNs2StatsData( SteamId ).time_played )
+    local SteamTime = type( InfoHub:GetSteamData( SteamId ) ) == "table" and tonumber( InfoHub:GetSteamData( SteamId ).PlayTime ) or 0
+    local HiveTime = type( InfoHub:GetHiveData( SteamId ) ) == "table" and tonumber( InfoHub:GetHiveData( SteamId ).playTime ) or 0
+    local Ns2StatsTime = type( InfoHub:GetNs2StatsData( SteamId ) ) == "table" and tonumber( InfoHub:GetNs2StatsData( SteamId ).time_played ) or 0
     
     local PlayTime = 0
     if self.Config.UseSteamTime and SteamTime > PlayTime then PlayTime = SteamTime end

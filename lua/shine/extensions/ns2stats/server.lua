@@ -267,7 +267,7 @@ function Plugin:OnPlayerScoreChanged( Player, State )
         {
             action="player_join_team",
             name = PlayerInfo.name,
-            teamnumber = PlayerInfo.teamnumber,
+            team = PlayerInfo.teamnumber,
             steamId = PlayerInfo.steamId,
             score = PlayerInfo.score
         }
@@ -275,7 +275,7 @@ function Plugin:OnPlayerScoreChanged( Player, State )
     end
     
     --check if Lifeform changed    
-    if not Player:GetIsAlive() and (teamnumber == 1 or teamnumber == 2) then Lifeform = "dead" end
+    if not Player:GetIsAlive() and (Teamnumber == 1 or Teamnumber == 2) then Lifeform = "dead" end
     if PlayerInfo.lifeform ~= Lifeform then
         PlayerInfo.lifeform = Lifeform
         self:AddLog(
@@ -458,7 +458,7 @@ function Plugin:WeaponsAddMiss( Client, Weapon )
      
     local FoundId      
     for i=1, #PlayerInfo.weapons do
-        if PlayerInfo.weapons[ i ].name == weapon then
+        if PlayerInfo.weapons[ i ].name == Weapon then
             FoundId = i
             break
         end
@@ -469,7 +469,7 @@ function Plugin:WeaponsAddMiss( Client, Weapon )
     else --add new weapon
         TableInsert( PlayerInfo.weapons,
         {
-            name = weapon,
+            name = Weapon,
             time = 0,
             miss = 1,
             player_hit = 0,
@@ -504,7 +504,7 @@ function Plugin:WeaponsAddHit(Player, Weapon, Damage)
     else --add new weapon
         TableInsert( PlayerInfo.weapons,
         {
-            name = weapon,
+            name = Weapon,
             time = 0,
             miss = 0,
             player_hit = 1,
@@ -539,7 +539,7 @@ function Plugin:WeaponsAddStructureHit( Player, Weapon, Damage)
     else --add new weapon
         TableInsert(PlayerInfo.weapons,
         {
-            name = weapon,
+            name = Weapon,
             time = 0,
             miss = 0,
             player_hit = 0,
@@ -568,7 +568,7 @@ function Plugin:PlayerSay( Client, Message )
     
     self:AddLog({
         action = "chat_message",
-        teamnumber = Player:GetTeamNumber(),
+        team = Player:GetTeamNumber(),
         steamid = Plugin:GetId( Client ),
         name = Player:GetName(),
         message = Message.message,
@@ -594,7 +594,7 @@ function Plugin:OnPickableItemCreated( Item, TechId, Player )
         instanthit = Player ~= nil,
         id = Item:GetId(),
         cost = GetCostForTech( TechId ),
-        teamnumber = Item:GetTeamNumber(),
+        team = Item:GetTeamNumber(),
         name = Itemname,
         action = "pickable_item_dropped",
         x = StringFormat( "%.4f", ItemOrigin.x ),
@@ -628,7 +628,7 @@ function Plugin:OnPickableItemPicked( Item, Player )
     
     local TechId = Item:GetTechId()
     
-    local Itemname = EnumToString(kTechId, TechId)
+    local Itemname = EnumToString( kTechId, TechId )
     if not Itemname or Itemname == "None" then return end 
     
     local itemOrigin = Item:GetOrigin()
@@ -641,7 +641,7 @@ function Plugin:OnPickableItemPicked( Item, Player )
         steamId = SteamId,
         id = Item:GetId(),
         cost = GetCostForTech(TechId),
-        teamnumber = Player:GetTeamNumber(),
+        team = Player:GetTeamNumber(),
         name = Itemname,
         action = "pickable_item_picked",
         x = StringFormat("%.4f", itemOrigin.x),
@@ -692,7 +692,7 @@ function Plugin:OnPickableItemDestroyed( Item )
         {
             id = Item:GetId(),
             cost = GetCostForTech( TechId ),
-            teamNumber = Item:GetTeamNumber(),
+            team = Item:GetTeamNumber(),
             name = EnumToString( kTechId, TechId ),
             action = "pickable_item_destroyed",
             x = StringFormat( "%.4f", tOrigin.x ),
@@ -708,7 +708,7 @@ end
 function Plugin:OnTeamGetResources( ResourceTower )    
     local Params =
     {
-        teamnumber = ResourceTower:GetTeam():GetTeamNumber(),
+        team = ResourceTower:GetTeam():GetTeamNumber(),
         action = "resources_gathered",
         amount = kTeamResourcePerTick
     }
@@ -734,7 +734,7 @@ function Plugin:OnConstructInit( Building )
         action = "structure_dropped",
         id = Building:GetId(),
         steamId = self:GetTeamCommanderSteamid( Building:GetTeamNumber() ) or 0,       
-        teamNumber = Building:GetTeamNumber(),        
+        team = Building:GetTeamNumber(),        
         structure_cost = GetCostForTech( TechId ),
         structure_name = name,
         structure_x = StringFormat("%.4f", strloc.x ),
@@ -773,7 +773,7 @@ function Plugin:OnFinishedBuilt( ConstructMixin, Builder )
         builder_name = Buildername,
         steamId = SteamId,
         structure_cost = GetCostForTech( TechId ),
-        teamnumber = Teamnumber,
+        team = Teamnumber,
         structure_name = EnumToString( kTechId, TechId ),
         structure_x = StringFormat( "%.4f", strloc.x ),
         structure_y = StringFormat( "%.4f", strloc.y ),
@@ -803,7 +803,7 @@ function Plugin:GhostStructureAction( Action, Structure )
     {
         action = Action,
         structure_name = EnumToString( kTechId, TechId),
-        teamnumber = Structure:GetTeamNumber(),
+        team = Structure:GetTeamNumber(),
         id = Structure:GetId(),
         structure_x = StringFormat( "%.4f", tOrigin.x ),
         structure_y = StringFormat( "%.4f", tOrigin.y ),
@@ -825,7 +825,7 @@ function Plugin:OnTechStartResearch( ResearchMixin, ResearchNode, Player )
         {
 	        structure_id = ResearchMixin:GetId(),
 	        commander_steamid = SteamId,
-	        teamnumber = Player:GetTeamNumber(),
+	        team = Player:GetTeamNumber(),
 	        cost = GetCostForTech( TechId ),
 	        upgrade_name = EnumToString( kTechId, TechId ),
 	        action = "upgrade_started"
@@ -847,7 +847,7 @@ function Plugin:OnTechResearched( ResearchMixin, Structure, ResearchId)
     local Params =
     {
         structure_id = Structure:GetId(),
-        teamnumber = Structure:GetTeamNumber(),
+        team = Structure:GetTeamNumber(),
         commander_steamid = Plugin:GetTeamCommanderSteamid( Structure:GetTeamNumber() ),
         cost = GetCostForTech( TechId ),
         upgrade_name = EnumToString( kTechId, TechId ),
@@ -860,7 +860,7 @@ end
 function Plugin:AddUpgradeLostToLog( UpgradableMixin, TechId )
     local Params =
     {
-        teamnumber = UpgradableMixin:GetTeamNumber(),
+        team = UpgradableMixin:GetTeamNumber(),
         cost = GetCostForTech( TechId ),
         upgrade_name = EnumToString( kTechId, TechId ), 
         action = "upgrade_lost"
@@ -877,7 +877,7 @@ function Plugin:AddUpgradeAbortedToLog( ResearchMixin, ResearchNode )
     local Params =
     {
         structure_id = ResearchMixin:GetId(),
-        teamnumber = ResearchMixin:GetTeamNumber(),
+        team = ResearchMixin:GetTeamNumber(),
         commander_steamid = SteamId,
         cost = GetCostForTech( TechId ),
         upgrade_name = EnumToString( kTechId, TechId ),
@@ -907,7 +907,7 @@ function Plugin:OnBuildingRecycled( Structure, ResearchID )
     local Params =
     {
         id = Structure:GetId(),
-        teamnumber = Structure:GetTeamNumber(),
+        team = Structure:GetTeamNumber(),
         givenback = FinalRecycleAmount,
         structure_name = EnumToString( kTechId, TechId ),
         action = "structure_recycled",
@@ -1247,7 +1247,7 @@ function Plugin:OnHTTPResponseFromSend( Response )
 
         if Message.link then
             local Link = StringFormat( "%s%s", self.Config.WebsiteUrl, Message.link)
-            Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
+            Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" , Link))
             self.Config.Lastroundlink = Link
             self:SaveConfig()
             return
@@ -1351,9 +1351,9 @@ function Plugin:UpdatePlayerInTable(Client, Player, PlayerInfo)
 end
 
 --All search functions
-function Plugin:GetTeamCommanderSteamid(teamNumber)
-    for key,PlayerInfo in pairs(self.PlayersInfos) do
-        if PlayerInfo.isCommander and PlayerInfo.teamnumber == teamNumber then
+function Plugin:GetTeamCommanderSteamid( TeamNumber )
+    for _, PlayerInfo in pairs( self.PlayersInfos ) do
+        if PlayerInfo.isCommander and PlayerInfo.teamnumber == TeamNumber then
             return PlayerInfo.steamId
         end	
     end
@@ -1831,7 +1831,7 @@ function Plugin:AwardHighestKillstreak()
         local Total = PlayerInfo.highestKillstreak or 0
         
         if Total > HighestTotal then
-            HighestTotal = total
+            HighestTotal = Total
             HighestPlayer = PlayerInfo.name
             HighestSteamId = PlayerInfo.steamId
         end
@@ -1924,7 +1924,7 @@ function Plugin:CreateDevourEntityFrame()
             {
                 id = self:GetId( Client ),
                 name = Player:GetName(),
-                teamnumber = Player:GetTeamNumber(),
+                team = Player:GetTeamNumber(),
                 x = self:RoundNumber( PlayerPos.x ),
                 y = self:RoundNumber( PlayerPos.y ),
                 z = self:RoundNumber( PlayerPos.z ),
@@ -1934,7 +1934,7 @@ function Plugin:CreateDevourEntityFrame()
                 armor = self:RoundNumber( Player:GetArmor() ),
                 pdmg = 0,
                 sdmg = 0,
-                Lifeform = Player:GetMapName(),
+                lifeform = Player:GetMapName(),
                 score = Player:GetScore(),
                 kills = Player.kills,
                 deaths = Player.deaths or 0,
