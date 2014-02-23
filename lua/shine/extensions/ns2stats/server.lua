@@ -169,7 +169,7 @@ end
 
 --Gameend
 function Plugin:EndGame( Gamerules, WinningTeam )         
-        if self.Config.Awards then Plugin:SendAwardListToClients() end               
+        if self.Config.Awards then Plugin:SendAwardListToClients() end
         self:AddPlayersToLog( 1 )
         
         local initialHiveTechIdString = "None"
@@ -215,14 +215,14 @@ function Plugin:ClientConfirmConnect( Client )
     if not PlayerInfo then Plugin:AddPlayerToTable( Client )  
     else PlayerInfo.dc = false end
     
-    self:SendNetworkMessage( Client, "StatsConfig", { WebsiteApiUrl = StringFormat( "%s/api", self.Config.WebsiteUrl ), SendMapData = self.Config.SendMapData } , true )   
+    self:SendNetworkMessage( Client, "StatsConfig", { WebsiteApiUrl = StringFormat( "%s/api", self.Config.WebsiteUrl ), SendMapData = self.Config.SendMapData } , true )
 end
 
 --Player Disconnect
 function Plugin:ClientDisconnect( Client )
     if not Client then return end
     
-    local PlayerInfo = self:GetPlayerByClient( Client )    
+    local PlayerInfo = self:GetPlayerByClient( Client )
     if not PlayerInfo then return end
     
     PlayerInfo.dc = true
@@ -243,7 +243,7 @@ function Plugin:OnPlayerScoreChanged2( PlayerInfoEntity )
 end
 
 --score changed 
-function Plugin:OnPlayerScoreChanged( Player, State )    
+function Plugin:OnPlayerScoreChanged( Player, State )
     if not Player or not State then return end
     
     local Client = Player:GetClient()
@@ -392,11 +392,11 @@ function Plugin:AddHitToLog( Target, Attacker, Doer, Damage, DamageType )
             targety = StringFormat( "%.4f", tOrigin.y ),
             targetz = StringFormat( "%.4f", tOrigin.z ),
             
-            DamageType = DamageType,
-            Damage = Damage            
+            damageType = DamageType,
+            damage = Damage            
         }
         self:AddLog( Params )
-        self:WeaponsAddHit( Attacker, StringLower( Doer:GetMapName()), Damage )                
+        self:WeaponsAddHit( Attacker, StringLower( Doer:GetMapName()), Damage )
         
     else --Target is a Structure
         local tOrigin = Target:GetOrigin()
@@ -420,21 +420,21 @@ function Plugin:AddHitToLog( Target, Attacker, Doer, Damage, DamageType )
             attackerz = StringFormat( "%.4f",  aOrigin.z ),
                         
             structure_id = Target:GetId(),
-            structure_name = StringLower( Target:GetMapName() ),	
+            structure_name = StringLower( Target:GetMapName() ),
             structure_x = StringFormat( "%.4f", tOrigin.x ),
             structure_y = StringFormat( "%.4f", tOrigin.y ),
             structure_z = StringFormat( "%.4f", tOrigin.z ),	
 
-            DamageType = DamageType,
-            Damage = Damage
+            damageType = DamageType,
+            damage = Damage
         }        
         self:AddLog( Params )
-        self:WeaponsAddStructureHit( Attacker, StringLower( Doer:GetMapName() ), Damage )        
+        self:WeaponsAddStructureHit( Attacker, StringLower( Doer:GetMapName() ), Damage )
     end
 end
 
 --Add miss
-function Plugin:AddMissToLog( Attacker )                
+function Plugin:AddMissToLog( Attacker )
     local Client = Attacker:GetClient()
     if not Client then return end
 
@@ -452,8 +452,8 @@ function Plugin:AddMissToLog( Attacker )
 end
 
 --weapon add miss
-function Plugin:WeaponsAddMiss( Client, Weapon )    
-    local PlayerInfo = self:GetPlayerByClient( Client )    
+function Plugin:WeaponsAddMiss( Client, Weapon )
+    local PlayerInfo = self:GetPlayerByClient( Client )
     if not PlayerInfo then return end
      
     local FoundId      
@@ -465,7 +465,7 @@ function Plugin:WeaponsAddMiss( Client, Weapon )
     end
 
     if FoundId then
-        PlayerInfo.weapons[ FoundId ].miss = Player.weapons[ FoundId ].miss + 1
+        PlayerInfo.weapons[ FoundId ].miss = PlayerInfo.weapons[ FoundId ].miss + 1
     else --add new weapon
         TableInsert( PlayerInfo.weapons,
         {
@@ -571,7 +571,7 @@ function Plugin:PlayerSay( Client, Message )
         teamnumber = Player:GetTeamNumber(),
         steamid = Plugin:GetId( Client ),
         name = Player:GetName(),
-        Message = Message.message,
+        message = Message.message,
         toteam = Message.teamOnly
     })
 end
@@ -763,7 +763,7 @@ function Plugin:OnFinishedBuilt( ConstructMixin, Builder )
     if PlayerInfo then
         SteamId = PlayerInfo.steamId
         Buildername = PlayerInfo.name
-        PlayerInfo.total_constructed = PlayerInfo.total_constructed + 1           
+        PlayerInfo.total_constructed = PlayerInfo.total_constructed + 1
     end
     
     local Params =
@@ -794,7 +794,7 @@ end
 
 --addfunction
 
-function Plugin:GhostStructureAction( Action, Structure )        
+function Plugin:GhostStructureAction( Action, Structure )
     if not Structure then return end
     local TechId = Structure:GetTechId()
     local tOrigin = Structure:GetOrigin()
@@ -891,11 +891,9 @@ function Plugin:OnBuildingRecycled( Structure, ResearchID )
     local tOrigin = Structure:GetOrigin()
     local TechId = Structure:GetTechId()
     
+    if not TechId then return end    
     --from RecyleMixin.lua
-        local UpgradeLevel = 0
-        if Structure.GetUpgradeLevel then
-            UpgradeLevel = Structure:GetUpgradeLevel()
-        end        
+        local UpgradeLevel =  Structure.GetUpgradeLevel and Structure:GetUpgradeLevel() or 0        
         local Amount = GetRecycleAmount( TechId, UpgradeLevel ) or 0
         -- returns a scalar from 0-1 depending on health the Structure has (at the present moment)
         local Scalar = Structure:GetRecycleScalar() * kRecyclePaybackScalar
@@ -943,7 +941,7 @@ function Plugin:OnStructureKilled( Structure, Attacker , Doer )
         local Client = Player:GetClient()
         local SteamId = self:GetId( Client ) or -1
         
-        local Weapon = Doer and Doer:GetMapName() or "self"      
+        local Weapon = Doer and Doer:GetMapName() or "self"
 
         local Params =
         {
@@ -1042,10 +1040,10 @@ function Plugin:AddDeathToLog(Target, Attacker, Doer)
             }
             Plugin:AddLog(Params)
                 
-            if Attacker:GetTeamNumber() ~= Target:GetTeamNumber() then                   
+            if Attacker:GetTeamNumber() ~= Target:GetTeamNumber() then
                 --addkill
-                Plugin:AddKill( Plugin:GetId(AttackerClient) )                  
-            end            
+                Plugin:AddKill( Plugin:GetId(AttackerClient) )
+            end
 	    else
 	        --natural causes death
 	        local Params =
@@ -1190,7 +1188,7 @@ function Plugin:AddServerInfos( Params )
     Params.successfulSends = self.SuccessfulSends 
     Params.resendCount = self.ResendCount
     Params.mods = mods
-    Params.Awards = self.Awards
+    Params.awards = self.Awards
     Params.tags = self.Config.Tags    
     Params.private = self.Config.Competitive
     Params.autoarrange = false --use Shine plugin settings later?
@@ -1252,7 +1250,7 @@ function Plugin:OnHTTPResponseFromSend( Response )
             Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" ,link))
             self.Config.Lastroundlink = Link
             self:SaveConfig()
-            return       
+            return
         end
     end
     
@@ -1263,8 +1261,8 @@ function Plugin:OnHTTPResponseFromSend( Response )
          self.Working = false
          Plugin:SendData()
     else --we couldn't reach the NS2Stats Servers
-        self.Working = false                                
-        self:SimpleTimer( 5, function() self:SendData() end)             
+        self.Working = false
+        self:SimpleTimer( 5, function() self:SendData() end)
     end    
 end
 
@@ -1307,14 +1305,14 @@ function Plugin:CreatePlayerEntry(Client)
     PlayerInfo.steamId = Plugin:GetId(Client) or 0
     PlayerInfo.name = Player:GetName() or ""
     PlayerInfo.ping = Client:GetPing() or 0
-    PlayerInfo.isbot = Client:GetIsVirtual() or false	
-    PlayerInfo.isCommander = false           
+    PlayerInfo.isbot = Client:GetIsVirtual() or false
+    PlayerInfo.isCommander = false
     PlayerInfo.dc = false
-    PlayerInfo.total_constructed = 0        
-    PlayerInfo.weapons = {}      
-    PlayerInfo.killstreak =0
-    PlayerInfo.highestKillstreak =0
-    PlayerInfo.jumps = 0    
+    PlayerInfo.total_constructed = 0
+    PlayerInfo.weapons = {}
+    PlayerInfo.killstreak = 0
+    PlayerInfo.highestKillstreak = 0
+    PlayerInfo.jumps = 0
             
     --for bots
     if PlayerInfo.isbot then
@@ -1344,17 +1342,17 @@ function Plugin:UpdatePlayerInTable(Client, Player, PlayerInfo)
     PlayerInfo.totalScore = Player.totalScore or 0
     PlayerInfo.totalPlayTime = Player.totalPlayTime or 0
     PlayerInfo.playerLevel = Player.playerLevel or 0
-    PlayerInfo.isCommander = Player:GetIsCommander() or false    
+    PlayerInfo.isCommander = Player:GetIsCommander() or false
     --if Player is dead
     if not Player:GetIsAlive() then
-        PlayerInfo.killstreak = 0        
+        PlayerInfo.killstreak = 0
     end
-    if not PlayerInfo.isbot then PlayerInfo.ping = Client:GetPing() end        
+    if not PlayerInfo.isbot then PlayerInfo.ping = Client:GetPing() end
 end
 
 --All search functions
 function Plugin:GetTeamCommanderSteamid(teamNumber)
-    for key,PlayerInfo in pairs(self.PlayersInfos) do	
+    for key,PlayerInfo in pairs(self.PlayersInfos) do
         if PlayerInfo.isCommander and PlayerInfo.teamnumber == teamNumber then
             return PlayerInfo.steamId
         end	
@@ -1423,14 +1421,14 @@ function Plugin:GetIdbyName( Name )
             Num = StringFind(Letters, Char, nil, true) or 99
             if Num < 10 then Num = 80 + Num end
         end
-        NewId = StringFormat( "%s%s", NewId, Num)        
+        NewId = StringFormat( "%s%s", NewId, Num)
     end
     
     
     --make a int
     NewId = tonumber( NewId )
     
-    self.Fakeids[ Name ] = NewId    
+    self.FakeIds[ Name ] = NewId    
     return NewId
 end
 --Ids end
@@ -1439,10 +1437,10 @@ end
 
 --Update Weapontable
 function Plugin:UpdateWeaponTable() 
-        if not self.RoundStarted then return end         
-        for _, Client in ipairs( Shine.GetAllClients() ) do
-            Plugin:UpdateWeaponData( Client )                 
-        end       
+    if not self.RoundStarted then return end
+    for _, Client in ipairs( Shine.GetAllClients() ) do
+        Plugin:UpdateWeaponData( Client )
+    end
 end   
 
 function Plugin:UpdateWeaponData( Client ) 
@@ -1563,27 +1561,27 @@ function Plugin:CreateCommands()
     end,true)   
     ShowLastRound:Help("Shows stats of last round played on this server")
     
-    local ShowSStats = self:BindCommand( "sh_showserverstats", "showserverstats", function(Client)                     
-        local url = StringFormat( "%s/server/server/%s",self.Config.WebsiteUrl,Plugin:GetServerId() )           
-        Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Server Stats" }, true )       
+    local ShowSStats = self:BindCommand( "sh_showserverstats", "showserverstats", function(Client)
+        local url = StringFormat( "%s/server/server/%s",self.Config.WebsiteUrl,Plugin:GetServerId() )
+        Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Server Stats" }, true )
     end,true)
     ShowSStats:Help("Shows server stats") 
     
-    local ShowLStats = self:BindCommand( "sh_showlivestats", "showlivestats", function(Client)                    
-        local url = StringFormat( "%s/live/scoreboard/%s", self.Config.WebsiteUrl, Plugin:GetServerId() )           
-        Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Scoreboard" }, true )       
+    local ShowLStats = self:BindCommand( "sh_showlivestats", "showlivestats", function(Client)
+        local url = StringFormat( "%s/live/scoreboard/%s", self.Config.WebsiteUrl, Plugin:GetServerId() )
+        Server.SendNetworkMessage( Client, "Shine_Web", { URL = url, Title = "Scoreboard" }, true )
     end,true)
-    ShowLStats:Help( "Shows server live stats" ) 
+    ShowLStats:Help( "Shows server live stats" )
     
     local Verify = self:BindCommand( "sh_verify", {"verifystats","verify"},function(Client)
             HTTPRequest(StringFormat("%s/api/verifyServer/%s?s=479qeuehq2829&key=%s", self.Config.WebsiteUrl, Plugin:GetId(Client), self.Config.ServerKey), "GET",
-            function(Response) ServerAdminPrint(Client,Response) end)       
+            function(Response) ServerAdminPrint(Client,Response) end)
     end)
     Verify:Help( "Sets yourself as serveradmin at NS2Stats.com" )
     
     local Tag = self:BindCommand( "sh_addtag", "addtag", function(Client,tag)
         TableInsert(Plugin.Config.Tags, tag)
-        Notify( StringFormat( "[NS2Stats]: %s  has been added as Tag to this roundlog", tag ))       
+        Notify( StringFormat( "[NS2Stats]: %s  has been added as Tag to this roundlog", tag ))
     end)    
     Tag:AddParam{ Type = "string",TakeRestOfLine = true,Error = "Please specify a tag to be added.", MaxLength = 30}
     Tag:Help( "Adds the given tag to the Stats" )
@@ -1607,7 +1605,7 @@ function Plugin:MakeAwardsList()
     self:AddAward( Plugin:AwardMostPlayerDamage() )
     self:AddAward( Plugin:AwardBestAccuracy() )
     self:AddAward( Plugin:AwardMostJumps() )
-    self:AddAward( Plugin:AwardHighestKillstreak() )    
+    self:AddAward( Plugin:AwardHighestKillstreak() )
 end
 
 function Plugin:SendAwardListToClients()
@@ -1618,20 +1616,20 @@ function Plugin:SendAwardListToClients()
         
     --send Highest 10 Rating Awards
     table.sort(self.Awards, function( a, b )
-        return a.Rating > b.Rating
+        return a.rating > b.rating
     end)
     
     local AwardMessage = {}
-    AwardMessage.message = ""    
-    AwardMessage.duration = Plugin.Config.AwardMsgTime
-    AwardMessage.colourr = Plugin.Config.AwardMsgColour[1]
-    AwardMessage.colourg = Plugin.Config.AwardMsgColour[2]
-    AwardMessage.colourb = Plugin.Config.AwardMsgColour[3]
+    AwardMessage.Message = ""    
+    AwardMessage.Duration = Plugin.Config.AwardMsgTime
+    AwardMessage.ColourR = Plugin.Config.AwardMsgColour[1]
+    AwardMessage.ColourG = Plugin.Config.AwardMsgColour[2]
+    AwardMessage.ColourB = Plugin.Config.AwardMsgColour[3]
     
     for i = 1, self.Config.ShowNumAwards do
         if i > #self.Awards then break end
-        if self.Awards[ i ].Message then 
-            AwardMessage.message = StringFormat("%s%s\n", AwardMessage.Message, self.Awards[ i ].Message )
+        if self.Awards[ i ].message then 
+            AwardMessage.Message = StringFormat("%s%s\n", AwardMessage.Message, self.Awards[ i ].message )
         end
     end 
     self:SendNetworkMessage(nil, "StatsAwards", AwardMessage, true )
@@ -1658,7 +1656,7 @@ function Plugin:AwardMostDamage()
             TotalDamage = TotalDamage + PlayerInfo.weapons[i].player_damage
         end
         
-        if Floor(TotalDamage) > Floor(HighestDamage) then
+        if Floor( TotalDamage ) > Floor( HighestDamage ) then
             HighestDamage = TotalDamage
             HighestPlayer = PlayerInfo.name
             HighestSteamId = PlayerInfo.steamId
@@ -1676,7 +1674,7 @@ function Plugin:AwardMostKillsAndAssists()
     local HighestPlayer = "Nobody"
     local HighestSteamId = ""
     
-    for _, PlayerInfo in pairs(self.PlayersInfos) do
+    for _, PlayerInfo in pairs( self.PlayersInfos ) do
         local Total = PlayerInfo.kills + PlayerInfo.assists
         if Total > HighestTotal then
             HighestTotal = Total
@@ -1697,7 +1695,7 @@ function Plugin:AwardMostConstructed()
     local HighestPlayer = "was not present"
     local HighestSteamId = ""
     
-    for _,PlayerInfo in pairs( self.PlayersInfos ) do
+    for _, PlayerInfo in pairs( self.PlayersInfos ) do
         if PlayerInfo.total_constructed > HighestTotal then
             HighestTotal = PlayerInfo.total_constructed
             HighestPlayer = PlayerInfo.name
@@ -1707,7 +1705,7 @@ function Plugin:AwardMostConstructed()
     
     Rating = ( HighestTotal + 1 ) / 30
     
-    return { steamId = HighestSteamId, rating = Rating, message = StringFormat("Bob the builder: %s !", HighestPlayer ) }
+    return { steamId = HighestSteamId, rating = Rating, message = StringFormat( "Bob the builder: %s !", HighestPlayer ) }
 end
 
 
@@ -1717,14 +1715,14 @@ function Plugin:AwardMostStructureDamage()
     local HighestSteamId = ""
     local Rating = 0
     
-    for key,PlayerInfo in pairs(self.PlayersInfos) do
+    for _, PlayerInfo in pairs( self.PlayersInfos ) do
         local Total = 0
         
         for i=1, #PlayerInfo.weapons do
-            Total = Total + PlayerInfo.weapons[i].structure_damage
+            Total = Total + PlayerInfo.weapons[ i ].structure_damage
         end
         
-        if Floor(total) > Floor(HighestTotal) then
+        if Floor( Total ) > Floor( HighestTotal ) then
             HighestTotal = Total
             HighestPlayer = PlayerInfo.name
             HighestSteamId = PlayerInfo.steamId
@@ -1743,15 +1741,15 @@ function Plugin:AwardMostPlayerDamage()
     local HighestSteamId = ""
     local Rating = 0
     
-    for key,PlayerInfo in pairs(self.PlayersInfos) do
+    for _, PlayerInfo in pairs( self.PlayersInfos ) do
         local Total = 0
         
         for i = 1, #PlayerInfo.weapons do
-            Total = Total + PlayerInfo.weapons[i].player_damage
+            Total = Total + PlayerInfo.weapons[ i ].player_damage
         end
         
-        if Floor(Total) > Floor(HighestTotal) then
-            HighestTotal = total
+        if Floor( Total ) > Floor( HighestTotal ) then
+            HighestTotal = Total
             HighestPlayer = PlayerInfo.name
             HighestSteamId = PlayerInfo.steamId
         end
@@ -1759,7 +1757,7 @@ function Plugin:AwardMostPlayerDamage()
     
     Rating = ( HighestTotal + 1 ) / 90
     
-    return { steamId = HighestSteamId, rating = Rating, message = StringFormat( " %s was spilling blood worth of %s Damage.",HighestPlayer, Floor( HighestTotal )) }
+    return { steamId = HighestSteamId, rating = Rating, message = StringFormat( " %s was spilling blood worth of %s Damage.", HighestPlayer, Floor( HighestTotal )) }
 end
 
 
@@ -1770,14 +1768,14 @@ function Plugin:AwardBestAccuracy()
     local HighestTeam = 0
     local Rating = 0
     
-    for key,PlayerInfo in pairs(self.PlayersInfos) do
+    for _, PlayerInfo in pairs( self.PlayersInfos ) do
         local Total = 0
         
         for i = 1, #PlayerInfo.weapons do
             if i == 1 then 
-                Total = PlayerInfo.weapons[i].player_hit / ( PlayerInfo.weapons[i].miss + 1 )
+                Total = PlayerInfo.weapons[ i ].player_hit / ( PlayerInfo.weapons[ i ].miss + 1 )
             else    
-                Total = 0.5 * ( Total + PlayerInfo.weapons[i].player_hit / ( PlayerInfo.weapons[i].miss + 1 ) )
+                Total = 0.5 * ( Total + PlayerInfo.weapons[ i ].player_hit / ( PlayerInfo.weapons[ i ].miss + 1 ) )
             end    
         end
         
@@ -1805,12 +1803,12 @@ function Plugin:AwardMostJumps()
     local HighestSteamId = ""
     local Rating = 0
     
-    for key,PlayerInfo in pairs(self.PlayersInfos) do
+    for _, PlayerInfo in pairs(self.PlayersInfos) do
        
-        total = PlayerInfo.jumps or 0
+        local Total = PlayerInfo.jumps or 0
       
-        if total > HighestTotal then
-            HighestTotal = total
+        if Total > HighestTotal then
+            HighestTotal = Total
             HighestPlayer = PlayerInfo.name
             HighestSteamId = PlayerInfo.steamId
         end
@@ -1818,7 +1816,7 @@ function Plugin:AwardMostJumps()
     
     Rating = HighestTotal / 30
         
-    return {steamId = HighestSteamId, rating = Rating, message = StringFormat("%s is jump maniac with %s jumps!", HighestPlayer,  HighestTotal)}
+    return { steamId = HighestSteamId, rating = Rating, message = StringFormat( "%s is jump maniac with %s jumps!", HighestPlayer,  HighestTotal )}
     
 end
 
@@ -1859,7 +1857,7 @@ end
 function Plugin:DevourSendStatus()
     if not self.RoundStarted then return end
     
-    local stime = Shared.GetGMTString(false)
+    local stime = Shared.GetGMTString( false )
     
     local State = {
         time = stime,
@@ -1950,7 +1948,7 @@ function Plugin:CreateDevourEntityFrame()
         end	
     end
     
-    self.Devour.Entities[ self.Devour.Frame ] = DevourPlayers     
+    self.Devour.Entities[ self.Devour.Frame ] = DevourPlayers
 end
 
 function Plugin:GetViewAngle( Player )
