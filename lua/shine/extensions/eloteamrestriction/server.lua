@@ -22,7 +22,6 @@ Plugin.HasConfig = true
 Plugin.ConfigName = "eloteamrestriction.json"
 
 Plugin.DefaultConfig = {
-    WebsiteUrl = "http://ns2stats.com",
     UseSteamTime = false,
     ForceSteamTime = false,
     RestrictionMode = 0,
