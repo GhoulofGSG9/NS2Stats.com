@@ -46,6 +46,15 @@ Shine.Hook.SetupClassHook( "CommandStructure", "OnUse", "CheckComLogin", "Active
 
 local Enabled = true
 
+function Plugin:ClientConfirmConnect( Client )
+    if self.Config.InformAtConnect then
+        local Player = Client:GetControllingPlayer()
+        if not Player then return end
+        
+        self:Notify( Player, self.Config.InformMessage )
+    end  
+end
+
 function Plugin:SetGameState( Gamerules, NewState, OldState )
     if NewState == kGameState.Started and self.Config.DisableAfterRoundtime > 0 then        
         self:CreateTimer( "Disable", self.Config.DisableAfterRoundtime * 60 , 1, function() Enabled = false end )
@@ -58,7 +67,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
 end
     
 function Plugin:CheckComLogin( Chair, Player )
-    if not Enabled or not self.Config.BlockCC or not Player or not Player.GetClient or #Shine.GetAllPlayers() < self.Config.MinPlayer then return end
+    if not Enabled or not self.Config.BlockCC or not Player or not Player.GetClient or Server.GetNumPlayers() < self.Config.MinPlayer then return end
     
     local Client = Player:GetClient()
     if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignorestatus" ) then return end
@@ -68,16 +77,26 @@ function Plugin:CheckComLogin( Chair, Player )
     
     if not InfoHub:GetIsRequestFinished( SteamId ) then self:Notify( Player, self.Config.WaitMessage ) return false end
     
-    local SteamTime = type( InfoHub:GetSteamData( SteamId ) ) == "table" and tonumber( InfoHub:GetSteamData( SteamId ).PlayTime ) or 0
-    local HiveTime = type( InfoHub:GetHiveData( SteamId ) ) == "table" and tonumber( InfoHub:GetHiveData( SteamId ).playTime ) or 0
-    local Ns2StatsTime = type( InfoHub:GetNs2StatsData( SteamId ) ) == "table" and tonumber( InfoHub:GetNs2StatsData( SteamId ).time_played ) or 0
+    local PlayTime
     
-    local PlayTime = 0
-    if self.Config.UseSteamTime and SteamTime > PlayTime then PlayTime = SteamTime end
-    if HiveTime > PlayTime then PlayTime = HiveTime end
-    if Ns2StatsTime > PlayTime then PlayTime = Ns2StatsTime end
+    local SteamData = InfoHub:GetSteamData( SteamId )    
+    if self.Config.UseSteamTime and SteamData.PlayTime > 0 and ( not PlayTime or SteamData.PlayTime > PlayTime ) then
+        PlayTime = SteamData.PlayTime
+    end
     
-     if PlayTime >= 0 and PlayTime < self.Config.MinPlaytime * 3600 then
+    local HiveData = InfoHub:GetHiveData( SteamId )    
+    if type( HiveData ) == "table" and HiveData.playTime and ( not PlayTime or HiveData.playTime > PlayTime ) then
+        PlayTime = HiveData.playTime
+    end
+
+    local Ns2StatsData = InfoHub:GetNs2StatsData( SteamId )
+    if type( Ns2StatsData ) == "table" and Ns2StatsData.time_played and ( not PlayTime or Ns2StatsData.time_played > PlayTime ) then
+        PlayTime = Ns2StatsData.time_played
+    end
+    
+    if not PlayTime then return end
+    
+    if PlayTime >= 0 and PlayTime < self.Config.MinPlaytime * 3600 then
         self:Notify( Player, self.Config.BlockMessage )
         if self.Config.ShowSwitchAtBlock then
            self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
@@ -92,7 +111,7 @@ function Plugin:Notify( Player, Message )
 end
 
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
-    if not Enabled or ShineForce or not self.Config.BlockTeams or #Shine.GetAllPlayers() < self.Config.MinPlayer or NewTeam == kTeamReadyRoom then return end
+    if not Enabled or ShineForce or not self.Config.BlockTeams or Server.GetNumPlayers() < self.Config.MinPlayer or NewTeam == kTeamReadyRoom then return end
     
     local Client = Player:GetClient()
     if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignorestatus" ) then return end
@@ -104,14 +123,24 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         return 
     end
     
-    local SteamTime = type( InfoHub:GetSteamData( SteamId ) ) == "table" and tonumber( InfoHub:GetSteamData( SteamId ).PlayTime ) or 0
-    local HiveTime = type( InfoHub:GetHiveData( SteamId ) ) == "table" and tonumber( InfoHub:GetHiveData( SteamId ).playTime ) or 0
-    local Ns2StatsTime = type( InfoHub:GetNs2StatsData( SteamId ) ) == "table" and tonumber( InfoHub:GetNs2StatsData( SteamId ).time_played ) or 0
+    local PlayTime
     
-    local PlayTime = 0
-    if self.Config.UseSteamTime and SteamTime > PlayTime then PlayTime = SteamTime end
-    if HiveTime > PlayTime then PlayTime = HiveTime end
-    if Ns2StatsTime > PlayTime then PlayTime = Ns2StatsTime end
+    local SteamData = InfoHub:GetSteamData( SteamId )    
+    if self.Config.UseSteamTime and SteamData.PlayTime > 0 and ( not PlayTime or SteamData.PlayTime > PlayTime ) then
+        PlayTime = SteamData.PlayTime
+    end
+    
+    local HiveData = InfoHub:GetHiveData( SteamId )    
+    if type( HiveData ) == "table" and HiveData.playTime and ( not PlayTime or HiveData.playTime > PlayTime ) then
+        PlayTime = HiveData.playTime
+    end
+
+    local Ns2StatsData = InfoHub:GetNs2StatsData( SteamId )
+    if type( Ns2StatsData ) == "table" and Ns2StatsData.time_played and ( not PlayTime or Ns2StatsData.time_played > PlayTime ) then
+        PlayTime = Ns2StatsData.time_played
+    end
+    
+    if not PlayTime then return end
     
     if PlayTime >= 0 and PlayTime < self.Config.MinPlaytime * 3600 then
         self:Notify( Player, self.Config.BlockMessage )
@@ -120,7 +149,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         end
         self:Kick( Player )
         return false
-    end    
+    end
 end    
 
 local Kicktimes = {}
@@ -150,11 +179,11 @@ function Plugin:Kick( Player )
         if Kicktimes[ SteamId ] == 10 then self:Notify(Player, StringFormat( self.Config.KickMessage, Kicktimes[ SteamId ] )) end
         if Kicktimes[ SteamId ] <= 5 then self:Notify(Player, StringFormat( self.Config.KickMessage, Kicktimes[ SteamId ] )) end        
         if Kicktimes[ SteamId ] <= 0 then
-            Shine:Print( "Client %s[%s] (%s h) was kicked by No Rookies. Kicking...", true, Player:GetName(), SteamId,( SteamTime[ SteamId ] or PlayTime[ SteamId ] ) / 3600 )
+            Shine:Print( "Client %s [ %s ] was kicked by NoRookies. Kicking...", true, Player:GetName(), SteamId )
             Client.DisconnectReason = "You didn't fit to the set min playtime"
             Server.DisconnectClient( Client )
         end
-    end)    
+    end )    
 end
 
 function Plugin:ClientDisconnect( Client )

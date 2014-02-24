@@ -213,7 +213,7 @@ function Plugin:Kick( Player )
         if Kicktimes[ SteamId ] == 10 then self:Notify(Player, StringFormat( self.Config.KickMessage, Kicktimes[ SteamId ] )) end
         if Kicktimes[ SteamId ] <= 5 then self:Notify( Player, StringFormat( self.Config.KickMessage, Kicktimes[ SteamId ] )) end
         if Kicktimes[ SteamId ] <= 0 then
-            Shine:Print( "Client %s[%s] was kicked by Elorestriction. Kicking...", true, Player:GetName(), SteamId)
+            Shine:Print( "Client %s [ %s ] was kicked by Elorestriction. Kicking...", true, Player:GetName(), SteamId)
             Client.DisconnectReason = "You didn't fit to the set skill level"
             Server.DisconnectClient( Client )
         end    
