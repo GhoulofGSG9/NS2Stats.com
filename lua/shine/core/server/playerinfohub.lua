@@ -96,11 +96,16 @@ function PlayerInfoHub:OnConnect( Client, Timeleft )
     if not self.SteamData[ SteamId ].PlayTime then
         HTTPRequest( StringFormat( "http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v0001/?key=2EFCCE2AF701859CDB6BBA3112F95972&SteamId=%s&format=json", SteamId64 ), "GET", function( Response )
             local Temp = JsonDecode( Response )
+            
             Temp = Temp and Temp.response and Temp.response.games
-            if not Temp then return end
+            if not Temp then
+                PlayerInfoHub.SteamData[ SteamId ].PlayTime = 0
+                return 
+            end
+            
             for i = 1, #Temp do
                 if Temp[ i ].appid == 4920 then
-                    PlayerInfoHub.SteamData[ SteamId ].PlayTime = Temp[ i ].playtime_forever and Temp[ i ].playtime_forever * 60
+                    PlayerInfoHub.SteamData[ SteamId ].PlayTime = Temp[ i ].playtime_forever and Temp[ i ].playtime_forever * 60 or 0
                     if PlayerInfoHub.SteamData[ SteamId ].Badges.Normal and PlayerInfoHub.SteamData[ SteamId ].Badges.Foil then Call( "OnReceiveSteamData", Client, PlayerInfoHub.SteamData[ SteamId ] ) end
                     return
                 end
