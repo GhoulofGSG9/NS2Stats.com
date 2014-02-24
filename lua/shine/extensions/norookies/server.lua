@@ -65,10 +65,20 @@ function Plugin:EndGame( Gamerules, WinningTeam )
     self:DestroyTimer( "Disable" )
     Enabled = true
 end
+
+function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
+    if not Enabled or ShineForce or not self.Config.BlockTeams or Server.GetNumPlayers() < self.Config.MinPlayer or NewTeam == kTeamReadyRoom then return end
     
+    self:Check( Player )
+end
+
 function Plugin:CheckComLogin( Chair, Player )
     if not Enabled or not self.Config.BlockCC or not Player or not Player.GetClient or Server.GetNumPlayers() < self.Config.MinPlayer then return end
-    
+
+    self:Check( Player )
+end
+
+function Plugin:Check( Player )
     local Client = Player:GetClient()
     if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignorestatus" ) then return end
     
@@ -80,77 +90,39 @@ function Plugin:CheckComLogin( Chair, Player )
     local PlayTime
     
     local SteamData = InfoHub:GetSteamData( SteamId )    
-    if self.Config.UseSteamTime and SteamData.PlayTime > 0 and ( not PlayTime or SteamData.PlayTime > PlayTime ) then
+    if self.Config.UseSteamTime and ( not PlayTime or SteamData.PlayTime > PlayTime ) then
         PlayTime = SteamData.PlayTime
     end
     
     local HiveData = InfoHub:GetHiveData( SteamId )    
     if type( HiveData ) == "table" and HiveData.playTime and ( not PlayTime or HiveData.playTime > PlayTime ) then
-        PlayTime = HiveData.playTime
+        PlayTime = tonumber( HiveData.playTime )
+    elseif not PlayTime then
+        PlayTime = HiveData
     end
 
     local Ns2StatsData = InfoHub:GetNs2StatsData( SteamId )
     if type( Ns2StatsData ) == "table" and Ns2StatsData.time_played and ( not PlayTime or tonumber( Ns2StatsData.time_played ) > PlayTime ) then
         PlayTime = tonumber( Ns2StatsData.time_played )
+    elseif not PlayTime then
+        PlayTime = Ns2StatsData
     end
     
-    if not PlayTime then return end
+    if not PlayTime or PlayTime < 0 then return end
     
-    if PlayTime >= 0 and PlayTime < self.Config.MinPlaytime * 3600 then
+    if PlayTime < self.Config.MinPlaytime * 3600 then
         self:Notify( Player, self.Config.BlockMessage )
         if self.Config.ShowSwitchAtBlock then
            self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
         end
         self:Kick( Player )
         return false
-    end   
+    end
 end
 
 function Plugin:Notify( Player, Message )
     Shine:NotifyDualColour( Player, 100, 255, 100, "[No Rookies]", 255, 255, 255, Message )
 end
-
-function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
-    if not Enabled or ShineForce or not self.Config.BlockTeams or Server.GetNumPlayers() < self.Config.MinPlayer or NewTeam == kTeamReadyRoom then return end
-    
-    local Client = Player:GetClient()
-    if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignorestatus" ) then return end
-    
-    local SteamId = Client:GetUserId()
-    if not SteamId or SteamId <= 0 then return end
-    
-    if self.Config.AllowSpectating and NewTeam == kSpectatorIndex then
-        return 
-    end
-    
-    local PlayTime
-    
-    local SteamData = InfoHub:GetSteamData( SteamId )    
-    if self.Config.UseSteamTime and SteamData.PlayTime > 0 and ( not PlayTime or SteamData.PlayTime > PlayTime ) then
-        PlayTime = SteamData.PlayTime
-    end
-    
-    local HiveData = InfoHub:GetHiveData( SteamId )    
-    if type( HiveData ) == "table" and HiveData.playTime and ( not PlayTime or HiveData.playTime > PlayTime ) then
-        PlayTime = HiveData.playTime
-    end
-
-    local Ns2StatsData = InfoHub:GetNs2StatsData( SteamId )
-    if type( Ns2StatsData ) == "table" and Ns2StatsData.time_played and ( not PlayTime or tonumber( Ns2StatsData.time_played ) > PlayTime ) then
-        PlayTime = tonumber( Ns2StatsData.time_played )
-    end
-    
-    if not PlayTime then return end
-    
-    if PlayTime >= 0 and PlayTime < self.Config.MinPlaytime * 3600 then
-        self:Notify( Player, self.Config.BlockMessage )
-        if self.Config.ShowSwitchAtBlock then
-           self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
-        end
-        self:Kick( Player )
-        return false
-    end
-end    
 
 local Kicktimes = {}
 
