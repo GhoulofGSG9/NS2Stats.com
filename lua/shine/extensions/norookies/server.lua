@@ -90,8 +90,8 @@ function Plugin:CheckComLogin( Chair, Player )
     end
 
     local Ns2StatsData = InfoHub:GetNs2StatsData( SteamId )
-    if type( Ns2StatsData ) == "table" and Ns2StatsData.time_played and ( not PlayTime or Ns2StatsData.time_played > PlayTime ) then
-        PlayTime = Ns2StatsData.time_played
+    if type( Ns2StatsData ) == "table" and Ns2StatsData.time_played and ( not PlayTime or tonumber( Ns2StatsData.time_played ) > PlayTime ) then
+        PlayTime = tonumber( Ns2StatsData.time_played )
     end
     
     if not PlayTime then return end
@@ -136,8 +136,8 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     end
 
     local Ns2StatsData = InfoHub:GetNs2StatsData( SteamId )
-    if type( Ns2StatsData ) == "table" and Ns2StatsData.time_played and ( not PlayTime or Ns2StatsData.time_played > PlayTime ) then
-        PlayTime = Ns2StatsData.time_played
+    if type( Ns2StatsData ) == "table" and Ns2StatsData.time_played and ( not PlayTime or tonumber( Ns2StatsData.time_played ) > PlayTime ) then
+        PlayTime = tonumber( Ns2StatsData.time_played )
     end
     
     if not PlayTime then return end
