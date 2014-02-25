@@ -925,10 +925,10 @@ function Plugin:OnStructureKilled( Structure, Attacker , Doer )
                
     local tOrigin = Structure:GetOrigin()
     local TechId = Structure:GetTechId()        
-    if not Doer then Doer = "none" end
+    if not Doer then Doer = "None" end
     --Structure killed
     if Attacker then 
-        if not Attacker:isa( "Player ") then 
+        if not Attacker:isa( "Player" ) then 
             local RealKiller = Attacker.GetOwner and Attacker:GetOwner()
             if RealKiller and RealKiller:isa( "Player" ) then
                 Attacker = RealKiller
@@ -1826,7 +1826,7 @@ function Plugin:AwardHighestKillstreak()
     local HighestPlayer = "nobody"
     local HighestSteamId = ""
     
-    for _,PlayerInfo in pairs(self.PlayersInfos) do
+    for _, PlayerInfo in pairs(self.PlayersInfos) do
                   
         local Total = PlayerInfo.highestKillstreak or 0
         
@@ -1865,7 +1865,7 @@ function Plugin:DevourSendStatus()
         map = Shared.GetMapName(),
     }
     
-    local dataset = {
+    local Dataset = {
         Entity = self.Devour.Entities,
         Movement =  self.Devour.MovementInfos,
         State = State
@@ -1874,7 +1874,7 @@ function Plugin:DevourSendStatus()
     local Params =
     {
         key = self.Config.ServerKey,
-        data = JsonEncode( dataset )
+        data = JsonEncode( Dataset )
     }
         
     HTTPRequest( StringFormat( "%s/api/sendstatusDevour", self.Config.WebsiteUrl ), "POST", Params, function() end )
@@ -1885,7 +1885,7 @@ function Plugin:CreateDevourMovementFrame()
 
     local data = {}
     
-    for _,Client in pairs( Shine.GetAllClients() ) do
+    for _, Client in pairs( Shine.GetAllClients() ) do
         local Player = Client:GetControllingPlayer()
         local PlayerPos = Player:GetOrigin()
 	    
@@ -1944,7 +1944,7 @@ function Plugin:CreateDevourEntityFrame()
                 acc = 0,
 
             }
-            TableInsert( DevourPlayers, DevourPlayer)
+            TableInsert( DevourPlayers, DevourPlayer )
         end	
     end
     
@@ -1962,4 +1962,29 @@ end
 function Plugin:RoundNumber( Number )
     local Temp = StringFormat( "%.2f", Number )
     return tonumber( Temp )
+end
+
+function Plugin:CleanUp()
+    self.BaseClass.Cleanup( self )
+    
+    self.StatsEnabled = nil
+    self.SuccessfulSends = nil
+    self.ResendCount = nil
+    self.Working = nil
+    self.Log = nil
+    self.LogPartNumber = nil
+    self.LogPartToSend  = nil
+    self.GameStartTime = nil
+    self.RoundFinished = nil
+    self.NextAwardId = nil
+    self.Awards = nil
+    self.RoundStarted = nil
+    self.CurrentGameState = nil
+    self.PlayersInfos = nil
+    self.ItemInfos = nil
+    self.BuildingsInfos = nil
+    self.OldUpgrade = nil
+    self.Devour = nil
+    
+    self.Enabled = false
 end
