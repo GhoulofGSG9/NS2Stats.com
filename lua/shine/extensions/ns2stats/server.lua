@@ -1826,7 +1826,7 @@ function Plugin:AwardHighestKillstreak()
     local HighestPlayer = "nobody"
     local HighestSteamId = ""
     
-    for _, PlayerInfo in pairs(self.PlayersInfos) do
+    for _, PlayerInfo in pairs( self.PlayersInfos ) do
                   
         local Total = PlayerInfo.highestKillstreak or 0
         
