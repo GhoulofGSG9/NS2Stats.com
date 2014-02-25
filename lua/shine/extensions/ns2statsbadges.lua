@@ -7,6 +7,8 @@ local Shine = Shine
 
 local Plugin = {}
 
+local Notify = Shared.Message
+
 Plugin.Version = "1.5"
 
 Plugin.HasConfig = true
@@ -28,6 +30,12 @@ end
 
 function Plugin:OnReceiveSteamData( Client, SteamData )
     if not self.Config.SteamBadges then return end
+    
+    if not GiveBadge then
+        Notify( "[ERROR]: The Ns2StatsBadge plugin does not work without the Player Badge or Badges+ Mod !" )
+        self.Enabled = false
+        return
+    end
  
     local ClientId = Client:GetUserId()
     if ClientId <= 0 then return end
@@ -65,6 +73,12 @@ end
 
 function Plugin:OnReceiveNs2StatsData( Client, Ns2StatsData )
     if not self.Config.Flags then return end
+    
+    if not GiveBadge then
+        Notify( "[ERROR]: The Ns2StatsBadge plugin does not work without the Player Badge or Badges+ Mod !" )
+        self.Enabled = false
+        return
+    end
     
     local ClientId = Client:GetUserId()
     if ClientId <= 0 then return end
