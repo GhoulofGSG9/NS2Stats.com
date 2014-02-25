@@ -42,7 +42,6 @@ Plugin.DefaultConfig = {
     KickBlockedPlayers = false,
     Kicktime = 60,
 }
-
 Plugin.CheckConfig = true
 
 function Plugin:Initialise()

@@ -167,4 +167,12 @@ function Plugin:PlaySoundForEveryPlayer( SoundName )
     if self.Config.SendSounds then
         self:SendNetworkMessage(nil, "PlaySound",{ Name = SoundName } , true)
     end
-end   
+end
+
+function Plugin:Cleanup()
+    self.BaseClass.Cleanup( self )
+
+    self.Killstreaks = nil
+
+    self.Enabled = false
+end
