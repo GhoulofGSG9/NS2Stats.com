@@ -652,26 +652,29 @@ function Plugin:OnPickableItemPicked( Item, Player )
 
 end
 
-function Plugin:OnPickableItemDropped(Item,deltaTime)
+function Plugin:OnPickableItemDropped( Item, DeltaTime )
     if not Item then return end    
     
     local TechId = Item:GetTechId()
     if not TechId or TechId < 180 then return end
     
     --from dropack.lua
-    local MarinesNearby = GetEntitiesForTeamWithinRange("Marine", Item:GetTeamNumber(), Item:GetOrigin(), Item.pickupRange)
-    Shared.SortEntitiesByDistance( Item:GetOrigin(), MarinesNearby )
+    local MarinesNearby = GetEntitiesForTeamWithinRange( "Marine", Item:GetTeamNumber(), Item:GetOrigin(), Item.pickupRange)
+    
+    if #MarinesNearby > 0 then
+        Shared.SortEntitiesByDistance( Item:GetOrigin(), MarinesNearby )
+    end    
     
     local Player
-    for _, marine in ipairs( MarinesNearby ) do    
-        if Item:GetIsValidRecipient( marine ) then
-            Player = marine
+    for _, Marine in ipairs( MarinesNearby ) do    
+        if Item:GetIsValidRecipient( Marine ) then
+            Player = Marine
             break
         end
     end    
     
     --check if droppack is new
-    if deltaTime == 0 then
+    if DeltaTime == 0 then
         self:OnPickableItemCreated( Item, TechId, Player )
         return
     end
