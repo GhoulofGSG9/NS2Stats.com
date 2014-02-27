@@ -169,6 +169,8 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         self:Kick( Player )
         return false
     end
+    
+    self:DestroyTimer( StringFormat( "Kick_%s", SteamId ))
 end
 
 function Plugin:Notify( Player, Message, Format, ... )

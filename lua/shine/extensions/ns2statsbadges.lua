@@ -7,6 +7,8 @@ local Shine = Shine
 
 local Plugin = {}
 
+local Notify = Shared.Message
+
 Plugin.Version = "1.5"
 
 Plugin.HasConfig = true
@@ -22,71 +24,57 @@ Plugin.CheckConfig = true
 --fix for no badge showing up
 local function AvoidEmptyBadge( Client, Badge )
     if getClientBadgeEnum( Client ) == kBadges.None then
-       setClientBadgeEnum( Client, kBadges[Badge] ) 
+       setClientBadgeEnum( Client, kBadges[ Badge ] ) 
     end
+end
+
+function Plugin:SetBadge( Client, Badge )
+    if not ( Badge or Client ) then return end
+    
+    if not GiveBadge then
+        Notify( "[ERROR]: The Ns2StatsBadge plugin does not work without the Badges+ Mod !" )
+        self.Enabled = false
+        return
+    end
+ 
+    local ClientId = Client:GetUserId()
+    if ClientId <= 0 then return end
+    
+    local SetBadge = GiveBadge( ClientId, Badge )
+    if not SetBadge then return end
+    
+    -- send bagde to Clients
+    Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ Badge ]), true )
+    AvoidEmptyBadge( Client, Badge )
+    
+    -- give default badge (disabled)
+    GiveBadge( ClientId, "disabled" )
+    Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ "disabled" ]), true )
+    
+    return true
 end
 
 function Plugin:OnReceiveSteamData( Client, SteamData )
     if not self.Config.SteamBadges then return end
- 
-    local ClientId = Client:GetUserId()
-    if ClientId <= 0 then return end
-
-    local SetNormalBagde    
+    
     if SteamData.Badges.Normal and SteamData.Badges.Normal ~= 0 then
-        SetNormalBagde = GiveBadge( ClientId, SteamData.Badges.Normal )
-    end    
-    
-    if SetNormalBagde then
-        -- send bagde to Clients        
-        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage( -1, kBadges[ SteamData.Badges.Normal ]), true )
-        AvoidEmptyBadge( Client, SteamData.Badges.Normal )
-        
-        -- give default badge (disabled)
-        GiveBadge( ClientId, "disabled" )
-        Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ "disabled" ]), true ) 
+        self:SetBadge( Client, SteamData.Badges.Normal )
     end
-    
-    local SetFoilBagde    
-    if SteamData.Badges.Foil and SteamData.Badges.Foil ~= 0 then
-        SetFoilBagde = GiveBadge( ClientId, SteamData.Badges.Foil )
-    end    
-    
-    if SetFoilBagde then
-        -- send bagde to Clients        
-        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage( -1, kBadges[ SteamData.Badges.Foil ]), true )
-        AvoidEmptyBadge( Client, SteamData.Badges.Foil )
         
-        -- give default badge (disabled)
-        GiveBadge( ClientId, "disabled" )
-        Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ "disabled" ]), true ) 
+    if SteamData.Badges.Foil and SteamData.Badges.Foil ~= 0 then
+        self:SetBadge( Client, SteamData.Badges.Normal )
     end
 end
 
 function Plugin:OnReceiveNs2StatsData( Client, Ns2StatsData )
     if not self.Config.Flags then return end
     
-    local ClientId = Client:GetUserId()
-    if ClientId <= 0 then return end
-    
-    local SetBagde
-    local Nationality = type( Ns2StatsData ) == "table" and tostring( Ns2StatsData.nationality ) or "UNO"
-    
-    SetBagde = GiveBadge( ClientId, Nationality )
+    local Nationality = type( Ns2StatsData ) == "table" and tostring( Ns2StatsData.nationality ) or "UNO"    
+    local SetBagde = self:SetBadge( Client, Nationality )
     
     if not SetBagde then
         Nationality = "UNO"
-        SetBagde = GiveBadge( ClientId, Nationality )
-    end
-    
-    if SetBagde then
-        -- send bagde to Clients        
-        Server.SendNetworkMessage(Client, "Badge", BuildBadgeMessage( -1, kBadges[ Nationality ]), true )
-        AvoidEmptyBadge( Client, Nationality )
-        
-        -- give default badge (disabled)
-        GiveBadge( ClientId, "disabled" )
-        Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ "disabled" ]), true ) 
+        self:SetBadge( Client, Nationality )
     end
 end
 

@@ -22,7 +22,7 @@ Plugin.CheckConfig = true
 
 Plugin.Killstreaks = {}
 
-function Plugin:OnEntityKilled( Gamerules, Victim, Attacker, Inflictor, Point, Dir )
+function Plugin:OnEntityKilled( Gamerules, Victim, Attacker )
     if not Attacker or not Victim or not Victim:isa( "Player" ) then return end
     
     if not Attacker:isa( "Player" ) then 
@@ -66,7 +66,7 @@ function Plugin:ClientDisconnect( Client )
     self.Killstreaks[ Client ] = nil
 end
 
-function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
+function Plugin:PostJoinTeam( Gamerules, Player )
     local Client = Player:GetClient()
     if not Client then return end
     
