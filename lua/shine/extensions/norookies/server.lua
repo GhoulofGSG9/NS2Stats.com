@@ -69,13 +69,13 @@ end
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
     if not Enabled or ShineForce or not self.Config.BlockTeams or Server.GetNumPlayers() < self.Config.MinPlayer or NewTeam == kTeamReadyRoom then return end
     
-    self:Check( Player )
+    return self:Check( Player )
 end
 
 function Plugin:CheckComLogin( Chair, Player )
     if not Enabled or not self.Config.BlockCC or not Player or not Player.GetClient or Server.GetNumPlayers() < self.Config.MinPlayer then return end
 
-    self:Check( Player )
+    return self:Check( Player )
 end
 
 function Plugin:Check( Player )
