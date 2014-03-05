@@ -105,11 +105,11 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     
     --check if Player fits to MinPlayTime
     local SteamTime = tonumber( InfoHub:GetSteamData( SteamId ).PlayTime )
-    local Ns2StatsPlaytime = tonumber( Playerdata.time_played ) / 60 or 0
+    local Ns2StatsPlaytime = tonumber( Playerdata.time_played ) or 0
     
-    local Playtime = Ns2StatsPlaytime
+    local Playtime = Ns2StatsPlaytime / 60
     
-    if self.Config.UseSteamTime and SteamTime and SteamTime > Ns2StatsPlaytime then
+    if self.Config.UseSteamTime and SteamTime and SteamTime > Playtime then
         Playtime = SteamTime
     end
     
@@ -126,7 +126,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     local AlienElo = tonumber( Playerdata.alien.elo.rating ) or 1500
     local Elo = ( MarineElo + AlienElo ) * 0.5
     local Deaths = tonumber( Playerdata.deaths ) or 1
-    if Deaths <= 0 then Deaths = 1 end
+    if Deaths < 1 then Deaths = 1 end
     local Kills = tonumber( Playerdata.kills ) or 1
     local KD = Kills / Deaths
     
@@ -134,13 +134,13 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
         if NewTeam == 1 then
             Elo = MarineElo
             Deaths = tonumber( Playerdata.marine.deaths ) or 1
-            if Deaths <= 0 then Deaths = 1 end
+            if Deaths < 1 then Deaths = 1 end
             Kills = tonumber( Playerdata.marine.kills ) or 1
             KD = Kills / Deaths
         else
             Elo = AlienElo
             Deaths = tonumber( Playerdata.alien.deaths ) or 1
-            if Deaths <= 0 then Deaths = 1 end
+            if Deaths < 1 then Deaths = 1 end
             Kills = tonumber( Playerdata.alien.kills ) or 1
             KD = Kills / Deaths
         end
