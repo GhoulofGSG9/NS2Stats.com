@@ -1412,7 +1412,7 @@ function Plugin:GetIdbyName( Name )
     if self.FakeIds[ Name ] then return self.FakeIds[ Name ] end
     
     local NewId = ""
-    local Letters = " /\()[]+-*!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
+    local Letters = " ()[]+-*!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
     
     --to differ between e.g. name and name (2)   
     local Input = StringReverse( Name )
