@@ -1144,7 +1144,7 @@ function Plugin:AddLog( Params )
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(Params))	
     
     --avoid that log gets too long
-    if StringLen(self.Log[self.LogPartNumber]) > 250000 then
+    if StringLen(self.Log[self.LogPartNumber]) > 160000 then
         self.LogPartNumber = self.LogPartNumber + 1    
         if self.StatsEnabled then self:SendData() end        
     end
@@ -1412,7 +1412,7 @@ function Plugin:GetIdbyName( Name )
     if self.FakeIds[ Name ] then return self.FakeIds[ Name ] end
     
     local NewId = ""
-    local Letters = " []+-*/!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
+    local Letters = " /\()[]+-*!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
     
     --to differ between e.g. name and name (2)   
     local Input = StringReverse( Name )
@@ -1420,11 +1420,11 @@ function Plugin:GetIdbyName( Name )
     for i=1,6 do
         local Num = 99
         if #Input >=i then
-            local Char = StringSub(Input,i,i)
-            Num = StringFind(Letters, Char, nil, true) or 99
+            local Char = StringSub( Input, i, i )
+            Num = StringFind( Letters, Char, nil, true) or 99
             if Num < 10 then Num = 80 + Num end
         end
-        NewId = StringFormat( "%s%s", NewId, Num)
+        NewId = StringFormat( "%s%s", NewId, Num )
     end
     
     
@@ -1586,15 +1586,15 @@ function Plugin:CreateCommands()
         TableInsert(Plugin.Config.Tags, tag)
         Notify( StringFormat( "[NS2Stats]: %s  has been added as Tag to this roundlog", tag ))
     end )    
-    Tag:AddParam{ Type = "string",TakeRestOfLine = true,Error = "Please specify a tag to be added.", MaxLength = 30}
+    Tag:AddParam{ Type = "string", TakeRestOfLine = true, Error = "Please specify a tag to be added.", MaxLength = 30 }
     Tag:Help( "Adds the given tag to the Stats" )
     
-    local Debug = self:BindCommand( "sh_statsdebug", "statsdebug", function(Client)
-        Shine:AdminPrint( Client,"NS2Stats Debug Report:")
-        Shine:AdminPrint( Client, StringFormat("Ns2Stats is%s sending datas to website",Plugin.StatsEnabled and " " or " not"))
-        Shine:AdminPrint( Client, StringFormat("Status: %s",Plugin.working and "working" or "not working"))
-        Shine:AdminPrint( Client, StringFormat("%s Players in PlayerTable.",#Plugin.PlayersInfos))
-        Shine:AdminPrint( Client, StringFormat("Current Logparts %s / %s . Length of ToSend: %s",Plugin.LogPartToSend,Plugin.LogPartNumber ,StringLen(Plugin.Log[Plugin.LogPartToSend])))
+    local Debug = self:BindCommand( "sh_statsdebug", "statsdebug", function( Client )
+        Shine:AdminPrint( Client, "NS2Stats Debug Report:" )
+        Shine:AdminPrint( Client, StringFormat( "Ns2Stats is%s sending data to website", Plugin.StatsEnabled and "" or " not"))
+        Shine:AdminPrint( Client, StringFormat( "Currently uploading log part: %s", Plugin.working and "Yes" or "No"))
+        Shine:AdminPrint( Client, StringFormat( "%s Players in PlayerTable.", #Plugin.PlayersInfos ))
+        Shine:AdminPrint( Client, StringFormat( "Current Logparts %s / %s . Length of ToSend: %s", Plugin.LogPartToSend, Plugin.LogPartNumber, StringLen( Plugin.Log[ Plugin.LogPartToSend ] )))
     end, true )
     Debug:Help( "Prints some ns2stats debug values into the console (only usefull for debugging)" )
 end
@@ -1632,7 +1632,7 @@ function Plugin:SendAwardListToClients()
     for i = 1, self.Config.ShowNumAwards do
         if i > #self.Awards then break end
         if self.Awards[ i ].message then 
-            AwardMessage.Message = StringFormat("%s%s\n", AwardMessage.Message, self.Awards[ i ].message )
+            AwardMessage.Message = StringFormat( "%s%s\n", AwardMessage.Message, self.Awards[ i ].message )
         end
     end 
     self:SendNetworkMessage(nil, "StatsAwards", AwardMessage, true )
@@ -1642,7 +1642,7 @@ function Plugin:AddAward(Award)
     self.NextAwardId = self.NextAwardId + 1
     Award.id = self.NextAwardId
     
-    self.Awards[ #self.Awards + 1] = Award
+    self.Awards[ #self.Awards + 1 ] = Award
 end
 
 function Plugin:AwardMostDamage()
@@ -1651,12 +1651,12 @@ function Plugin:AwardMostDamage()
     local HighestSteamId = ""
     local Rating = 0
     
-    for key,PlayerInfo in pairs(self.PlayersInfos) do
+    for _, PlayerInfo in pairs( self.PlayersInfos ) do
         local TotalDamage = 0
         
         for i=1, #PlayerInfo.weapons do
-            TotalDamage = TotalDamage + PlayerInfo.weapons[i].structure_damage
-            TotalDamage = TotalDamage + PlayerInfo.weapons[i].player_damage
+            TotalDamage = TotalDamage + PlayerInfo.weapons[ i ].structure_damage
+            TotalDamage = TotalDamage + PlayerInfo.weapons[ i ].player_damage
         end
         
         if Floor( TotalDamage ) > Floor( HighestDamage ) then
