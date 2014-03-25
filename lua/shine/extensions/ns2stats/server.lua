@@ -1483,7 +1483,7 @@ end
 
 --send Status report to NS2Stats
 function Plugin:SendServerStatus( GameState )
-    if self.RoundFinished == 1 then retrun end
+    if self.RoundFinished == 1 then return end
     local stime = Shared.GetGMTString( false )
     local gameTime = Shared.GetTime() - self.GameStartTime
     local Params =
