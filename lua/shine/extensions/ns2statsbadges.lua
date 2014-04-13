@@ -22,14 +22,15 @@ Plugin.DefaultConfig =
 Plugin.CheckConfig = true
 
 --fix for no badge showing up
-local function AvoidEmptyBadge( Client, Badge )
-    if getClientBadgeEnum( Client ) == kBadges.None then
-       setClientBadgeEnum( Client, kBadges[ Badge ] ) 
+local function AvoidEmptyBadge( Client, Badge, Row )
+    if getClientBadgeEnum( Client, Row ) == kBadges.None then
+       setClientBadgeEnum( Client, kBadges[ Badge ], Row ) 
     end
 end
 
-function Plugin:SetBadge( Client, Badge )
-    if not ( Badge or Client ) then return end
+function Plugin:SetBadge( Client, Badge, Row )
+    if not ( Badge or Client ) then return end    
+    if not Row then Row = 3 end
     
     if not GiveBadge then
         Notify( "[ERROR]: The Ns2StatsBadge plugin does not work without the Badges+ Mod !" )
@@ -40,16 +41,16 @@ function Plugin:SetBadge( Client, Badge )
     local ClientId = Client:GetUserId()
     if ClientId <= 0 then return end
     
-    local SetBadge = GiveBadge( ClientId, Badge )
+    local SetBadge = GiveBadge( ClientId, Badge, Row )
     if not SetBadge then return end
     
     -- send bagde to Clients
-    Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ Badge ]), true )
-    AvoidEmptyBadge( Client, Badge )
+    Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ Badge ], Row ), true )
+    AvoidEmptyBadge( Client, Badge, Row )
     
     -- give default badge (disabled)
     GiveBadge( ClientId, "disabled" )
-    Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ "disabled" ]), true )
+    Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ "disabled" ], Row ), true )
     
     return true
 end
@@ -70,11 +71,11 @@ function Plugin:OnReceiveNs2StatsData( Client, Ns2StatsData )
     if not self.Config.Flags then return end
     
     local Nationality = type( Ns2StatsData ) == "table" and tostring( Ns2StatsData.nationality ) or "UNO"    
-    local SetBagde = self:SetBadge( Client, Nationality )
+    local SetBagde = self:SetBadge( Client, Nationality, 2 )
     
     if not SetBagde then
         Nationality = "UNO"
-        self:SetBadge( Client, Nationality )
+        self:SetBadge( Client, Nationality, 2 )
     end
 end
 
