@@ -59,8 +59,7 @@ Shine.Hook.SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToL
 Shine.Hook.SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
 Shine.Hook.SetupClassHook( "DropPack", "OnUpdate", "OnPickableItemDropped", "PassivePre" )
 Shine.Hook.SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
-Shine.Hook.SetupClassHook( "PlayerInfoEntity", "UpdateScore", "OnPlayerScoreChanged2", "PassivePost" ) --263
-Shine.Hook.SetupClassHook( "Player", "SetScoreboardChanged", "OnPlayerScoreChanged", "PassivePost" )  --262
+Shine.Hook.SetupClassHook( "PlayerInfoEntity", "UpdateScore", "OnPlayerScoreChanged", "PassivePost" )
 Shine.Hook.SetupClassHook( "PlayerBot", "UpdateNameAndGender","OnBotRenamed", "PassivePost" )
 Shine.Hook.SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
 Shine.Hook.SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
@@ -191,9 +190,8 @@ function Plugin:EndGame( Gamerules, WinningTeam )
         Plugin:AddServerInfos( Params )
         
         self.RoundFinished = 1
-        
-        if self.StatsEnabled then self:SendData() end
         self.RoundStarted = false
+        if self.StatsEnabled then self:SendData() end        
 end
 
 --Player Events
@@ -236,15 +234,11 @@ function Plugin:ClientDisconnect( Client )
 end
 
 --score changed (temp for 263)
-function Plugin:OnPlayerScoreChanged2( PlayerInfoEntity )
+function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
+    if self.RoundFinished == 1 then return end
+    
     local Player = Shared.GetEntity( PlayerInfoEntity.playerId )  
     if not Player then return end
-    self:OnPlayerScoreChanged( Player, true )
-end
-
---score changed 
-function Plugin:OnPlayerScoreChanged( Player, State )
-    if not Player or not State then return end
     
     local Client = Player:GetClient()
     if not Client then return end
@@ -318,7 +312,9 @@ function Plugin:OnBotRenamed( Bot )
 end
 
 --Player shoots weapon
-function Plugin:OnDamageDealt( DamageMixin, Damage, Target, Point )    
+function Plugin:OnDamageDealt( DamageMixin, Damage, Target, Point )
+	if not self.RoundStarted then return end
+	
     local Attacker 
     if DamageMixin:isa("Player") then
         Attacker = DamageMixin
@@ -554,6 +550,8 @@ end
 
 --Player jumps
 function Plugin:OnPlayerJump( Player )
+	if not self.RoundStarted then return end
+	
     local PlayerInfo = self:GetPlayerByName( Player.name )
     if not PlayerInfo then return end
     PlayerInfo.jumps = PlayerInfo.jumps + 1   
@@ -653,8 +651,8 @@ function Plugin:OnPickableItemPicked( Item, Player )
 end
 
 function Plugin:OnPickableItemDropped( Item, DeltaTime )
-    if not Item then return end    
-    
+	if not ( self.RoundStarted or Item ) then return end
+
     local TechId = Item:GetTechId()
     if not TechId or TechId < 180 then return end
     
@@ -721,9 +719,9 @@ end
 --Structure Events
 
 --Building Dropped
-function Plugin:OnConstructInit( Building )
-    
-    if not self.RoundStarted then return end    
+function Plugin:OnConstructInit( Building )    
+    if not self.RoundStarted then return end
+  
     local TechId = Building:GetTechId()
     local name = EnumToString( kTechId, TechId )
     
@@ -750,6 +748,7 @@ end
 
 --Building built
 function Plugin:OnFinishedBuilt( ConstructMixin, Builder )
+	if not self.RoundStarted then return end
     self.BuildingsInfos[ ConstructMixin:GetId() ] = true 
   
     local TechId = ConstructMixin:GetTechId()    
@@ -787,7 +786,8 @@ end
 
 --Ghost Buildings (Blueprints)
 function Plugin:OnGhostCreated(GhostStructureMixin)
-     self:GhostStructureAction( "ghost_create", GhostStructureMixin )
+	if not self.RoundStarted then return end
+    self:GhostStructureAction( "ghost_create", GhostStructureMixin )
 end
 
 function Plugin:OnGhostDestroyed(GhostStructureMixin)
@@ -841,7 +841,9 @@ end
 --Upgradefinished
 function Plugin:OnTechResearched( ResearchMixin, Structure, ResearchId)
     if not Structure then return end
-    local ResearchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode( ResearchId )
+    local ResearchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode( ResearchId )    
+    if not ResearchNode then return end
+    
     local TechId = ResearchNode:GetTechId()
     
     if TechId == self.OldUpgrade then return end
@@ -983,7 +985,8 @@ end
 --Mixed Events 
 
 --Entity Killed
-function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor)   
+function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor)
+	if not self.RoundStarted then return end
     if TargetEntity:isa( "Player" ) then
         self:AddDeathToLog( TargetEntity, Attacker, Inflictor )     
     elseif self.BuildingsInfos[ TargetEntity:GetId() ] and not TargetEntity.isGhostStructure then 
@@ -992,6 +995,7 @@ function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor)
 end
 
 function Plugin:OnEntityDestroy( Entity )
+	if not self.RoundStarted then return end
     if Entity.isGhostStructure and self.BuildingsInfos[ Entity:GetId() ] then 
         self:OnGhostDestroyed( Entity )
     elseif Entity:isa( "DropPack" ) and Entity:GetTechId() > 180 then
@@ -1144,7 +1148,7 @@ function Plugin:AddLog( Params )
     Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(Params))	
     
     --avoid that log gets too long
-    if StringLen(self.Log[self.LogPartNumber]) > 250000 then
+    if StringLen(self.Log[self.LogPartNumber]) > 160000 then
         self.LogPartNumber = self.LogPartNumber + 1    
         if self.StatsEnabled then self:SendData() end        
     end
@@ -1412,7 +1416,7 @@ function Plugin:GetIdbyName( Name )
     if self.FakeIds[ Name ] then return self.FakeIds[ Name ] end
     
     local NewId = ""
-    local Letters = " []+-*/!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
+    local Letters = " ()[]+-*!_-%$1234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ"
     
     --to differ between e.g. name and name (2)   
     local Input = StringReverse( Name )
@@ -1420,11 +1424,11 @@ function Plugin:GetIdbyName( Name )
     for i=1,6 do
         local Num = 99
         if #Input >=i then
-            local Char = StringSub(Input,i,i)
-            Num = StringFind(Letters, Char, nil, true) or 99
+            local Char = StringSub( Input, i, i )
+            Num = StringFind( Letters, Char, nil, true) or 99
             if Num < 10 then Num = 80 + Num end
         end
-        NewId = StringFormat( "%s%s", NewId, Num)
+        NewId = StringFormat( "%s%s", NewId, Num )
     end
     
     
@@ -1481,6 +1485,7 @@ end
 
 --send Status report to NS2Stats
 function Plugin:SendServerStatus( GameState )
+    if self.RoundFinished == 1 then return end
     local stime = Shared.GetGMTString( false )
     local gameTime = Shared.GetTime() - self.GameStartTime
     local Params =
@@ -1586,15 +1591,15 @@ function Plugin:CreateCommands()
         TableInsert(Plugin.Config.Tags, tag)
         Notify( StringFormat( "[NS2Stats]: %s  has been added as Tag to this roundlog", tag ))
     end )    
-    Tag:AddParam{ Type = "string",TakeRestOfLine = true,Error = "Please specify a tag to be added.", MaxLength = 30}
+    Tag:AddParam{ Type = "string", TakeRestOfLine = true, Error = "Please specify a tag to be added.", MaxLength = 30 }
     Tag:Help( "Adds the given tag to the Stats" )
     
-    local Debug = self:BindCommand( "sh_statsdebug", "statsdebug", function(Client)
-        Shine:AdminPrint( Client,"NS2Stats Debug Report:")
-        Shine:AdminPrint( Client, StringFormat("Ns2Stats is%s sending datas to website",Plugin.StatsEnabled and " " or " not"))
-        Shine:AdminPrint( Client, StringFormat("Status: %s",Plugin.working and "working" or "not working"))
-        Shine:AdminPrint( Client, StringFormat("%s Players in PlayerTable.",#Plugin.PlayersInfos))
-        Shine:AdminPrint( Client, StringFormat("Current Logparts %s / %s . Length of ToSend: %s",Plugin.LogPartToSend,Plugin.LogPartNumber ,StringLen(Plugin.Log[Plugin.LogPartToSend])))
+    local Debug = self:BindCommand( "sh_statsdebug", "statsdebug", function( Client )
+        Shine:AdminPrint( Client, "NS2Stats Debug Report:" )
+        Shine:AdminPrint( Client, StringFormat( "Ns2Stats is%s sending data to website", Plugin.StatsEnabled and "" or " not"))
+        Shine:AdminPrint( Client, StringFormat( "Currently uploading log part: %s", Plugin.working and "Yes" or "No"))
+        Shine:AdminPrint( Client, StringFormat( "%s Players in PlayerTable.", #Plugin.PlayersInfos ))
+        Shine:AdminPrint( Client, StringFormat( "Current Logparts %s / %s . Length of ToSend: %s", Plugin.LogPartToSend, Plugin.LogPartNumber, StringLen( Plugin.Log[ Plugin.LogPartToSend ] )))
     end, true )
     Debug:Help( "Prints some ns2stats debug values into the console (only usefull for debugging)" )
 end
@@ -1632,7 +1637,7 @@ function Plugin:SendAwardListToClients()
     for i = 1, self.Config.ShowNumAwards do
         if i > #self.Awards then break end
         if self.Awards[ i ].message then 
-            AwardMessage.Message = StringFormat("%s%s\n", AwardMessage.Message, self.Awards[ i ].message )
+            AwardMessage.Message = StringFormat( "%s%s\n", AwardMessage.Message, self.Awards[ i ].message )
         end
     end 
     self:SendNetworkMessage(nil, "StatsAwards", AwardMessage, true )
@@ -1642,7 +1647,7 @@ function Plugin:AddAward(Award)
     self.NextAwardId = self.NextAwardId + 1
     Award.id = self.NextAwardId
     
-    self.Awards[ #self.Awards + 1] = Award
+    self.Awards[ #self.Awards + 1 ] = Award
 end
 
 function Plugin:AwardMostDamage()
@@ -1651,12 +1656,12 @@ function Plugin:AwardMostDamage()
     local HighestSteamId = ""
     local Rating = 0
     
-    for key,PlayerInfo in pairs(self.PlayersInfos) do
+    for _, PlayerInfo in pairs( self.PlayersInfos ) do
         local TotalDamage = 0
         
         for i=1, #PlayerInfo.weapons do
-            TotalDamage = TotalDamage + PlayerInfo.weapons[i].structure_damage
-            TotalDamage = TotalDamage + PlayerInfo.weapons[i].player_damage
+            TotalDamage = TotalDamage + PlayerInfo.weapons[ i ].structure_damage
+            TotalDamage = TotalDamage + PlayerInfo.weapons[ i ].player_damage
         end
         
         if Floor( TotalDamage ) > Floor( HighestDamage ) then
