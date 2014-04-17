@@ -841,7 +841,9 @@ end
 --Upgradefinished
 function Plugin:OnTechResearched( ResearchMixin, Structure, ResearchId)
     if not Structure then return end
-    local ResearchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode( ResearchId )
+    local ResearchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode( ResearchId )    
+    if not ResearchNode then return end
+    
     local TechId = ResearchNode:GetTechId()
     
     if TechId == self.OldUpgrade then return end

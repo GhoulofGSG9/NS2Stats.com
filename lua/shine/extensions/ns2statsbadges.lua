@@ -49,7 +49,7 @@ function Plugin:SetBadge( Client, Badge, Row )
     AvoidEmptyBadge( Client, Badge, Row )
     
     -- give default badge (disabled)
-    GiveBadge( ClientId, "disabled" )
+    GiveBadge( ClientId, "disabled", Row )
     Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ "disabled" ], Row ), true )
     
     return true

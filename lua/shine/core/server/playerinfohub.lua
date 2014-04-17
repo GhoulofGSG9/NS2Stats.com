@@ -59,29 +59,36 @@ function PlayerInfoHub:OnConnect( Client, Timeleft )
     local SteamId64 = StringFormat( "%s%s", 76561, SteamId + 197960265728 )
     
     if Timeleft < 0 then
+		local a, b, c
+		
         if not self.SteamData[ SteamId ].Badges.Normal then
             self.SteamData[ SteamId ].Badges.Normal = 0
+            a = true
         end
         
         if not self.SteamData[ SteamId ].Badges.Foil then
             self.SteamData[ SteamId ].Badges.Foil = 0
+            a = true
         end
         
         if not self.SteamData[ SteamId ].PlayTime then
-           self.SteamData[ SteamId ].PlayTime = -1 
+            self.SteamData[ SteamId ].PlayTime = -1
+			a = true
         end
         
         if not self.Ns2StatsData[ SteamId ] then
             self.Ns2StatsData[ SteamId ] = -1
+            b = true
         end
         
         if not self.HiveData[ SteamId ] then
             self.HiveData[ SteamId ] = -1
+            c = true
         end
         
-        Call( "OnReceiveSteamData", Client, self.SteamData[ SteamId ] )
-        Call( "OnReceiveHiveData", Client, self.HiveData[ SteamId ] )
-        Call( "OnReceiveNs2StatsData", Client, self.Ns2StatsData[ SteamId ] )
+        if a then Call( "OnReceiveSteamData", Client, self.SteamData[ SteamId ] ) end
+        if b then Call( "OnReceiveHiveData", Client, self.HiveData[ SteamId ] ) end
+        if c then Call( "OnReceiveNs2StatsData", Client, self.Ns2StatsData[ SteamId ] ) end
         
         return
     end
