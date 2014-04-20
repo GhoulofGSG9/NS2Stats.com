@@ -52,11 +52,19 @@ end
 function PlayerInfoHub:OnConnect( Client, Timeleft )
     if not Shine:IsValidClient( Client ) then return end
     
-    if not Timeleft then Timeleft = self.WaitTime end
-    
     local SteamId = Client:GetUserId()
     if not SteamId or SteamId <= 0 then return end
     local SteamId64 = StringFormat( "%s%s", 76561, SteamId + 197960265728 )
+    
+    if not Timeleft then
+		if self:GetIsRequestFinished( SteamId ) then 
+			Call( "OnReceiveSteamData", Client, self.SteamData[ SteamId ] ) 
+			Call( "OnReceiveHiveData", Client, self.HiveData[ SteamId ] )
+			Call( "OnReceiveNs2StatsData", Client, self.Ns2StatsData[ SteamId ] )
+			return
+		end
+		Timeleft = self.WaitTime
+	end
     
     if Timeleft < 0 then
 		local a, b, c
@@ -96,8 +104,6 @@ function PlayerInfoHub:OnConnect( Client, Timeleft )
     if not self.SteamData[ SteamId ] then 
         self.SteamData[ SteamId ] = {}
         self.SteamData[ SteamId ].Badges = {}
-    elseif TimeLeft == self.WaitTime and self.SteamData[ SteamId ].PlayTime and self.SteamData[ SteamId ].Badges.Normal and self.SteamData[ SteamId ].Badges.Foil then
-       Call( "OnReceiveSteamData", Client, self.SteamData[ SteamId ] ) 
     end
     
     if not self.SteamData[ SteamId ].PlayTime then
@@ -120,7 +126,7 @@ function PlayerInfoHub:OnConnect( Client, Timeleft )
         end )
     end
     
-    if self.SteamData[ SteamId ].Badges then
+    if not self.SteamData[ SteamId ].Badges.Normal then
         HTTPRequest( StringFormat( "http://steamcommunity.com/profiles/%s/gamecards/4920", SteamId64 ), "GET", function( Response )
             local BadgeName = GetSteamBadgeName( Response )        
             if BadgeName then 
@@ -131,8 +137,9 @@ function PlayerInfoHub:OnConnect( Client, Timeleft )
             end
             if PlayerInfoHub.SteamData[ SteamId ].PlayTime and PlayerInfoHub.SteamData[ SteamId ].Badges.Foil then Call( "OnReceiveSteamData", Client, PlayerInfoHub.SteamData[ SteamId ] ) end
        end )
-    
-        --foil
+    end
+	
+	if not self.SteamData[ SteamId ].Badges.Foil then
         HTTPRequest( StringFormat( "http://steamcommunity.com/profiles/%s/gamecards/4920?border=1", SteamId64), "GET", function(Response)
             local BadgeName = GetSteamBadgeName( Response )        
             if BadgeName then 
@@ -150,8 +157,6 @@ function PlayerInfoHub:OnConnect( Client, Timeleft )
             PlayerInfoHub.Ns2StatsData[ SteamId ] = JsonDecode( Response ) and JsonDecode( Response )[ 1 ] or 0
             Call( "OnReceiveNs2StatsData", Client, PlayerInfoHub.Ns2StatsData[ SteamId ] )
         end )
-    elseif TimeLeft == self.WaitTime then
-        Call( "OnReceiveNs2StatsData", Client, self.Ns2StatsData[ SteamId ] )
     end
     
     if not self.HiveData[ SteamId ] then 
@@ -159,14 +164,12 @@ function PlayerInfoHub:OnConnect( Client, Timeleft )
         HTTPRequest( HURL, "GET", function( Response )
             PlayerInfoHub.HiveData[ SteamId ] = JsonDecode( Response ) or 0
             Call( "OnReceiveHiveData", Client, PlayerInfoHub.HiveData[ SteamId ] )
-        end )    
-    elseif TimeLeft == self.WaitTime then
-        Call( "OnReceiveHiveData", Client, self.HiveData[ SteamId ] )
+        end )
     end
   
     Shine.Timer.Simple( self.RetryIntervall, function()
         if self:GetIsRequestFinished( SteamId ) then return end 
-        self:OnConnect( Client, Timeleft - 5 ) 
+        self:OnConnect( Client, Timeleft - self.RetryIntervall ) 
     end )
 end
 
@@ -206,5 +209,5 @@ function PlayerInfoHub:SetRetryIntervall( RetryIntervall )
 end
 
 function PlayerInfoHub:GetIsRequestFinished( SteamId )
-    return self.SteamData[ SteamId ].PlayTime and self.SteamData[ SteamId ].Badges.Normal and self.SteamData[ SteamId ].Badges.Foil and self.HiveData[ SteamId ] and self.Ns2StatsData[ SteamId ]
+    return self.SteamData[ SteamId ] and self.SteamData[ SteamId ].PlayTime and self.SteamData[ SteamId ].Badges.Normal and self.SteamData[ SteamId ].Badges.Foil and self.HiveData[ SteamId ] and self.Ns2StatsData[ SteamId ]
 end
