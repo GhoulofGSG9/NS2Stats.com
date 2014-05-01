@@ -21,16 +21,8 @@ Plugin.DefaultConfig =
 }
 Plugin.CheckConfig = true
 
---fix for no badge showing up
-local function AvoidEmptyBadge( Client, Badge, Row )
-    if getClientBadgeEnum( Client, Row ) == kBadges.None then
-       setClientBadgeEnum( Client, kBadges[ Badge ], Row ) 
-    end
-end
-
 function Plugin:SetBadge( Client, Badge, Row )
-    if not ( Badge or Client ) then return end    
-    if not Row then Row = 3 end
+    if not ( Badge or Client ) then return end
     
     if not GiveBadge then
         Notify( "[ERROR]: The Ns2StatsBadge plugin does not work without the Badges+ Mod !" )
@@ -44,13 +36,7 @@ function Plugin:SetBadge( Client, Badge, Row )
     local SetBadge = GiveBadge( ClientId, Badge, Row )
     if not SetBadge then return end
     
-    -- send bagde to Clients
-    Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ Badge ], Row ), true )
-    AvoidEmptyBadge( Client, Badge, Row )
-    
-    -- give default badge (disabled)
     GiveBadge( ClientId, "disabled", Row )
-    Server.SendNetworkMessage( Client, "Badge", BuildBadgeMessage( -1, kBadges[ "disabled" ], Row ), true )
     
     return true
 end

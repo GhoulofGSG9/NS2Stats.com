@@ -28,6 +28,8 @@ Plugin.DefaultConfig =
     MinPlayer = 0,
     DisableAfterRoundtime = 0,
     MinPlaytime = 8,
+    MinComPlaytime = 8,
+    ConfigUpdated = false,
     InformAtConnect = true,
     InformMessage = "This server is not rookie friendly",
     BlockTeams = true,
@@ -45,6 +47,16 @@ Plugin.CheckConfig = true
 Shine.Hook.SetupClassHook( "CommandStructure", "OnUse", "CheckComLogin", "ActivePre" )
 
 local Enabled = true
+
+function Plugin:Initialise()
+    self.Enabled = true
+    if not self.Config.ConfigUpdated then
+		self.Config.ConfigUpdated = true
+		self.Config.MinComPlaytime = self.Config.MinPlaytime
+		self:SaveConfig()
+    end
+    return true
+end
 
 function Plugin:ClientConfirmConnect( Client )
     if self.Config.InformAtConnect then
@@ -67,18 +79,18 @@ function Plugin:EndGame( Gamerules, WinningTeam )
 end
 
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
-    if not Enabled or ShineForce or not self.Config.BlockTeams or Server.GetNumPlayers() < self.Config.MinPlayer or NewTeam == kTeamReadyRoom then return end
+    if not Enabled or ShineForce or not self.Config.BlockTeams or Shine.GetHumanPlayerCount() < self.Config.MinPlayer or NewTeam == kTeamReadyRoom then return end
     
     return self:Check( Player )
 end
 
 function Plugin:CheckComLogin( Chair, Player )
-    if not Enabled or not self.Config.BlockCC or not Player or not Player.GetClient or Server.GetNumPlayers() < self.Config.MinPlayer then return end
+    if not Enabled or not self.Config.BlockCC or not Player or not Player.GetClient or Shine.GetHumanPlayerCount() < self.Config.MinPlayer then return end
 
-    return self:Check( Player )
+    return self:Check( Player, true )
 end
 
-function Plugin:Check( Player )
+function Plugin:Check( Player, ComCheck )
     local Client = Player:GetClient()
     if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignorestatus" ) then return end
     
@@ -110,7 +122,11 @@ function Plugin:Check( Player )
     
     if not PlayTime or PlayTime < 0 then return end
     
-    if PlayTime < self.Config.MinPlaytime * 3600 then
+    local CheckTime = self.Config.MinPlaytime
+    
+    if ComCheck then CheckTime = self.Config.MinComPlaytime end
+    
+    if PlayTime < CheckTime * 3600 then
         self:Notify( Player, self.Config.BlockMessage )
         if self.Config.ShowSwitchAtBlock then
            self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
