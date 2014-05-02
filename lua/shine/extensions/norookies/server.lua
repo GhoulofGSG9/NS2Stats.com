@@ -25,6 +25,7 @@ Plugin.ConfigName = "norookies.json"
 Plugin.DefaultConfig =
 {
     UseSteamTime = true,
+    ForceSteamTime = false,
     MinPlayer = 0,
     DisableAfterRoundtime = 0,
     MinPlaytime = 8,
@@ -102,22 +103,20 @@ function Plugin:Check( Player, ComCheck )
     local PlayTime
     
     local SteamData = InfoHub:GetSteamData( SteamId )    
-    if self.Config.UseSteamTime and ( not PlayTime or SteamData.PlayTime > PlayTime ) then
+    if self.Config.UseSteamTime or self.Config.ForceSteamTime then
         PlayTime = SteamData.PlayTime
     end
     
-    local HiveData = InfoHub:GetHiveData( SteamId )    
-    if type( HiveData ) == "table" and HiveData.playTime and ( not PlayTime or HiveData.playTime > PlayTime ) then
-        PlayTime = tonumber( HiveData.playTime )
-    elseif not PlayTime then
-        PlayTime = HiveData
-    end
+    if not self.Config.ForceSteamTime then
+		local HiveData = InfoHub:GetHiveData( SteamId )    
+		if type( HiveData ) == "table" and HiveData.playTime and ( not PlayTime or HiveData.playTime > PlayTime ) then
+			PlayTime = tonumber( HiveData.playTime )
+		end
 
-    local Ns2StatsData = InfoHub:GetNs2StatsData( SteamId )
-    if type( Ns2StatsData ) == "table" and Ns2StatsData.time_played and ( not PlayTime or tonumber( Ns2StatsData.time_played ) > PlayTime ) then
-        PlayTime = tonumber( Ns2StatsData.time_played )
-    elseif not PlayTime then
-        PlayTime = Ns2StatsData
+		local Ns2StatsData = InfoHub:GetNs2StatsData( SteamId )
+		if type( Ns2StatsData ) == "table" and Ns2StatsData.time_played and ( not PlayTime or tonumber( Ns2StatsData.time_played ) > PlayTime ) then
+			PlayTime = tonumber( Ns2StatsData.time_played )
+		end
     end
     
     if not PlayTime or PlayTime < 0 then return end
