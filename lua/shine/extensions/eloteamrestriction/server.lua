@@ -115,7 +115,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
     
     if self.Config.ForceSteamTime then
 		if SteamTime or SteamTime < 0 or SteamTime / 60 < self.Config.MinPlayTime or SteamTime / 60 > self.Config.MaxPlayTime then
-			self:Notify( Player, self.BlockMessage:sub( 1, self.Config.BlockMessage:find( ".", 1, true )))
+			self:Notify( Player, self.Config.BlockMessage:sub( 1, self.Config.BlockMessage:find( ".", 1, true )))
 			if self.Config.ShowSwitchAtBlock then
 			   self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
 			end
@@ -123,7 +123,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 			return false
 		end
     elseif Playtime or Playtime < 0 or Playtime / 60 < self.Config.MinPlayTime or Playtime / 60 > self.Config.MaxPlayTime then
-        self:Notify( Player, self.BlockMessage:sub( 1, self.Config.BlockMessage:find( ".", 1, true )))
+        self:Notify( Player, self.Config.BlockMessage:sub( 1, self.Config.BlockMessage:find( ".", 1, true )))
         if self.Config.ShowSwitchAtBlock then
            self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
         end
