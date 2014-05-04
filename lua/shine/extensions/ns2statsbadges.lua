@@ -25,8 +25,10 @@ function Plugin:SetBadge( Client, Badge, Row )
     if not ( Badge or Client ) then return end
     
     if not GiveBadge then
-        Notify( "[ERROR]: The Ns2StatsBadge plugin does not work without the Badges+ Mod !" )
-        self.Enabled = false
+		if self.Enabled then
+			Notify( "[ERROR]: The Ns2StatsBadge plugin does not work without the Badges+ Mod !" )
+			self.Enabled = false
+		end
         return
     end
  
