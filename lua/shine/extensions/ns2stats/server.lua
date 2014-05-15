@@ -7,6 +7,7 @@ local Notify = Shared.Message
 
 local Plugin = Plugin
 
+local Floor = math.floor
 local ToString = tostring
 local StringFind = string.find
 local StringFormat = string.format
@@ -79,9 +80,8 @@ function Plugin:Initialise()
     if self.Config.ServerKey == "" then
         self.StatsEnabled = false
         HTTPRequest( StringFormat( "%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj", self.Config.WebsiteUrl ), "GET", function(Response) self:AcceptKey( Response ) end )
-    else    
-        --get Serverid
-        self:GetServerId()
+    else
+        self.ServerId = self:GetServerId()
     end    
     
     --Timers
@@ -1524,9 +1524,7 @@ function Plugin:AcceptKey( Response )
 end
 
 function Plugin:GetServerId()
-	self.ServerId = self.Config.ServerKey
-    if not self.ServerId or self.ServerId == "" then
-        self.ServerId = ""
+    if not self.ServerId then
         HTTPRequest(StringFormat("%s/api/server?key=%s", self.Config.WebsiteUrl,self.Config.ServerKey), "GET", function(Response)
             local Data = JsonDecode( Response )
             if not Data then return end
@@ -1538,7 +1536,7 @@ function Plugin:GetServerId()
             end         
         end)
     end
-    return self.ServerId  
+    return self.ServerId
 end
 
 function Plugin:OnSuspend()
@@ -1639,7 +1637,7 @@ function Plugin:SendAwardListToClients()
             AwardMessage.Message = StringFormat( "%s%s\n", AwardMessage.Message, self.Awards[ i ].message )
         end
     end 
-    self:SendNetworkMessage(nil, "StatsAwards", AwardMessage, true )
+    self:SendNetworkMessage( nil, "StatsAwards", AwardMessage, true )
  end
 
 function Plugin:AddAward(Award)
