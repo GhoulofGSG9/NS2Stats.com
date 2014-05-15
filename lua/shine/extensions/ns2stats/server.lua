@@ -7,8 +7,6 @@ local Notify = Shared.Message
 
 local Plugin = Plugin
 
-local Floor = math.floor
-
 local ToString = tostring
 local StringFind = string.find
 local StringFormat = string.format
@@ -33,7 +31,7 @@ Plugin.ConfigName = "Ns2Stats.json"
 Plugin.DefaultConfig =
 {
     SendMapData = false, --Send Mapdata, only set true if minimap is missing at website or is incorrect
-    Statusreport = true, -- send Status to NS2Stats every min
+    StatusReport = false, -- send Status to NS2Stats every min
     EnableHiveStats = true, -- should we enable UWE Hive Stats
     WebsiteUrl = "http://ns2stats.com", --this is the ns2stats URL
     Awards = true, --show Award
@@ -95,7 +93,7 @@ function Plugin:Initialise()
     end )
     
     -- every 30 sec send Server Status + Devour   
-    if self.Config.Statusreport then
+    if self.Config.StatusReport then
        self:CreateTimer( "SendStatus" , 30, -1, function() self:SendServerStatus( self.CurrentGameState ) end) --Plugin:DevourSendStatus()
     end
     
@@ -946,7 +944,7 @@ function Plugin:OnStructureKilled( Structure, Attacker , Doer )
         local Client = Player:GetClient()
         local SteamId = self:GetId( Client ) or -1
         
-        local Weapon = Doer and Doer:GetMapName() or "self"
+        local Weapon = Doer and Doer.GetMapName() and Doer:GetMapName() or "self"
 
         local Params =
         {
@@ -1525,8 +1523,9 @@ function Plugin:AcceptKey( Response )
         end
 end
 
-function Plugin:GetServerId()  
-    if not self.ServerId and self.Config.ServerKey ~= "" then
+function Plugin:GetServerId()
+	self.ServerId = self.Config.ServerKey
+    if not self.ServerId or self.ServerId == "" then
         self.ServerId = ""
         HTTPRequest(StringFormat("%s/api/server?key=%s", self.Config.WebsiteUrl,self.Config.ServerKey), "GET", function(Response)
             local Data = JsonDecode( Response )
