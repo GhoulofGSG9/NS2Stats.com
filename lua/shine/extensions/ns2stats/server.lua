@@ -944,7 +944,7 @@ function Plugin:OnStructureKilled( Structure, Attacker , Doer )
         local Client = Player:GetClient()
         local SteamId = self:GetId( Client ) or -1
         
-        local Weapon = Doer and Doer.GetMapName() and Doer:GetMapName() or "self"
+        local Weapon = Doer and Doer.GetMapName and Doer:GetMapName() or "self"
 
         local Params =
         {
