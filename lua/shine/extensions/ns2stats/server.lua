@@ -79,7 +79,7 @@ end
 function Plugin:Setup()
 	self.Enabled = true
     
-    --ceate values
+    --create values
     self.StatsEnabled = true
     self.SuccessfulSends = 0
     self.ResendCount = 0
@@ -98,7 +98,7 @@ function Plugin:Setup()
     --Timers
     
     --every 1 sec
-    --to update Weapondatas
+    --to update Weapon data
     self:CreateTimer( "WeaponUpdate", 1, -1, function()
        self:UpdateWeaponTable()
     end )
@@ -804,7 +804,6 @@ function Plugin:OnGhostDestroyed(GhostStructureMixin)
 end
 
 --addfunction
-
 function Plugin:GhostStructureAction( Action, Structure )
     if not Structure then return end
     local TechId = Structure:GetTechId()
@@ -1411,7 +1410,6 @@ end
 
 --For Bots
 Plugin.FakeIds = {}
-
 function Plugin:GetIdbyName( Name )    
     if not Name then return end
     
@@ -1723,7 +1721,6 @@ function Plugin:AwardMostConstructed()
     return { steamId = HighestSteamId, rating = Rating, message = StringFormat( "Bob the builder: %s !", HighestPlayer ) }
 end
 
-
 function Plugin:AwardMostStructureDamage()
     local HighestTotal = 0
     local HighestPlayer = "nobody"
@@ -1749,7 +1746,6 @@ function Plugin:AwardMostStructureDamage()
     return {steamId = HighestSteamId, rating = Rating, message = StringFormat( "Demolition man: %s with %s  Structure Damage.", HighestPlayer, Floor(HighestTotal))}
 end
 
-
 function Plugin:AwardMostPlayerDamage()
     local HighestTotal = 0
     local HighestPlayer = "nobody"
@@ -1774,7 +1770,6 @@ function Plugin:AwardMostPlayerDamage()
     
     return { steamId = HighestSteamId, rating = Rating, message = StringFormat( " %s was spilling blood worth of %s Damage.", HighestPlayer, Floor( HighestTotal )) }
 end
-
 
 function Plugin:AwardBestAccuracy()
     local HighestTotal = 0
@@ -1811,7 +1806,6 @@ function Plugin:AwardBestAccuracy()
     end
 end
 
-
 function Plugin:AwardMostJumps()
     local HighestTotal = 0
     local HighestPlayer = "nobody"
@@ -1834,7 +1828,6 @@ function Plugin:AwardMostJumps()
     return { steamId = HighestSteamId, rating = Rating, message = StringFormat( "%s is jump maniac with %s jumps!", HighestPlayer,  HighestTotal )}
     
 end
-
 
 function Plugin:AwardHighestKillstreak()
     local HighestTotal = 0
@@ -2000,6 +1993,7 @@ function Plugin:CleanUp()
     self.BuildingsInfos = nil
     self.OldUpgrade = nil
     self.Devour = nil
-    
+    self.FakeIds = nil
+	
     self.Enabled = false
 end
