@@ -115,7 +115,7 @@ function Plugin:Check( Player, ComCheck )
     
     if PlayTime < CheckTime * 3600 then
         self:Notify( Player, self.Config.BlockMessage )
-		Notify(StringFormat("[NoRookies]: %s failed the check with %s hours", Shine:GetClientInfo( Client ), PlayTime / 3600 )
+		Notify(StringFormat("[NoRookies]: %s failed the check with %s hours", Shine.GetClientInfo( Client ), PlayTime / 3600 )
         if self.Config.ShowSwitchAtBlock then
            self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
         end
