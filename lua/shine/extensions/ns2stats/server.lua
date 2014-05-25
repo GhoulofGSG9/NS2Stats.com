@@ -25,6 +25,8 @@ local JsonDecode = json.decode
 
 local HTTPRequest = Shared.SendHTTPRequest
 
+local SetupClassHook = Shine.Hook.SetupClassHook
+
 Plugin.Version = "shine"
 
 Plugin.HasConfig = true
@@ -49,24 +51,33 @@ Plugin.CheckConfig = true
 
 --All needed Hooks
 
-Shine.Hook.SetupClassHook( "DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
-Shine.Hook.SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
-Shine.Hook.SetupClassHook( "ResearchMixin", "SetResearching", "OnTechStartResearch", "PassivePre" )
-Shine.Hook.SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
-Shine.Hook.SetupClassHook( "ResearchMixin", "OnResearchCancel", "AddUpgradeAbortedToLog", "PassivePost" )
-Shine.Hook.SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
-Shine.Hook.SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
-Shine.Hook.SetupClassHook( "DropPack", "OnUpdate", "OnPickableItemDropped", "PassivePre" )
-Shine.Hook.SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
-Shine.Hook.SetupClassHook( "PlayerInfoEntity", "UpdateScore", "OnPlayerScoreChanged", "PassivePost" )
-Shine.Hook.SetupClassHook( "PlayerBot", "UpdateNameAndGender","OnBotRenamed", "PassivePost" )
-Shine.Hook.SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
-Shine.Hook.SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
+SetupClassHook( "DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
+SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
+SetupClassHook( "ResearchMixin", "SetResearching", "OnTechStartResearch", "PassivePre" )
+SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
+SetupClassHook( "ResearchMixin", "OnResearchCancel", "AddUpgradeAbortedToLog", "PassivePost" )
+SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
+SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
+SetupClassHook( "DropPack", "OnUpdate", "OnPickableItemDropped", "PassivePre" )
+SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
+SetupClassHook( "PlayerInfoEntity", "UpdateScore", "OnPlayerScoreChanged", "PassivePost" )
+SetupClassHook( "PlayerBot", "UpdateNameAndGender","OnBotRenamed", "PassivePost" )
+SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
+SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
 --NS2Ranking
-Shine.Hook.SetupClassHook( "PlayerRanking", "GetTrackServer", "EnableNS2Ranking", "ActivePre" )
+SetupClassHook( "PlayerRanking", "GetTrackServer", "EnableNS2Ranking", "ActivePre" )
 
 function Plugin:Initialise()
-    self.Enabled = true
+    self.Enabled = false
+	Shine.Hook.Add( "Think", "StartNs2Stats", function( Deltatime )
+		self:Setup()
+		Shine.Hook.Remove( "Think", "StartNs2Stats" )
+	end )
+    return true
+end
+
+function Plugin:Setup()
+	self.Enabled = true
     
     --ceate values
     self.StatsEnabled = true
@@ -82,7 +93,7 @@ function Plugin:Initialise()
         HTTPRequest( StringFormat( "%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj", self.Config.WebsiteUrl ), "GET", function(Response) self:AcceptKey( Response ) end )
     else
         self.ServerId = self:GetServerId()
-    end    
+    end  
     
     --Timers
     
@@ -106,7 +117,6 @@ function Plugin:Initialise()
         end 
     end)
     */
-    return true
 end
 
 -- NS2VanillaStats
