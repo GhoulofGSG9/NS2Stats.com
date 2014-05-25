@@ -51,7 +51,7 @@ function Plugin:OnReceiveSteamData( Client, SteamData )
     end
         
     if SteamData.Badges.Foil and SteamData.Badges.Foil ~= 0 then
-        self:SetBadge( Client, SteamData.Badges.Normal )
+        self:SetBadge( Client, SteamData.Badges.Foil )
     end
 end
 

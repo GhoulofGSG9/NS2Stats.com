@@ -8,7 +8,6 @@ local Notify = Shared.Message
 local Plugin = Plugin
 
 local Floor = math.floor
-
 local ToString = tostring
 local StringFind = string.find
 local StringFormat = string.format
@@ -26,6 +25,8 @@ local JsonDecode = json.decode
 
 local HTTPRequest = Shared.SendHTTPRequest
 
+local SetupClassHook = Shine.Hook.SetupClassHook
+
 Plugin.Version = "shine"
 
 Plugin.HasConfig = true
@@ -33,7 +34,7 @@ Plugin.ConfigName = "Ns2Stats.json"
 Plugin.DefaultConfig =
 {
     SendMapData = false, --Send Mapdata, only set true if minimap is missing at website or is incorrect
-    Statusreport = true, -- send Status to NS2Stats every min
+    StatusReport = false, -- send Status to NS2Stats every min
     EnableHiveStats = true, -- should we enable UWE Hive Stats
     WebsiteUrl = "http://ns2stats.com", --this is the ns2stats URL
     Awards = true, --show Award
@@ -50,26 +51,35 @@ Plugin.CheckConfig = true
 
 --All needed Hooks
 
-Shine.Hook.SetupClassHook( "DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
-Shine.Hook.SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
-Shine.Hook.SetupClassHook( "ResearchMixin", "SetResearching", "OnTechStartResearch", "PassivePre" )
-Shine.Hook.SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
-Shine.Hook.SetupClassHook( "ResearchMixin", "OnResearchCancel", "AddUpgradeAbortedToLog", "PassivePost" )
-Shine.Hook.SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
-Shine.Hook.SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
-Shine.Hook.SetupClassHook( "DropPack", "OnUpdate", "OnPickableItemDropped", "PassivePre" )
-Shine.Hook.SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
-Shine.Hook.SetupClassHook( "PlayerInfoEntity", "UpdateScore", "OnPlayerScoreChanged", "PassivePost" )
-Shine.Hook.SetupClassHook( "PlayerBot", "UpdateNameAndGender","OnBotRenamed", "PassivePost" )
-Shine.Hook.SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
-Shine.Hook.SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
+SetupClassHook( "DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
+SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
+SetupClassHook( "ResearchMixin", "SetResearching", "OnTechStartResearch", "PassivePre" )
+SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
+SetupClassHook( "ResearchMixin", "OnResearchCancel", "AddUpgradeAbortedToLog", "PassivePost" )
+SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
+SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
+SetupClassHook( "DropPack", "OnUpdate", "OnPickableItemDropped", "PassivePre" )
+SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
+SetupClassHook( "PlayerInfoEntity", "UpdateScore", "OnPlayerScoreChanged", "PassivePost" )
+SetupClassHook( "PlayerBot", "UpdateNameAndGender","OnBotRenamed", "PassivePost" )
+SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
+SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
 --NS2Ranking
-Shine.Hook.SetupClassHook( "PlayerRanking", "GetTrackServer", "EnableNS2Ranking", "ActivePre" )
+SetupClassHook( "PlayerRanking", "GetTrackServer", "EnableNS2Ranking", "ActivePre" )
 
 function Plugin:Initialise()
-    self.Enabled = true
+    self.Enabled = false
+	Shine.Hook.Add( "Think", "StartNs2Stats", function( Deltatime )
+		self:Setup()
+		Shine.Hook.Remove( "Think", "StartNs2Stats" )
+	end )
+    return true
+end
+
+function Plugin:Setup()
+	self.Enabled = true
     
-    --ceate values
+    --create values
     self.StatsEnabled = true
     self.SuccessfulSends = 0
     self.ResendCount = 0
@@ -81,21 +91,20 @@ function Plugin:Initialise()
     if self.Config.ServerKey == "" then
         self.StatsEnabled = false
         HTTPRequest( StringFormat( "%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj", self.Config.WebsiteUrl ), "GET", function(Response) self:AcceptKey( Response ) end )
-    else    
-        --get Serverid
-        self:GetServerId()
-    end    
+    else
+        self.ServerId = self:GetServerId()
+    end  
     
     --Timers
     
     --every 1 sec
-    --to update Weapondatas
+    --to update Weapon data
     self:CreateTimer( "WeaponUpdate", 1, -1, function()
        self:UpdateWeaponTable()
     end )
     
     -- every 30 sec send Server Status + Devour   
-    if self.Config.Statusreport then
+    if self.Config.StatusReport then
        self:CreateTimer( "SendStatus" , 30, -1, function() self:SendServerStatus( self.CurrentGameState ) end) --Plugin:DevourSendStatus()
     end
     
@@ -108,7 +117,6 @@ function Plugin:Initialise()
         end 
     end)
     */
-    return true
 end
 
 -- NS2VanillaStats
@@ -796,7 +804,6 @@ function Plugin:OnGhostDestroyed(GhostStructureMixin)
 end
 
 --addfunction
-
 function Plugin:GhostStructureAction( Action, Structure )
     if not Structure then return end
     local TechId = Structure:GetTechId()
@@ -946,7 +953,7 @@ function Plugin:OnStructureKilled( Structure, Attacker , Doer )
         local Client = Player:GetClient()
         local SteamId = self:GetId( Client ) or -1
         
-        local Weapon = Doer and Doer:GetMapName() or "self"
+        local Weapon = Doer and Doer.GetMapName and Doer:GetMapName() or "self"
 
         local Params =
         {
@@ -1403,7 +1410,6 @@ end
 
 --For Bots
 Plugin.FakeIds = {}
-
 function Plugin:GetIdbyName( Name )    
     if not Name then return end
     
@@ -1525,9 +1531,8 @@ function Plugin:AcceptKey( Response )
         end
 end
 
-function Plugin:GetServerId()  
-    if not self.ServerId and self.Config.ServerKey ~= "" then
-        self.ServerId = ""
+function Plugin:GetServerId()
+    if not self.ServerId then
         HTTPRequest(StringFormat("%s/api/server?key=%s", self.Config.WebsiteUrl,self.Config.ServerKey), "GET", function(Response)
             local Data = JsonDecode( Response )
             if not Data then return end
@@ -1539,7 +1544,7 @@ function Plugin:GetServerId()
             end         
         end)
     end
-    return self.ServerId  
+    return self.ServerId
 end
 
 function Plugin:OnSuspend()
@@ -1640,7 +1645,7 @@ function Plugin:SendAwardListToClients()
             AwardMessage.Message = StringFormat( "%s%s\n", AwardMessage.Message, self.Awards[ i ].message )
         end
     end 
-    self:SendNetworkMessage(nil, "StatsAwards", AwardMessage, true )
+    self:SendNetworkMessage( nil, "StatsAwards", AwardMessage, true )
  end
 
 function Plugin:AddAward(Award)
@@ -1716,7 +1721,6 @@ function Plugin:AwardMostConstructed()
     return { steamId = HighestSteamId, rating = Rating, message = StringFormat( "Bob the builder: %s !", HighestPlayer ) }
 end
 
-
 function Plugin:AwardMostStructureDamage()
     local HighestTotal = 0
     local HighestPlayer = "nobody"
@@ -1742,7 +1746,6 @@ function Plugin:AwardMostStructureDamage()
     return {steamId = HighestSteamId, rating = Rating, message = StringFormat( "Demolition man: %s with %s  Structure Damage.", HighestPlayer, Floor(HighestTotal))}
 end
 
-
 function Plugin:AwardMostPlayerDamage()
     local HighestTotal = 0
     local HighestPlayer = "nobody"
@@ -1767,7 +1770,6 @@ function Plugin:AwardMostPlayerDamage()
     
     return { steamId = HighestSteamId, rating = Rating, message = StringFormat( " %s was spilling blood worth of %s Damage.", HighestPlayer, Floor( HighestTotal )) }
 end
-
 
 function Plugin:AwardBestAccuracy()
     local HighestTotal = 0
@@ -1804,7 +1806,6 @@ function Plugin:AwardBestAccuracy()
     end
 end
 
-
 function Plugin:AwardMostJumps()
     local HighestTotal = 0
     local HighestPlayer = "nobody"
@@ -1827,7 +1828,6 @@ function Plugin:AwardMostJumps()
     return { steamId = HighestSteamId, rating = Rating, message = StringFormat( "%s is jump maniac with %s jumps!", HighestPlayer,  HighestTotal )}
     
 end
-
 
 function Plugin:AwardHighestKillstreak()
     local HighestTotal = 0
@@ -1993,6 +1993,7 @@ function Plugin:CleanUp()
     self.BuildingsInfos = nil
     self.OldUpgrade = nil
     self.Devour = nil
-    
+    self.FakeIds = nil
+	
     self.Enabled = false
 end

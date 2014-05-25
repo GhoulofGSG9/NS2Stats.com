@@ -30,7 +30,6 @@ Plugin.DefaultConfig =
     DisableAfterRoundtime = 0,
     MinPlaytime = 8,
     MinComPlaytime = 8,
-    ConfigUpdated = false,
     InformAtConnect = true,
     InformMessage = "This server is not rookie friendly",
     BlockTeams = true,
@@ -48,17 +47,6 @@ Plugin.CheckConfig = true
 Shine.Hook.SetupClassHook( "CommandStructure", "OnUse", "CheckComLogin", "ActivePre" )
 
 local Enabled = true
-
-function Plugin:Initialise()
-    self.Enabled = true
-    if not self.Config.ConfigUpdated then
-		self.Config.ConfigUpdated = true
-		self.Config.MinComPlaytime = self.Config.MinPlaytime
-		self:SaveConfig()
-    end
-    return true
-end
-
 function Plugin:ClientConfirmConnect( Client )
     if self.Config.InformAtConnect then
         local Player = Client:GetControllingPlayer()
@@ -127,6 +115,7 @@ function Plugin:Check( Player, ComCheck )
     
     if PlayTime < CheckTime * 3600 then
         self:Notify( Player, self.Config.BlockMessage )
+		Notify(StringFormat("[NoRookies]: %s failed the check with %s hours", Shine:GetClientInfo( Client ), PlayTime / 3600 )
         if self.Config.ShowSwitchAtBlock then
            self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
         end
@@ -140,7 +129,6 @@ function Plugin:Notify( Player, Message )
 end
 
 local Kicktimes = {}
-
 function Plugin:Kick( Player )
     if not self.Config.Kick then return end
     

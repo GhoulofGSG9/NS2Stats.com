@@ -15,7 +15,6 @@ function Plugin:SetupDataTable()
         ColourG = "integer (0 to 255)",
         ColourB = "integer (0 to 255)",
     }
-
    self:AddNetworkMessage("StatsAwards", AwardMessage, "Client" )
 
    local Config = {
