@@ -11,6 +11,7 @@ local Plugin = Plugin
 
 local Notify = Shared.Message
 local StringFormat = string.format
+local GetOwner = Server.GetOwner
 
 local HTTPRequest = Shared.SendHTTPRequest
 
@@ -80,7 +81,7 @@ function Plugin:CheckComLogin( Chair, Player )
 end
 
 function Plugin:Check( Player, ComCheck )
-    local Client = Player:GetClient()
+    local Client = GetOwner( Player )
     if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignorestatus" ) then return end
     
     local SteamId = Client:GetUserId()
@@ -115,7 +116,7 @@ function Plugin:Check( Player, ComCheck )
     
     if PlayTime < CheckTime * 3600 then
         self:Notify( Player, self.Config.BlockMessage )
-		Notify(StringFormat("[NoRookies]: %s failed the check with %s hours", Shine:GetClientInfo( Client ), PlayTime / 3600 ))
+		Notify( StringFormat("[NoRookies]: %s failed the check with %s hours", Shine.GetClientInfo( Client ), PlayTime / 3600 ))
         if self.Config.ShowSwitchAtBlock then
            self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
         end

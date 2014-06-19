@@ -12,7 +12,7 @@ local ToString = tostring
 local StringFind = string.find
 local StringFormat = string.format
 local StringSub = string.UTF8Sub
-local StringLen = string.UTF8Length
+local StringLen = string.len
 local StringLower = string.UTF8Lower
 local StringReverse = string.UTF8Reverse
 
@@ -50,26 +50,28 @@ Plugin.DefaultConfig =
 Plugin.CheckConfig = true
 
 --All needed Hooks
-SetupClassHook( "DamageMixin", "DoDamage", "OnDamageDealt", "PassivePre" )
-SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
-SetupClassHook( "ResearchMixin", "SetResearching", "OnTechStartResearch", "PassivePre" )
-SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
-SetupClassHook( "ResearchMixin", "OnResearchCancel", "AddUpgradeAbortedToLog", "PassivePost" )
-SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
-SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
-SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
-SetupClassHook( "PlayerInfoEntity", "UpdateScore", "OnPlayerScoreChanged", "PassivePost" )
-SetupClassHook( "PlayerBot", "UpdateNameAndGender","OnBotRenamed", "PassivePost" )
-SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
-SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
---NS2Ranking
-SetupClassHook( "PlayerRanking", "GetTrackServer", "EnableNS2Ranking", "ActivePre" )
+local function SetupHooks()
+	SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
+	SetupClassHook( "DamageMixin", "DoDamage", "PastDoDamage", "PassivePre" )
+	SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
+	SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
+	SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
+	SetupClassHook( "PlayerBot", "UpdateNameAndGender","OnBotRenamed", "PassivePost" )
+	SetupClassHook( "PlayerInfoEntity", "UpdateScore", "OnPlayerScoreChanged", "PassivePost" )
+	SetupClassHook( "ResearchMixin", "OnResearchCancel", "AddUpgradeAbortedToLog", "PassivePost" )
+	SetupClassHook( "ResearchMixin", "SetResearching", "OnTechStartResearch", "PassivePre" )
+	SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
+	SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
+	SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
+	--NS2Ranking
+	SetupClassHook( "PlayerRanking", "GetTrackServer", "EnableNS2Ranking", "ActivePre" )
+end
 
 function Plugin:Initialise()
 	self.Enabled = false
-	Shine.Hook.Add( "Think", "StartNs2Stats", function( Deltatime )
+	self:SimpleTimer( 1, function()
+		SetupHooks()
 		self:Setup()
-		Shine.Hook.Remove( "Think", "StartNs2Stats" )
 	end )
 	return true
 end
@@ -234,7 +236,7 @@ function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
 	local Player = Shared.GetEntity( PlayerInfoEntity.playerId )  
 	if not Player then return end
 	
-	local Client = Player:GetClient()
+	local Client = GetOwner(Player)
 	if not Client then return end
 	
 	local PlayerInfo = self:GetPlayerByClient( Client )
@@ -284,7 +286,7 @@ function Plugin:OnBotRenamed( Bot )
 	local Name = Player:GetName()
 	if not Name or not StringFind( Name, "[BOT]", nil, true ) then return end
 	
-	local Client = Player:GetClient()
+	local Client = GetOwner( Player )
 	if not Client then return end
 		
 	local PlayerInfo = Plugin:GetPlayerByClient( Client )
@@ -306,7 +308,7 @@ function Plugin:OnBotRenamed( Bot )
 end
 
 --Player shoots weapon
-function Plugin:OnDamageDealt( DamageMixin, Damage, Target, Point )
+function Plugin:PastDoDamage( DamageMixin, Damage, Target, Point )
 	if not self.RoundStarted then return end
 	
 	local Attacker 
@@ -343,8 +345,8 @@ end
 --add Hit
 function Plugin:AddHitToLog( Target, Attacker, Doer, Damage, DamageType )
 	if Target:isa( "Player" ) then
-		/* local AttackerId = Plugin:GetId( Attacker:GetClient() )
-		local TargetId = Plugin:GetId( Target:GetClient() )        
+		/* local AttackerId = self:GetId( GetOwner( Attacker ) )
+		local TargetId = self:GetId( GetOwner( Target ))        
 		if not AttackerId or not TargetId then return end
 		
 		local aOrigin = Attacker:GetOrigin()
@@ -425,7 +427,7 @@ end
 
 --Add miss
 function Plugin:AddMissToLog( Attacker )
-	local Client = Attacker:GetClient()
+	local Client = GetOwner( Attacker )
 	if not Client then return end
 
 	local Player = Plugin:GetPlayerByClient( Client )
@@ -472,7 +474,7 @@ end
 
 --weapon addhit to Player
 function Plugin:WeaponsAddHit( Player, Weapon, Damage )
-	local Client = Player:GetClient()
+	local Client = GetOwner( Player )
 	if not Client then return end
 	
 	local PlayerInfo = Plugin:GetPlayerByClient( Client )
@@ -507,7 +509,7 @@ end
 
 --weapon addhit to Structure
 function Plugin:WeaponsAddStructureHit( Player, Weapon, Damage)
-	local Client = Player:GetClient()
+	local Client = GetOwner( Player )
 	if not Client then return end
 	
 	local PlayerInfo = Plugin:GetPlayerByClient( Client )
@@ -540,7 +542,7 @@ function Plugin:WeaponsAddStructureHit( Player, Weapon, Damage)
 	end
 		
 end
---OnDamagedealt end
+--DoDamage end
 
 --Player jumps
 function Plugin:OnPlayerJump( Player )
@@ -684,7 +686,7 @@ end
 --Upgrades Started
 function Plugin:OnTechStartResearch( ResearchMixin, ResearchNode, Player )
 	if Player:isa( "Commander" ) then
-		local Client = Player:GetClient()        
+		local Client = GetOwner( Player )   
 		local SteamId = self:GetId( Client ) or 0
 		local TechId = ResearchNode:GetTechId()
 
@@ -807,7 +809,7 @@ function Plugin:OnStructureKilled( Structure, Attacker , Doer )
 		end
 		
 		local Player = Attacker                 
-		local Client = Player:GetClient()
+		local Client = GetOwner( Player )
 		local SteamId = self:GetId( Client ) or -1
 		
 		local Weapon = Doer and Doer.GetMapName and Doer:GetMapName() or "self"
@@ -870,13 +872,13 @@ function Plugin:AddDeathToLog(Target, Attacker, Doer)
 	if Attacker and Doer and Target then
 		local aOrigin = Attacker:GetOrigin()
 		local tOrigin = Target:GetOrigin()        
-		local TargetClient = Target:GetClient()
+		local TargetClient = GetOwner( Target )
 		if not TargetClient then return end
 
 		local TargetWeapon = Target:GetActiveWeapon() and Target:GetActiveWeapon():GetMapName() or "None"
 
 		if Attacker:isa( "Player" ) then            
-			local AttackerClient = Attacker:GetClient()                
+			local AttackerClient = GetOwner( Attacker )             
 			if not AttackerClient then return end
 			
 			local Params =
@@ -938,7 +940,7 @@ function Plugin:AddDeathToLog(Target, Attacker, Doer)
 			self:AddLog( Params )       
 		end
 	elseif Target then --suicide
-		local TargetClient = Target:GetClient()       
+		local TargetClient = GetOwner( Target )     
 		local TargetWeapon = "none"
 		local tOrigin = Target:GetOrigin()
 		local AttackerClient = TargetClient --easy way out        
@@ -1010,7 +1012,7 @@ function Plugin:AddLog( Params )
 	Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(Params))	
 	
 	--avoid that log gets too long
-	if StringLen(self.Log[self.LogPartNumber]) > 160000 then
+	if StringLen( self.Log[self.LogPartNumber] ) > 160000 then
 		self.LogPartNumber = self.LogPartNumber + 1    
 		if self.StatsEnabled then self:SendData() end        
 	end
