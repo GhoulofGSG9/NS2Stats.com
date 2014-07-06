@@ -166,6 +166,8 @@ function Plugin:EndGame( Gamerules, WinningTeam )
 	if self.Config.Awards then Plugin:SendAwardListToClients() end
 	self:AddPlayersToLog( 1 )
 	
+	local Winner = WinningTeam and WinningTeam:GetTeamNumber() or 0
+	
 	local InitialHiveTechIdString = "None"
 	if Gamerules.initialHiveTechId then
 		InitialHiveTechIdString = EnumToString( kTechId, Gamerules.initialHiveTechId )
@@ -174,7 +176,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
 	local Params =
 		{
 			version = ToString( Shared.GetBuildNumber() ),
-			winner = WinningTeam:GetTeamNumber(),
+			winner = Winner,
 			length = StringFormat( "%.2f", Shared.GetTime() - Gamerules.gameStartTime ),
 			map = Shared.GetMapName(),
 			start_location1 = Gamerules.startingLocationNameTeam1,
