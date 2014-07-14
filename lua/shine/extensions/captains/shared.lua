@@ -18,7 +18,8 @@ function Plugin:SetupDataTable()
 		loses = "integer"
 	}
 	self:AddNetworkMessage("PlayerData", PlayerData, "Client")
-	self:AddNetworkMessage("SetCaptain", { steamid = "string (255)", add = "boolean" }, "Client" )
+	self:AddNetworkMessage("SetCaptain", { steamid = "string (255)", team = "integer (1 to 2)",  add = "boolean" }, "Client" )
+	self:AddNetworkMessage("VoteState", { team = "integer (0 to 3)", start = "boolean" }, "Client" )
 	
 	self:AddDTVar( "integer (0 to 10)", "State", 0 )
 end
