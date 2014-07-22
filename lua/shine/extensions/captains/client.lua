@@ -5,11 +5,19 @@ local SGUI = Shine.GUI
 local Round = math.Round
 local StringFormat = string.format
 local Unpack = unpack
+local ToString = tostring
+local TableInsert = table.insert
+local TableRemove = table.remove
 
 local PlayerData = {}
 local CaptainMenu = {}
 
+local LocalId
+local LocalTeam = 0
+
 function CaptainMenu:Create()
+	self.Windows = {}
+	
 	local ScreenWidth = Client.GetScreenWidth()
 	local ScreenHeight = Client.GetScreenHeight()
 	
@@ -88,6 +96,7 @@ function CaptainMenu:Create()
 		List.SteamIds = {}
 		List.Data = {}
 		List.TitlePanel = ListTitlePanel
+		List.TitleText = ListTitleText
 		
 		self.ListItems[ i + 1 ] = List
 	end
@@ -109,6 +118,7 @@ function CaptainMenu:Create()
 	Label:SetText( TextWrap( Label, "Select a player and the command to run.", 0, CommandPanelSize.y ) )
 	self.Label = Label
 	
+	self.Categories = {}
 	local Commands = CommandPanel:Add( "CategoryPanel")
 	Commands:SetAnchor( "TopLeft" )
 	Commands:SetPos( Vector( 0, Label:GetSize().y + 20, 0 ) )
@@ -122,32 +132,149 @@ local Categories = {
 	["Vote Captain"] = {
 		{ "Vote", function( self, SteamId )
 				Shared.ConsoleCommand( StringFormat( "sh_votecaptain %s", SteamId ) )
-			end
+			end, 1
 		}
 	},
 	["Team Organization"] = {
 		{ "Add Player", function( self, SteamId )
 				Shared.ConsoleCommand( StringFormat( "sh_captain_addplayer %s", SteamId ) )
-			end
+			end, 1
 		},
 		{ "Remove Player", function( self, SteamId )
 				Shared.ConsoleCommand( StringFormat( "sh_captain_removeplayer %s", SteamId ) )
-			end
+			end, 1
+		},
+		{ "Set Teamname", function( self )
+			end, 2
 		},
 		{ "Set Ready!", function( self )
 				Shared.ConsoleCommand( "sh_ready" )
 				self:SetText( self:GetText() == "Set Ready!" and "Set Not Ready!" or "Set Ready!" )
-			end
+			end, 0
 		}
 	}
 }
 
+function CaptainMenu:DestroyOnClose( Window )
+	TableInsert( self.Windows, Window )
+	return #self.Windows
+end
+
+function CaptainMenu:DontDestroyOnClose( Window )
+	if not Window.Id then return end
+	TableRemove( self.Windows, Window.Id )
+end
+
+function CaptainMenu:UpdateTeam( TeamNumber, Name, Wins )
+	if not self.Created then 
+		Plugin:SimpleTimer( 1, function() self:UpdateTeam( TeamNumber, Name, Wins ) end )
+		return 
+	end
+	
+	local TextItem = self.ListItems[ TeamNumber ].TitleText
+	local Text = StringFormat( "%s (Wins: %s)", Name, Wins )
+	TextItem:SetText( Text )
+end
+
+function CaptainMenu:AskForPlayer()
+	local Window = SGUI:Create( "Panel" )
+	Window:SetAnchor( "CentreMiddle" )
+	Window:SetSize( Vector( 400, 200, 0 ) )
+	Window:SetPos( Vector( -200, -100, 0 ) )
+
+	Window:AddTitleBar( "Error" )
+
+	Window.Id = self:DestroyOnClose( Window )
+
+	function Window.CloseButton.DoClick()
+		Shine.AdminMenu:DontDestroyOnClose( Window )
+		Window:Destroy()
+	end
+
+	Window:SkinColour()
+
+	local Label = SGUI:Create( "Label", Window )
+	Label:SetAnchor( "CentreMiddle" )
+	Label:SetFont( "fonts/AgencyFB_small.fnt" )
+	Label:SetBright( true )
+	Label:SetText( "Please select a single player." )
+	Label:SetPos( Vector( 0, -40, 0 ) )
+	Label:SetTextAlignmentX( GUIItem.Align_Center )
+	Label:SetTextAlignmentY( GUIItem.Align_Center )
+
+	local OK = SGUI:Create( "Button", Window )
+	OK:SetAnchor( "CentreMiddle" )
+	OK:SetSize( Vector( 128, 32, 0 ) )
+	OK:SetPos( Vector( -64, 40, 0 ) )
+	OK:SetFont( "fonts/AgencyFB_small.fnt" )
+	OK:SetText( "OK" )
+
+	function OK.DoClick()
+		Shine.AdminMenu:DontDestroyOnClose( Window )
+		Window:Destroy()
+	end
+end
+
+function CaptainMenu:AskforTeamName()
+	local Window = SGUI:Create( "Panel" )
+	Window:SetAnchor( "CentreMiddle" )
+	Window:SetSize( Vector( 400, 200, 0 ) )
+	Window:SetPos( Vector( -200, -100, 0 ) )
+
+	Window:AddTitleBar( "Teamname Needed" )
+
+	Window.Id = self:DestroyOnClose( Window )
+
+	function Window.CloseButton.DoClick()
+		Shine.AdminMenu:DontDestroyOnClose( Window )
+		Window:Destroy()
+	end
+
+	Window:SkinColour()
+
+	local Label = SGUI:Create( "Label", Window )
+	Label:SetAnchor( "CentreMiddle" )
+	Label:SetFont( "fonts/AgencyFB_small.fnt" )
+	Label:SetBright( true )
+	Label:SetText( "Please type in your new teamname." )
+	Label:SetPos( Vector( 0, -40, -25 ) )
+	Label:SetTextAlignmentX( GUIItem.Align_Center )
+	Label:SetTextAlignmentY( GUIItem.Align_Center )
+	
+	local Input = SGUI:Create( "TextEntry", Window )
+	Input:SetAnchor( "CentreMiddle" )
+	Input:SetFont( "fonts/AgencyFB_small.fnt" )
+	Input:SetPos( Vector( -160, -5, 0 ) )
+	Input:SetSize( Vector( 320, 32, 0 ) )
+	
+	local OK = SGUI:Create( "Button", Window )
+	OK:SetAnchor( "CentreMiddle" )
+	OK:SetSize( Vector( 128, 32, 0 ) )
+	OK:SetPos( Vector( -64, 40, 0 ) )
+	OK:SetFont( "fonts/AgencyFB_small.fnt" )
+	OK:SetText( "OK" )
+
+	function OK.DoClick()
+		Shine.AdminMenu:DontDestroyOnClose( Window )
+		local Text = Input:GetText()
+		if Text and Text:len() > 0 then
+			Shared.ConsoleCommand( StringFormat( "sh_setteamname %s %s", LocalTeam, Text ) )
+		else
+			Plugin:Notify( "You have to enter a teamname!" )
+		end
+		Window:Destroy()
+	end
+end
+
 function CaptainMenu:AddCategory( Name )
+	if self.Categories[ Name ] then return end
+	
+	self.Categories[ Name ] = true
 	local Commands = self.Commands
 	local CommandPanel = self.CommandPanel
 	local Lists = self.ListItems
 	
-	local function GenerateButton( Text, DoClick )
+	local function GenerateButton( Text, DoClick, NeedsSteamId )
 		local Button = SGUI:Create( "Button" )
 		Button:SetSize( Vector( CommandPanel:GetSize().x, 32, 0 ) )
 		Button:SetText( Text )
@@ -162,6 +289,15 @@ function CaptainMenu:AddCategory( Name )
 					break
 				end
 			end
+			if NeedsSteamId == 1 and not SteamId then
+				self:AskForPlayer()
+				return
+			end
+			if NeedsSteamId == 2 then
+				self:AskforTeamName()
+				return
+			end
+			
 			DoClick( Button, SteamId )
 		end
 
@@ -173,11 +309,12 @@ function CaptainMenu:AddCategory( Name )
 	Commands:AddCategory( Name )
 	for i = 1, #Categories[ Name ] do
 		local CategoryEntry = Categories[ Name ][ i ]
-		Commands:AddObject( Name, GenerateButton( CategoryEntry[ 1 ], CategoryEntry[ 2 ] ) )
+		Commands:AddObject( Name, GenerateButton( CategoryEntry[ 1 ], CategoryEntry[ 2 ], CategoryEntry[ 3 ] ) )
 	end
 end
 
 function CaptainMenu:RemoveCategory( Name )
+	self.Categories[ Name ] = false
 	self.Commands:RemoveCategory( Name )
 end
 
@@ -218,6 +355,10 @@ function CaptainMenu:SetIsVisible( Bool )
 		SGUI:EnableMouse( true )
 	elseif not Bool and self.Visible then
 		SGUI:EnableMouse( false )
+		for i = 1, #self.Windows do
+			local Window = self.Windows[ i ]
+			Window:Destroy()
+		end
 	end
 
 	self.Visible = Bool
@@ -234,6 +375,10 @@ end
 
 function CaptainMenu:Destroy()
 	self.Panel:Destroy()
+	for i = 1, #self.Windows do
+		local Window = self.Windows[ i ]
+		Window:Destroy()
+	end
 end
 
 function Plugin:Initialise()
@@ -246,35 +391,51 @@ end
 function Plugin:SetupAdminMenuCommands()
     local Category = "Captains Mode"
 
-    self:AddAdminMenuCommand( Category, "Set Captain", "sh_setcaptain", false )
+    self:AddAdminMenuCommand( Category, "Set Captain", "sh_setcaptain", false, {
+		"Team 1", "1",
+		"Team 2", "2",
+	} )
     self:AddAdminMenuCommand( Category, "Remove Captain", "sh_removecaptain", false, {
 		"Team 1", "1",
 		"Team 2", "2",
 	} )
+	self:AddAdminMenuCommand( Category, "Reset Captain Mode", "sh_resetcaptainmode", true )
 end
 
 local Messages = {	
 	"Captain Mode enabled",
-	"Waiting for %s Player to join the Server before starting a Vote for Captains",
+	"Waiting for %s Players to join the Server before starting a Vote for Captains",
 	"Vote for Captains is currently running",
-	"Waiting for Captains to set up Teams.\n And to set their Teams to be ready",
-	"Currently a round has been started.\n Please Wait for a Captain to pick you up"
+	"Waiting for Captains to set up the teams.\nThe round will start once both teams are ready!",
+	"Currently a round has been started.\nPlease wait for a Captain to pick you up",
+	"",
+	"The current vote will end in %s minutes\nPress %s to access the Captain Mode Menu.\nOr type !captainmenu into the chat."
 }
-
 function Plugin:StartMessage()
-	self:CreateTextMessage
-	self:CreateTimer( "TextMessage", 1800, -1, function() self:CreateTextMessage end )
+	self:CreateTextMessage()
+	self:CreateTimer( "TextMessage", 1800, -1, function() self:CreateTextMessage() end )
 end
 
+Plugin.MessageConfig =
+{
+	x = 0.05,
+	y = 0.55,
+	r = 51,
+	g = 153,
+	b = 0,
+}
 function Plugin:CreateTextMessage()
-	Shine:AddMessageToQueue( 16, 0.05, 0.25, StringFormat("%s\n%s" Messages[ 1 ], Message[ self.dt.State + 2 ] ), 1800, r, g, b, 0, 1, 0 )
+	Shine:AddMessageToQueue( 16, self.MessageConfig.x, self.MessageConfig.y, StringFormat("%s\n%s\n%s", Messages[ 1 ], Messages[ self.dt.State + 2 ], Messages[ 6 ] ), 1800, self.MessageConfig.r, self.MessageConfig.g, self.MessageConfig.y, 0, 1, 0 )
 end
 
-function Plugin:UpdateTextMessage()
+function Plugin:UpdateTextMessage( VoteTime )
 	if not self:TimerExists( "TextMessage" ) then
 		self:StartMessage()
+	elseif VoteTime then
+		local TimeMsg = StringFormat( Messages[ 7 ], string.DigitalTime( VoteTime ), Shine.VoteButton or "M" )
+		Shine:UpdateMessageText{ ID = 16, Message = StringFormat("%s\n%s\n%s\n%s", Messages[ 1 ], Messages[ self.dt.State + 2 ], Messages[ 6 ], TimeMsg ) }
 	else
-		Shine:UpdateMessageText( { ID = 16, Message = StringFormat("%s\n%s" Messages[ 1 ], Message[ self.dt.State + 2 ] ) } )
+		Shine:UpdateMessageText{ ID = 16, Message = StringFormat("%s\n%s\n%s", Messages[ 1 ], Messages[ self.dt.State + 2 ], Messages[ 6 ] ) }
 	end
 end
 
@@ -301,12 +462,27 @@ function Plugin:ChangeState( OldState, NewState )
 		end
 	end
 	
+	--Shine Vote Menu
+	if not self.VoteMenuButton then
+		Shine.VoteMenu:EditPage( "Main", function( self )
+			Plugin.VoteMenuButton = self:AddSideButton( "Captain Mode Menu", function()
+				Shared.ConsoleCommand( "sh_captainmenu" )
+				self:SetIsVisible( false )
+			end )
+			Plugin.VoteMenuButton:SetIsVisible( NewState > 0 )
+			self:SortSideButtons()
+		end )
+	else
+		self.VoteMenuButton:SetIsVisible( NewState > 0 )
+		Shine.VoteMenu:SortSideButtons()
+	end
+	
 	local Player = Client.GetLocalPlayer()
 	local TeamNumber = Player and Player:GetTeamNumber() or 0
 	if NewState == 3 and ( TeamNumber == 1 or TeamNumber == 2 ) then
 		self:RemoveTextMessage()
-	else
-		self:UpdateMessageText()
+	elseif not self:TimerExists( "VoteMessage" ) then
+		self:SimpleTimer( 0.5, function() self:UpdateTextMessage() end)
 	end
 	
 end
@@ -315,11 +491,15 @@ function Plugin:ReceiveCaptainMenu()
 	CaptainMenu:SetIsVisible( true )
 end
 
-local LocalId
-local LocalTeam = 0
+function Plugin:ReceiveTeamInfo( Message )
+	Shared.ConsoleCommand( StringFormat( "score%s %s", Message.teamnumber, Message.wins ) )
+	Shared.ConsoleCommand( StringFormat( "team%s %s", Message.teamnumber, Message.name ) )
+	CaptainMenu:UpdateTeam( Message.number, Message.name, Message.wins )
+end
+
 function Plugin:ReceivePlayerData( Message )
 	if not LocalId then
-		LocalId = tostring(Client.GetSteamId())
+		LocalId = ToString(Client.GetSteamId())
 	end
 	
 	if Message.steamid == LocalId then
@@ -329,14 +509,13 @@ function Plugin:ReceivePlayerData( Message )
 	CaptainMenu:UpdatePlayer( Message )
 end
 
-local first
-function Plugin:PlayerKeyPress( Key, Down, Amount )
-	if not first then
-		self:StartMessage()
-		first = true
-	end
-	
+function Plugin:PlayerKeyPress( Key, Down, Amount )	
 	return CaptainMenu:PlayerKeyPress( Key, Down )
+end
+
+function Plugin:Notify( Message, Format, ... )
+	Message = Format and StringFormat( Message, ... ) or Message 
+	Shine.AddChatText( 100, 255, 100, "[Captains Mode]", 1, 1, 1, Message )
 end
 
 function Plugin:ReceiveSetCaptain( Message )
@@ -344,16 +523,23 @@ function Plugin:ReceiveSetCaptain( Message )
 	local TeamNumber = Message.team
 	
 	if not LocalId then
-		LocalId = tostring(Client.GetSteamId())
+		LocalId = ToString(Client.GetSteamId())
 	end
 	
-	if LocalId == SteamId then
-		if Message.add then
-			CaptainMenu:AddCategory( "Team Organization" )
-		else
-			CaptainMenu:RemoveCategory( "Team Organization" )
+	if Message.add then
+		local List = CaptainMenu.ListItems[ TeamNumber + 1 ]
+		local RowId = List.TableIds[ SteamId ]
+		local Row = List.Rows[ RowId ]
+		for i = 1, Row.Columns do
+			local Object = Row.TextObjs[ i ]
+			Object:SetColor( Colour( 1, 215/255, 0, 1 ) )
 		end
+		self:Notify( "%s is now Captain of Team %s", true, List.Data[ RowId ][ 1 ], TeamNumber )
+		if LocalId == SteamId then CaptainMenu:AddCategory( "Team Organization" ) end
+	else
+		if LocalId == SteamId then CaptainMenu:RemoveCategory( "Team Organization" ) end
 	end
+	
 end
 
 function Plugin:ReceiveVoteState( Message )
@@ -361,6 +547,12 @@ function Plugin:ReceiveVoteState( Message )
 	
 	local List = CaptainMenu.ListItems[ Message.team + 1 ]
 	if Message.start then
+		if Message.timeleft > 1 then
+			self:CreateTimer( "VoteMessage", 1, Message.timeleft - 1, function( Timer )
+				self:UpdateTextMessage( Timer:GetReps() )
+			end )			
+		end
+		
 		CaptainMenu:AddCategory( "Vote Captain" )
 		
 		local Data = List.Data
@@ -374,6 +566,8 @@ function Plugin:ReceiveVoteState( Message )
 			List:AddRow( Unpack( Data[i] ) ) 
 		end
 	else
+		self:DestroyTimer( "VoteMessage" )
+		self:UpdateTextMessage()
 		
 		local Data = List.Data
 		local RowCount = #Data 
@@ -390,17 +584,19 @@ function Plugin:ReceiveVoteState( Message )
 	end
 end
 
+function Plugin:ReceiveInfoMsgs( Message )
+	Messages[ Message.id ] = Message.text
+	if Message.id == 6 then
+		self:StartMessage()
+	end
+end
+
+function Plugin:ReceiveMessageConfig( Message )
+	self.MessageConfig = Message
+end
+
 function Plugin:Cleanup()
 	CaptainMenu:Destroy()
 	self.BaseClass.Cleanup( self )
 	self.Enabled = false
 end
-
---Shine Vote Menu
-Shine.VoteMenu:EditPage( "Main", function( self )
-    self:AddSideButton( "Captain Mode Menu", function()
-		Shared.ConsoleCommand( "sh_captainmenu" )
-        self:SetIsVisible( false )
-    end )
-end )
-
