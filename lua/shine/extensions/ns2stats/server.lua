@@ -48,6 +48,7 @@ Plugin.DefaultConfig =
 	Lastroundlink = "", --Link of last round
 }
 Plugin.CheckConfig = true
+Plugin.CheckConfigTypes = true
 
 --All needed Hooks
 local function SetupHooks()

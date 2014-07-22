@@ -19,6 +19,7 @@ Plugin.DefaultConfig =
     StoppedMsg = "%s has been stopped by %s " -- first victim then killer
 }
 Plugin.CheckConfig = true
+Plugin.CheckConfigTypes = true
 
 Plugin.Killstreaks = {}
 
