@@ -171,7 +171,7 @@ function CaptainMenu:UpdateTeam( TeamNumber, Name, Wins )
 		return 
 	end
 	
-	local TextItem = self.ListItems[ TeamNumber ].TitleText
+	local TextItem = self.ListItems[ TeamNumber + 1 ].TitleText
 	local Text = StringFormat( "%s (Wins: %s)", Name, Wins )
 	TextItem:SetText( Text )
 end

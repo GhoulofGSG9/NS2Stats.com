@@ -123,6 +123,7 @@ function Plugin:Reset()
 	
 	self:DestroyAllTimers()
 	for i = 0, 2 do
+		Plugin:SendNetworkMessage( nil, "VoteState", { team = i, start = false, timeleft = 0 }, true )
 		if self.Votes[ i ] then
 			self.Votes[ i ]:Reset()
 		end
@@ -205,13 +206,13 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 	return false
 end
 
-function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
-	local SteamId = Player:GetSteamId()	
+function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )	
 	if self.dt.State > 0 then
-		if OldTeam == 1 or OldTeam == 2 then
-			local Team = Teams[ 1 ].TeamNumber == OldTeam and 1 or 2
-			Teams[ Team ].Players[ SteamId ] = nil
-			self:Notify( nil, "%s left Team %s", true, Player:GetName(), Team)
+		local SteamId = Player:GetSteamId()
+		local OldTeamNumber = self:GetTeamNumber( SteamId )
+		if OldTeamNumber > 0 then
+			Teams[ OldTeamNumber ].Players[ SteamId ] = nil
+			self:Notify( nil, "%s left Team %s", true, Player:GetName(), OldTeamNumber)
 		end
 		if NewTeam == 1 or NewTeam == 2 then
 			local Team = Teams[ 1 ].TeamNumber == NewTeam and 1 or 2
@@ -535,7 +536,7 @@ function Plugin:CreateCommands()
 		local SteamId = Client:GetUserId()
 		local TargetId = Target:GetUserId()
 		
-		if self:GetTeamNumber( TargetId ) ~= 0 then
+		if self:GetTeamNumber( TargetId ) > 0 then
 			self:Notify( Client:GetControllingPlayer(), "Please pick a player from the Ready Room" )
 			return
 		end
