@@ -87,7 +87,7 @@ function Plugin:CheckStart()
 		self.Config.Cache = {}
 		self:SaveConfig( true )		
 		self:CreateTimer( "CaptainWait", 1, self.Config.MaxWaitForCaptains, function() self:Reset() end )	
-	elseif Shine.GetHumanPlayerCount() > self.Config.MinPlayers and self.dt.State == 0 and not self:TimerExists( "CaptainWait" ) then
+	elseif Shine.GetHumanPlayerCount() >= self.Config.MinPlayers and self.dt.State == 0 and not self:TimerExists( "CaptainWait" ) then
 		local Players = GetAllPlayers()
 		if Gamerules then 
 			for i = 1, #Players do
@@ -183,10 +183,14 @@ function Plugin:RemoveCaptain( TeamNumber, SetCall )
 	Teams[ TeamNumber ].Players[ SteamId ] = false
 	Teams[ TeamNumber ].Captain = nil
 
-	local Client = GetClientByNS2ID( SteamId )
-	local Player = Client:GetControllingPlayer()
 	self:SendNetworkMessage( nil, "SetCaptain", { steamid = SteamId, team = TeamNumber, add = false }, true )
-	Gamerules:JoinTeam( Player, 0, nil, true )
+	
+	local Client = GetClientByNS2ID( SteamId )
+	if Client then
+		local Player = Client:GetControllingPlayer()
+		Gamerules:JoinTeam( Player, 0, nil, true )
+	end
+	
 	CaptainsNum = CaptainsNum - 1
 	
 	if not SetCall and self.dt.State ~= 1 then
@@ -523,7 +527,7 @@ function Plugin:CreateCommands()
 		end
 	end
 	local CommandVoteCaptain = self:BindCommand( "sh_votecaptain", "votecaptain", VoteCaptain, true )
-	CommandVoteCaptain:AddParam{ Type = "client", NotSelf = false }
+	CommandVoteCaptain:AddParam{ Type = "client", NotSelf = true, Error = "You can't vote for yourself" }
 	CommandVoteCaptain:Help( "<player> Votes for the given player to become captain" )
 	
 	-- addplayer
@@ -553,7 +557,7 @@ function Plugin:CreateCommands()
 		Gamerules:JoinTeam( Player, CaptainTeam, nil, true )
 	end
 	local CommandAddPlayer = self:BindCommand( "sh_captain_addplayer", "captainaddplayer", AddPlayer, true )
-	CommandAddPlayer:AddParam{ Type = "client" }
+	CommandAddPlayer:AddParam{ Type = "client", NotSelf = true, Error = "You can't vote for yourself" }
 	CommandAddPlayer:Help( "<player> Picks the given player for your team [this command is only available for captains]" )
 	
 	-- removeplayer
@@ -573,7 +577,7 @@ function Plugin:CreateCommands()
 		Gamerules:JoinTeam( Player, 0, nil, true )
 	end
 	local CommandRemovePlayer = self:BindCommand( "sh_captain_removeplayer", "captainremoveplayer", RemovePlayer, true )
-	CommandRemovePlayer:AddParam{ Type = "client", NotSelf = true }
+	CommandRemovePlayer:AddParam{ Type = "client", NotSelf = true, Error = "You can't vote for yourself" }
 	CommandRemovePlayer:Help( "<player> Removes the given player from your team [this command is only available for captains]" )
 	
 	-- removecaptain

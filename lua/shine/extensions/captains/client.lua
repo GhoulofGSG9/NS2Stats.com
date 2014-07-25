@@ -42,7 +42,7 @@ function CaptainMenu:Create()
 
 	local TitleLabel = SGUI:Create( "Label", TitlePanel )
 	TitleLabel:SetAnchor( "CentreMiddle" )
-	TitleLabel:SetFont( "fonts/AgencyFB_small.fnt" )
+	TitleLabel:SetFont( Fonts.kAgencyFB_Small )
 	TitleLabel:SetText( "Captain Mode Menu" )
 	TitleLabel:SetTextAlignmentX( GUIItem.Align_Center )
 	TitleLabel:SetTextAlignmentY( GUIItem.Align_Center )
@@ -74,7 +74,7 @@ function CaptainMenu:Create()
 		
 		local ListTitleText = ListTitlePanel:Add( "Label" )
 		ListTitleText:SetAnchor( "CentreMiddle" )
-		ListTitleText:SetFont( "fonts/AgencyFB_small.fnt" )
+		ListTitleText:SetFont( Fonts.kAgencyFB_Small )
 		ListTitleText:SetText( ListTitles[ i + 1 ] )
 		ListTitleText:SetTextAlignmentX( GUIItem.Align_Center )
 		ListTitleText:SetTextAlignmentY( GUIItem.Align_Center )
@@ -113,7 +113,7 @@ function CaptainMenu:Create()
 	local CommandPanelSize = CommandPanel:GetSize()
 	
 	local Label = CommandPanel:Add( "Label" )
-	Label:SetFont( "fonts/AgencyFB_small.fnt" )
+	Label:SetFont( Fonts.kAgencyFB_Small )
 	Label:SetBright( true )
 	Label:SetText( TextWrap( Label, "Select a player and the command to run.", 0, CommandPanelSize.y ) )
 	self.Label = Label
@@ -176,7 +176,7 @@ function CaptainMenu:UpdateTeam( TeamNumber, Name, Wins )
 	TextItem:SetText( Text )
 end
 
-function CaptainMenu:AskForPlayer()
+function CaptainMenu:Error( AskForPlayer )
 	local Window = SGUI:Create( "Panel" )
 	Window:SetAnchor( "CentreMiddle" )
 	Window:SetSize( Vector( 400, 200, 0 ) )
@@ -195,9 +195,9 @@ function CaptainMenu:AskForPlayer()
 
 	local Label = SGUI:Create( "Label", Window )
 	Label:SetAnchor( "CentreMiddle" )
-	Label:SetFont( "fonts/AgencyFB_small.fnt" )
+	Label:SetFont( Fonts.kAgencyFB_Small )
 	Label:SetBright( true )
-	Label:SetText( "Please select a single player." )
+	Label:SetText( AskForPlayer and "Please select a single player." or "Please select a other player and not yourself." )
 	Label:SetPos( Vector( 0, -40, 0 ) )
 	Label:SetTextAlignmentX( GUIItem.Align_Center )
 	Label:SetTextAlignmentY( GUIItem.Align_Center )
@@ -206,7 +206,7 @@ function CaptainMenu:AskForPlayer()
 	OK:SetAnchor( "CentreMiddle" )
 	OK:SetSize( Vector( 128, 32, 0 ) )
 	OK:SetPos( Vector( -64, 40, 0 ) )
-	OK:SetFont( "fonts/AgencyFB_small.fnt" )
+	OK:SetFont( Fonts.kAgencyFB_Small )
 	OK:SetText( "OK" )
 
 	function OK.DoClick()
@@ -234,7 +234,7 @@ function CaptainMenu:AskforTeamName()
 
 	local Label = SGUI:Create( "Label", Window )
 	Label:SetAnchor( "CentreMiddle" )
-	Label:SetFont( "fonts/AgencyFB_small.fnt" )
+	Label:SetFont( Fonts.kAgencyFB_Small )
 	Label:SetBright( true )
 	Label:SetText( "Please type in your new teamname." )
 	Label:SetPos( Vector( 0, -40, -25 ) )
@@ -243,7 +243,7 @@ function CaptainMenu:AskforTeamName()
 	
 	local Input = SGUI:Create( "TextEntry", Window )
 	Input:SetAnchor( "CentreMiddle" )
-	Input:SetFont( "fonts/AgencyFB_small.fnt" )
+	Input:SetFont( Fonts.kAgencyFB_Small )
 	Input:SetPos( Vector( -160, -5, 0 ) )
 	Input:SetSize( Vector( 320, 32, 0 ) )
 	
@@ -251,7 +251,7 @@ function CaptainMenu:AskforTeamName()
 	OK:SetAnchor( "CentreMiddle" )
 	OK:SetSize( Vector( 128, 32, 0 ) )
 	OK:SetPos( Vector( -64, 40, 0 ) )
-	OK:SetFont( "fonts/AgencyFB_small.fnt" )
+	OK:SetFont( Fonts.kAgencyFB_Small )
 	OK:SetText( "OK" )
 
 	function OK.DoClick()
@@ -278,7 +278,7 @@ function CaptainMenu:AddCategory( Name )
 		local Button = SGUI:Create( "Button" )
 		Button:SetSize( Vector( CommandPanel:GetSize().x, 32, 0 ) )
 		Button:SetText( Text )
-		Button:SetFont( "fonts/AgencyFB_small.fnt" )
+		Button:SetFont( Fonts.kAgencyFB_Small )
 		Button.DoClick = function( Button )
 			local SteamId 
 			for i = 1, #Lists do
@@ -289,8 +289,8 @@ function CaptainMenu:AddCategory( Name )
 					break
 				end
 			end
-			if NeedsSteamId == 1 and not SteamId then
-				self:AskForPlayer()
+			if NeedsSteamId == 1 and ( not SteamId or SteamId == LocalId ) then
+				self:Error( not SteamId )
 				return
 			end
 			if NeedsSteamId == 2 then
