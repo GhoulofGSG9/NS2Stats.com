@@ -206,7 +206,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 	return false
 end
 
-function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )	
+function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
 	if self.dt.State > 0 then
 		local SteamId = Player:GetSteamId()
 		local OldTeamNumber = self:GetTeamNumber( SteamId )
@@ -528,7 +528,7 @@ function Plugin:CreateCommands()
 		end
 	end
 	local CommandVoteCaptain = self:BindCommand( "sh_votecaptain", "votecaptain", VoteCaptain, true )
-	CommandVoteCaptain:AddParam{ Type = "client", NotSelf = true, Error = "You can't vote for yourself" }
+	CommandVoteCaptain:AddParam{ Type = "client", NotSelf = true, Error = "You can't vote for yourself", IgnoreCanTarget = true }
 	CommandVoteCaptain:Help( "<player> Votes for the given player to become captain" )
 	
 	-- addplayer
@@ -558,7 +558,7 @@ function Plugin:CreateCommands()
 		Gamerules:JoinTeam( Player, CaptainTeam, nil, true )
 	end
 	local CommandAddPlayer = self:BindCommand( "sh_captain_addplayer", "captainaddplayer", AddPlayer, true )
-	CommandAddPlayer:AddParam{ Type = "client", NotSelf = true, Error = "You can't vote for yourself" }
+	CommandAddPlayer:AddParam{ Type = "client", NotSelf = true, Error = "Please pick a player from the Ready Room", IgnoreCanTarget = true }
 	CommandAddPlayer:Help( "<player> Picks the given player for your team [this command is only available for captains]" )
 	
 	-- removeplayer
@@ -578,7 +578,7 @@ function Plugin:CreateCommands()
 		Gamerules:JoinTeam( Player, 0, nil, true )
 	end
 	local CommandRemovePlayer = self:BindCommand( "sh_captain_removeplayer", "captainremoveplayer", RemovePlayer, true )
-	CommandRemovePlayer:AddParam{ Type = "client", NotSelf = true, Error = "You can't vote for yourself" }
+	CommandRemovePlayer:AddParam{ Type = "client", NotSelf = true, Error = "You can't remove yourself", IgnoreCanTarget = true }
 	CommandRemovePlayer:Help( "<player> Removes the given player from your team [this command is only available for captains]" )
 	
 	-- removecaptain

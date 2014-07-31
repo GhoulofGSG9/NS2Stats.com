@@ -16,6 +16,8 @@ local LocalId
 local LocalTeam = 0
 
 function CaptainMenu:Create()
+	if self.Created then return end
+	
 	self.Windows = {}
 	
 	local ScreenWidth = Client.GetScreenWidth()
@@ -319,7 +321,9 @@ function CaptainMenu:RemoveCategory( Name )
 end
 
 function CaptainMenu:UpdatePlayer( Message )
-	if not self.Created then return end
+	if not self.Created then
+		self:Create()
+	end
 	
 	for i = 1, 3 do
 		local List = self.ListItems[i]
@@ -445,6 +449,10 @@ function Plugin:RemoveTextMessage()
 end
 
 function Plugin:ChangeState( OldState, NewState )
+	if not CaptainMenu.Created then
+		CaptainMenu:Create()
+	end
+		
 	local PanelSize = CaptainMenu.Panel:GetSize()
 	if NewState == 1 then
 		CaptainMenu.ListItems[ 1 ]:SetSize( Vector( PanelSize.x * 0.74, PanelSize.y * 0.8, 0 ) )
