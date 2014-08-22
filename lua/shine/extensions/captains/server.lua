@@ -150,6 +150,13 @@ function Plugin:SetCaptain( SteamId, TeamNumber )
 	Teams[ TeamNumber ].Captain = SteamId
 	Teams[ TeamNumber ].Players[ SteamId ] = true
 	local Client = GetClientByNS2ID( SteamId )
+	if not Client then return end
+	
+	if self.Votes[ TeamNumber ] and self.Votes[ TeamNumber ]:GetIsStarted() then
+		self:DestroyTimer( StringFormat( "CaptainVote%s", TeamNumber ) )
+		self:SendNetworkMessage( nil, "VoteState", { team = TeamNumber, start = false, timeleft = 0 }, true )
+	end
+	
 	local Player = Client:GetControllingPlayer()
 	Gamerules:JoinTeam( Player, Teams[ TeamNumber ].TeamNumber, nil, true )
 	self:SendNetworkMessage( nil, "SetCaptain", { steamid = SteamId, team = TeamNumber, add = true }, true )

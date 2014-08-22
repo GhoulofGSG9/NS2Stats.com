@@ -53,7 +53,8 @@ Plugin.CheckConfigTypes = true
 --All needed Hooks
 local function SetupHooks()
 	SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
-	SetupClassHook( "DamageMixin", "DoDamage", "PastDoDamage", "PassivePre" )
+	SetupClassHook( "DamageMixin", "DoDamage", "PreDoDamage", "PassivePre" )
+	SetupClassHook( "DamageMixin", "DoDamage", "PastDoDamage", "PassivePost" )
 	SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
 	SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
 	SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
@@ -64,8 +65,6 @@ local function SetupHooks()
 	SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
 	SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
 	SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
-	--NS2Ranking
-	SetupClassHook( "PlayerRanking", "GetTrackServer", "EnableNS2Ranking", "ActivePre" )
 end
 
 function Plugin:Initialise()
@@ -74,6 +73,7 @@ function Plugin:Initialise()
 		SetupHooks()
 		self:Setup()
 	end )
+	self.DoDamageHeathChange = {}
 	return true
 end
 
@@ -113,11 +113,6 @@ function Plugin:Setup()
 	end
 end
 
--- NS2VanillaStats
-function Plugin:EnableNS2Ranking()
-	return self.Config.EnableHiveStats and self.StatsEnabled and Shine.GetGamemode() == "ns2"
-end
-
 -- Events
 
 --Game Events
@@ -139,6 +134,7 @@ function Plugin:OnGameReset()
 	self.ItemInfos = {}
 	self.BuildingsInfos = {}
 	self.OldUpgrade = -1
+	self.DoDamageHeathChange = {}
 	
 	-- update stats all connected players
 	for _, Client in ipairs( Shine.GetAllClients() ) do
@@ -311,6 +307,14 @@ function Plugin:OnBotRenamed( Bot )
 end
 
 --Player shoots weapon
+function Plugin:PreDoDamage( DamageMixin, Damage, Target, Point )
+	if not self.RoundStarted then return end
+	
+	if Target and HasMixin( Target, "Live" ) and Damage > 0 then
+		self.DoDamageHeathChange[Target:GetId()] = Target:GetHealth() + Target:GetArmor()
+	end
+end
+
 function Plugin:PastDoDamage( DamageMixin, Damage, Target, Point )
 	if not self.RoundStarted then return end
 	
@@ -326,15 +330,14 @@ function Plugin:PastDoDamage( DamageMixin, Damage, Target, Point )
 	local DamageType = kDamageType.Normal
 	if DamageMixin.GetDamageType then DamageType = DamageMixin:GetDamageType()
 	elseif HasMixin( DamageMixin, "Tech" ) then DamageType = LookupTechData( DamageMixin:GetTechId(), kTechDataDamageType, kDamageType.Normal) end
-			
 	local Doer = DamageMixin
 	
 	local Hit = false
-	if Target and HasMixin( Target, "Live" ) and Damage > 0 then
-	
-		local armorUsed = 0
-		local healthUsed = 0        
-		Damage, armorUsed, healthUsed = GetDamageByType( Target, Attacker, Doer, Damage, DamageType, Point )
+	if Target and HasMixin( Target, "Live" ) and self.DoDamageHeathChange[ Target:GetId()] then
+		
+		local TargetHealth = Target:GetHealth() + Target:GetArmor()
+		local Damage = self.DoDamageHeathChange[Target:GetId()] - TargetHealth
+		self.DoDamageHeathChange[Target:GetId()] = nil
 		
 		if Damage > 0 and Attacker:isa( "Player" )then
 			Plugin:AddHitToLog( Target, Attacker, Doer, Damage, DamageType )
@@ -1738,6 +1741,7 @@ function Plugin:CleanUp()
 	self.BuildingsInfos = nil
 	self.OldUpgrade = nil
 	self.FakeIds = nil
+	self.DoDamageHeathChange = nil
 	
 	self.Enabled = false
 end

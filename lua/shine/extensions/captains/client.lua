@@ -605,6 +605,7 @@ end
 
 function Plugin:Cleanup()
 	CaptainMenu:Destroy()
+	self:RemoveTextMessage()
 	self.BaseClass.Cleanup( self )
 	self.Enabled = false
 end
