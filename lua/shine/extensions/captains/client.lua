@@ -6,6 +6,7 @@ local Round = math.Round
 local StringFormat = string.format
 local Unpack = unpack
 local ToString = tostring
+local ToNumber = tonumber
 local TableInsert = table.insert
 local TableRemove = table.remove
 
@@ -16,6 +17,8 @@ local LocalId
 local LocalTeam = 0
 
 function CaptainMenu:Create()
+	if self.Created then return end
+	
 	self.Windows = {}
 	
 	local ScreenWidth = Client.GetScreenWidth()
@@ -42,7 +45,7 @@ function CaptainMenu:Create()
 
 	local TitleLabel = SGUI:Create( "Label", TitlePanel )
 	TitleLabel:SetAnchor( "CentreMiddle" )
-	TitleLabel:SetFont( "fonts/AgencyFB_small.fnt" )
+	TitleLabel:SetFont( Fonts.kAgencyFB_Small )
 	TitleLabel:SetText( "Captain Mode Menu" )
 	TitleLabel:SetTextAlignmentX( GUIItem.Align_Center )
 	TitleLabel:SetTextAlignmentY( GUIItem.Align_Center )
@@ -74,7 +77,7 @@ function CaptainMenu:Create()
 		
 		local ListTitleText = ListTitlePanel:Add( "Label" )
 		ListTitleText:SetAnchor( "CentreMiddle" )
-		ListTitleText:SetFont( "fonts/AgencyFB_small.fnt" )
+		ListTitleText:SetFont( Fonts.kAgencyFB_Small )
 		ListTitleText:SetText( ListTitles[ i + 1 ] )
 		ListTitleText:SetTextAlignmentX( GUIItem.Align_Center )
 		ListTitleText:SetTextAlignmentY( GUIItem.Align_Center )
@@ -84,17 +87,17 @@ function CaptainMenu:Create()
 		List:SetAnchor( "TopLeft" )
 		List.Pos = Vector( PanelSize.x * 0.02, PanelSize.y * ( 0.15 + 0.25 * i ) + 15 * i, 0 )
 		List:SetPos( List.Pos )
-		List:SetColumns( 6, "Name", "Playtime", "Skill", "W/L", "K/D", "Score/D" )
-		List:SetSpacing( 0.3, 0.15, 0.15, 0.1, 0.15, 0.15 )
+		List:SetColumns( 8, "SteamId", "Name", "Playtime", "Skill", "W/L", "K/D", "Score/D", "Votes" )
+		List:SetSpacing( 0.15, 0.2, 0.15, 0.1, 0.1, 0.1, 0.1, 0.1 )
 		List:SetSize( Vector( PanelSize.x * 0.74, PanelSize.y * 0.2, 0 ) )
-		List:SetNumericColumn( 2 )
+		List:SetNumericColumn( 1 )
 		List:SetNumericColumn( 3 )
 		List:SetNumericColumn( 4 )
 		List:SetNumericColumn( 5 )
+		List:SetNumericColumn( 6 )
+		List:SetNumericColumn( 7 )
+		List:SetNumericColumn( 8 )
 		List.ScrollPos = Vector( 0, 32, 0 )
-		List.TableIds = {}
-		List.SteamIds = {}
-		List.Data = {}
 		List.TitlePanel = ListTitlePanel
 		List.TitleText = ListTitleText
 		
@@ -113,9 +116,9 @@ function CaptainMenu:Create()
 	local CommandPanelSize = CommandPanel:GetSize()
 	
 	local Label = CommandPanel:Add( "Label" )
-	Label:SetFont( "fonts/AgencyFB_small.fnt" )
+	Label:SetFont( Fonts.kAgencyFB_Small )
 	Label:SetBright( true )
-	Label:SetText( TextWrap( Label, "Select a player and the command to run.", 0, CommandPanelSize.y ) )
+	Label:SetText( WordWrap( Label, "Select a player and the command to run.", 0, CommandPanelSize.x ) )
 	self.Label = Label
 	
 	self.Categories = {}
@@ -168,10 +171,11 @@ end
 function CaptainMenu:UpdateTeam( TeamNumber, Name, Wins )
 	if not self.Created then 
 		Plugin:SimpleTimer( 1, function() self:UpdateTeam( TeamNumber, Name, Wins ) end )
-		return 
+		return
 	end
 	
-	local TextItem = self.ListItems[ TeamNumber ].TitleText
+	local TextItem = self.ListItems[ TeamNumber + 1 ].TitleText
+	
 	local Text = StringFormat( "%s (Wins: %s)", Name, Wins )
 	TextItem:SetText( Text )
 end
@@ -195,7 +199,7 @@ function CaptainMenu:AskForPlayer()
 
 	local Label = SGUI:Create( "Label", Window )
 	Label:SetAnchor( "CentreMiddle" )
-	Label:SetFont( "fonts/AgencyFB_small.fnt" )
+	Label:SetFont( Fonts.kAgencyFB_Small )
 	Label:SetBright( true )
 	Label:SetText( "Please select a single player." )
 	Label:SetPos( Vector( 0, -40, 0 ) )
@@ -206,7 +210,7 @@ function CaptainMenu:AskForPlayer()
 	OK:SetAnchor( "CentreMiddle" )
 	OK:SetSize( Vector( 128, 32, 0 ) )
 	OK:SetPos( Vector( -64, 40, 0 ) )
-	OK:SetFont( "fonts/AgencyFB_small.fnt" )
+	OK:SetFont( Fonts.kAgencyFB_Small )
 	OK:SetText( "OK" )
 
 	function OK.DoClick()
@@ -234,7 +238,7 @@ function CaptainMenu:AskforTeamName()
 
 	local Label = SGUI:Create( "Label", Window )
 	Label:SetAnchor( "CentreMiddle" )
-	Label:SetFont( "fonts/AgencyFB_small.fnt" )
+	Label:SetFont( Fonts.kAgencyFB_Small )
 	Label:SetBright( true )
 	Label:SetText( "Please type in your new teamname." )
 	Label:SetPos( Vector( 0, -40, -25 ) )
@@ -243,7 +247,7 @@ function CaptainMenu:AskforTeamName()
 	
 	local Input = SGUI:Create( "TextEntry", Window )
 	Input:SetAnchor( "CentreMiddle" )
-	Input:SetFont( "fonts/AgencyFB_small.fnt" )
+	Input:SetFont( Fonts.kAgencyFB_Small )
 	Input:SetPos( Vector( -160, -5, 0 ) )
 	Input:SetSize( Vector( 320, 32, 0 ) )
 	
@@ -251,7 +255,7 @@ function CaptainMenu:AskforTeamName()
 	OK:SetAnchor( "CentreMiddle" )
 	OK:SetSize( Vector( 128, 32, 0 ) )
 	OK:SetPos( Vector( -64, 40, 0 ) )
-	OK:SetFont( "fonts/AgencyFB_small.fnt" )
+	OK:SetFont( Fonts.kAgencyFB_Small )
 	OK:SetText( "OK" )
 
 	function OK.DoClick()
@@ -278,14 +282,14 @@ function CaptainMenu:AddCategory( Name )
 		local Button = SGUI:Create( "Button" )
 		Button:SetSize( Vector( CommandPanel:GetSize().x, 32, 0 ) )
 		Button:SetText( Text )
-		Button:SetFont( "fonts/AgencyFB_small.fnt" )
+		Button:SetFont( Fonts.kAgencyFB_Small )
 		Button.DoClick = function( Button )
 			local SteamId 
 			for i = 1, #Lists do
 				local List = Lists[ i ]
 				local ListRow = List:GetSelectedRow()
 				if ListRow then					
-					SteamId = List.SteamIds[ ListRow:GetColumnText( 1 ) ]
+					SteamId = ToNumber( ListRow:GetColumnText( 1 ) )
 					break
 				end
 			end
@@ -319,21 +323,30 @@ function CaptainMenu:RemoveCategory( Name )
 end
 
 function CaptainMenu:UpdatePlayer( Message )
-	if not self.Created then return end
+	if not self.Created then 
+		Plugin:SimpleTimer( 1, function() self:UpdatePlayer( Message ) end )
+		return
+	end
 	
+	local Row
 	for i = 1, 3 do
-		local List = self.ListItems[i]
-		if List.TableIds[ Message.steamid ] then
-			List:RemoveRow( List.TableIds[ Message.steamid ] )
-			List.TableIds[ Message.steamid ] = nil
-			List.SteamIds[ Message.name ] = nil
-			break
+		local List = self.ListItems[ i ]
+		local Rows = List.Rows
+		for j = 1, List.RowCount do
+			if Rows[ j ]:GetColumnText( 1 ) == Message.steamid then
+				if i ~= Message.team + 1 then
+					List:RemoveRow( j )
+				else
+					Row = Rows[ j ]
+				end
+				
+				break
+			end
 		end
 	end
 	
 	if Message.team > 2 then return end 
 	
-	local List = self.ListItems[ Message.team + 1 ]
 	if Message.deaths < 1 then Message.deaths = 1 end
 	if Message.loses < 1 then Message.loose = 1 end
 	
@@ -342,10 +355,16 @@ function CaptainMenu:UpdatePlayer( Message )
 	local sm = Round( Message.score / Message.deaths, 2 )
 	local wl = Round( Message.wins / Message.loses, 2 )
 	
-	List.Data[ List.RowCount + 1 ] = { Message.name, playtime, Message.skill, wl, kd, sm, Message.votes }
-	List:AddRow( Unpack( List.Data[ List.RowCount + 1 ] ) )
-	List.TableIds[ Message.steamid ] = List.RowCount
-	List.SteamIds[ Message.name ] = Message.steamid
+	local RowData = { Message.steamid, Message.name, playtime, Message.skill, wl, kd, sm, Message.votes }
+	
+	if Row then
+		for i = 1, 8 do
+			Row:SetColumnText( i, ToString( RowData[ i ] ) )
+		end
+	else
+		local List = self.ListItems[ Message.team + 1 ]
+		List:AddRow( Unpack( RowData ) )
+	end
 end
 
 function CaptainMenu:SetIsVisible( Bool )	
@@ -374,6 +393,12 @@ function CaptainMenu:PlayerKeyPress( Key, Down )
 end
 
 function CaptainMenu:Destroy()
+	self.Created = false
+	
+	if self.Visible then
+		self:SetIsVisible( false )
+	end
+	
 	self.Panel:Destroy()
 	for i = 1, #self.Windows do
 		local Window = self.Windows[ i ]
@@ -445,6 +470,10 @@ function Plugin:RemoveTextMessage()
 end
 
 function Plugin:ChangeState( OldState, NewState )
+	if not CaptainMenu.Created then
+		CaptainMenu:Create()
+	end
+	
 	local PanelSize = CaptainMenu.Panel:GetSize()
 	if NewState == 1 then
 		CaptainMenu.ListItems[ 1 ]:SetSize( Vector( PanelSize.x * 0.74, PanelSize.y * 0.8, 0 ) )
@@ -528,7 +557,15 @@ function Plugin:ReceiveSetCaptain( Message )
 	
 	if Message.add then
 		local List = CaptainMenu.ListItems[ TeamNumber + 1 ]
-		local RowId = List.TableIds[ SteamId ]
+		local RowId
+		for i = 1, List.RowCount do
+			if Rows[ i ]:GetColumnText( 1 ) == Message.steamid then
+				RowId = j
+				break
+			end
+		end
+		
+		if not RowId then return end
 		local Row = List.Rows[ RowId ]
 		for i = 1, Row.Columns do
 			local Object = Row.TextObjs[ i ]
@@ -545,41 +582,17 @@ end
 function Plugin:ReceiveVoteState( Message )
 	if Message.team > 0 and Message.team ~= LocalTeam then return end
 	
-	local List = CaptainMenu.ListItems[ Message.team + 1 ]
 	if Message.start then
 		if Message.timeleft > 1 then
 			self:CreateTimer( "VoteMessage", 1, Message.timeleft - 1, function( Timer )
 				self:UpdateTextMessage( Timer:GetReps() )
 			end )			
-		end
-		
+		end		
 		CaptainMenu:AddCategory( "Vote Captain" )
-		
-		local Data = List.Data
-		local RowCount = #Data 
-		for i = 0, RowCount - 1 do
-			List:RemoveRow( RowCount - i ) 
-		end
-		List:SetSpacing( 0.3, 0.15, 0.15, 0.1, 0.1, 0.1, 0.1 )
-		List:SetColumns( 7, "Name", "Playtime", "Skill", "W/L", "K/D", "Score/D", "Votes" )
-		for i = 1, RowCount do
-			List:AddRow( Unpack( Data[i] ) ) 
-		end
 	else
 		self:DestroyTimer( "VoteMessage" )
 		self:UpdateTextMessage()
-		
-		local Data = List.Data
-		local RowCount = #Data 
-		for i = 0, RowCount - 1 do
-			List:RemoveRow( RowCount - i ) 
-		end
-		List:SetColumns( 6, "Name", "Playtime", "Skill", "W/L", "K/D", "Score/D" )
-		List:SetSpacing( 0.3, 0.15, 0.15, 0.1, 0.15, 0.15 )
-		for i = 1, RowCount do
-			List:AddRow( Unpack( Data[i] ) ) 
-		end
-		
+
 		CaptainMenu:RemoveCategory( "Vote Captain" )
 	end
 end
@@ -595,8 +608,16 @@ function Plugin:ReceiveMessageConfig( Message )
 	self.MessageConfig = Message
 end
 
+function Plugin:OnResolutionChanged()
+	CaptainMenu:Destroy()
+	CaptainMenu:Create()
+	self:SendNetworkMessage( "OnResolutionChanged", {}, true )
+end
+
 function Plugin:Cleanup()
 	CaptainMenu:Destroy()
+	self:RemoveTextMessage()
+	
 	self.BaseClass.Cleanup( self )
 	self.Enabled = false
 end

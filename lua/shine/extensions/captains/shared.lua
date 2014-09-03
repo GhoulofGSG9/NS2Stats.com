@@ -46,6 +46,8 @@ function Plugin:SetupDataTable()
 	}
 	self:AddNetworkMessage( "TeamInfo", TeamInfo, "Client" )
 	
+	self:AddNetworkMessage( "OnResolutionChanged", {}, "Server")
+	
 	self:AddDTVar( "integer (0 to 10)", "State", 0 )
 end
 
