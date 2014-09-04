@@ -673,7 +673,7 @@ function Plugin:CreateCommands()
 	CommandReady:Help( "Sets your team to be ready [this command is only available for captains]" )
 	
 	local function OpenMenu( Client )
-		if self.dt.State == 0 then return end
+		if self.dt.State == 0 or not self.Enabled then return end
 		self:SendNetworkMessage( Client, "CaptainMenu", {}, true)
 	end
 	local CommandMenu = self:BindCommand("sh_captainmenu", "captainmenu", OpenMenu, true)
@@ -708,7 +708,7 @@ function Plugin:CreateCommands()
 		self.dt.State = State
 	end
 	local ChangeStateCommand = self:BindCommand("sh_captainstate", "captainstate", ChangeState)
-	ChangeStateCommand:AddParam{ Type = "number", Min = 1, Max = 5 }
+	ChangeStateCommand:AddParam{ Type = "number", Min = 0, Max = 5 }
 end
 
 --Vote Class

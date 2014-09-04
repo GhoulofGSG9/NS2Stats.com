@@ -15,6 +15,7 @@ local CaptainMenu = {}
 
 local LocalId
 local LocalTeam = 0
+local Loaded = false
 
 function CaptainMenu:Create()
 	if self.Created then return end
@@ -407,9 +408,23 @@ function CaptainMenu:Destroy()
 end
 
 function Plugin:Initialise()
-	self.Enabled = true
 	CaptainMenu:Create()
+	
+	self.Enabled = true
+	
 	self:SetupAdminMenuCommands()
+	
+	if not Loaded then 
+		Shine.VoteMenu:EditPage( "Main", function( self )
+			local MenuButton = self:AddSideButton( "Captain Mode Menu", function()
+				Shared.ConsoleCommand( "sh_captainmenu" )
+				self:SetIsVisible( false )
+			end )
+			MenuButton:SetIsVisible( Plugin.dt.State > 0 )
+		end )
+		Loaded = true
+	end
+	
 	return true
 end
 
@@ -490,21 +505,6 @@ function Plugin:ChangeState( OldState, NewState )
 			List:SetPos( List.Pos )
 			List.TitlePanel:SetPos( List.TitlePanel.Pos )
 		end
-	end
-	
-	--Shine Vote Menu
-	if not self.VoteMenuButton then
-		Shine.VoteMenu:EditPage( "Main", function( self )
-			Plugin.VoteMenuButton = self:AddSideButton( "Captain Mode Menu", function()
-				Shared.ConsoleCommand( "sh_captainmenu" )
-				self:SetIsVisible( false )
-			end )
-			Plugin.VoteMenuButton:SetIsVisible( NewState > 0 )
-			self:SortSideButtons()
-		end )
-	else
-		self.VoteMenuButton:SetIsVisible( NewState > 0 )
-		Shine.VoteMenu:SortSideButtons()
 	end
 	
 	local Player = Client.GetLocalPlayer()
