@@ -264,7 +264,7 @@ function CaptainMenu:AskforTeamName()
 		if Text and Text:len() > 0 then
 			Shared.ConsoleCommand( StringFormat( "sh_setteamname %s %s", LocalTeam, Text ) )
 		else
-			Plugin:Notify( "You have to enter a teamname!" )
+			Plugin:Notify( "You have to enter a team name!" )
 		end
 		Window:Destroy()
 	end
@@ -436,6 +436,7 @@ local Messages = {
 	"",
 	"The current vote will end in %s minutes\nPress %s to access the Captain Mode Menu.\nOr type !captainmenu into the chat."
 }
+
 function Plugin:StartMessage()
 	self:CreateTextMessage()
 	self:CreateTimer( "TextMessage", 1800, -1, function() self:CreateTextMessage() end )
@@ -558,8 +559,8 @@ function Plugin:ReceiveSetCaptain( Message )
 	if Message.add then
 		local List = CaptainMenu.ListItems[ TeamNumber + 1 ]
 		local RowId
-		for i = 1, List.RowCount do
-			if Rows[ i ]:GetColumnText( 1 ) == Message.steamid then
+		for j, Row in ipairs( List.Rows ) do
+			if Row:GetColumnText( 1 ) == SteamId then
 				RowId = j
 				break
 			end
@@ -571,7 +572,6 @@ function Plugin:ReceiveSetCaptain( Message )
 			local Object = Row.TextObjs[ i ]
 			Object:SetColor( Colour( 1, 215/255, 0, 1 ) )
 		end
-		self:Notify( "%s is now Captain of Team %s", true, List.Data[ RowId ][ 1 ], TeamNumber )
 		if LocalId == SteamId then CaptainMenu:AddCategory( "Team Organization" ) end
 	else
 		if LocalId == SteamId then CaptainMenu:RemoveCategory( "Team Organization" ) end

@@ -159,14 +159,19 @@ end
 
 local CaptainsNum = 0
 function Plugin:SetCaptain( SteamId, TeamNumber )
-	--inform about new Captain
 	if not SteamId then return end
 	
 	self:RemoveCaptain( TeamNumber, true )
 	Teams[ TeamNumber ].Captain = SteamId
 	Teams[ TeamNumber ].Players[ SteamId ] = true
+	
 	local Client = GetClientByNS2ID( SteamId )
+	
+	if not Client then return end
 	local Player = Client:GetControllingPlayer()
+	
+	self:Notify( nil, "%s is now the Captain of Team %s", true, Player:GetName(), TeamNumber )
+	
 	Gamerules:JoinTeam( Player, Teams[ TeamNumber ].TeamNumber, nil, true )
 	self:SendNetworkMessage( nil, "SetCaptain", { steamid = SteamId, team = TeamNumber, add = true }, true )
 	
@@ -196,17 +201,20 @@ end
 function Plugin:RemoveCaptain( TeamNumber, SetCall )
 	local SteamId = Teams[ TeamNumber ].Captain
 	if not SteamId or CaptainsNum == 0 then return end
-	
-	if Teams[ TeamNumber ].Ready then
-		Teams[ TeamNumber ].Ready = false
-		self:Notify( nil, "Team %s is now not any more ready!", true, TeamNumber )
-	end
-	
+		
 	Teams[ TeamNumber ].Players[ SteamId ] = false
 	Teams[ TeamNumber ].Captain = nil
+	
 
 	local Client = GetClientByNS2ID( SteamId )
 	local Player = Client:GetControllingPlayer()
+	
+	self:Notify( nil, "%s is now not any longer the Captain of Team %s", true, Player:GetName(), TeamNumber )
+	if Teams[ TeamNumber ].Ready then
+		Teams[ TeamNumber ].Ready = false
+		self:Notify( nil, "And Team %s is now not any more ready!", true, TeamNumber )
+	end
+	
 	self:SendNetworkMessage( nil, "SetCaptain", { steamid = SteamId, team = TeamNumber, add = false }, true )
 	Gamerules:JoinTeam( Player, 0, nil, true )
 	CaptainsNum = CaptainsNum - 1
@@ -223,7 +231,9 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 	return false
 end
 
-function Plugin:OnPlayerRename( Player )
+function Plugin:OnPlayerRename( Player, Name )
+	if Name == kDefaultPlayerName then return end
+	
 	self:SendPlayerData( nil, Player )
 end
 
