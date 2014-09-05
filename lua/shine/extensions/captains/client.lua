@@ -420,7 +420,7 @@ function Plugin:Initialise()
 				Shared.ConsoleCommand( "sh_captainmenu" )
 				self:SetIsVisible( false )
 			end )
-			MenuButton:SetIsVisible( Plugin.dt.State > 0 )
+			MenuButton:SetIsVisible( Plugin.Enabled and Plugin.dt.State > 0 )
 		end )
 		Loaded = true
 	end
