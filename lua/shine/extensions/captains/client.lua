@@ -333,12 +333,12 @@ function CaptainMenu:UpdatePlayer( Message )
 	for i = 1, 3 do
 		local List = self.ListItems[ i ]
 		local Rows = List.Rows
-		for j, TempRow in ipairs( Rows ) do
-			if TempRow:GetColumnText( 1 ) == Message.steamid then
+		for j = 1, List.RowCount do
+			if Rows[ j ]:GetColumnText( 1 ) == Message.steamid then
 				if i ~= Message.team + 1 then
 					List:RemoveRow( j )
 				else
-					Row = TempRow
+					Row = Rows[ j ]
 				end
 				
 				break
