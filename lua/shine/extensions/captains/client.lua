@@ -319,6 +319,8 @@ function CaptainMenu:AddCategory( Name )
 end
 
 function CaptainMenu:RemoveCategory( Name )
+	if not self.Categories[ Name ] then return end
+	
 	self.Categories[ Name ] = false
 	self.Commands:RemoveCategory( Name )
 end
