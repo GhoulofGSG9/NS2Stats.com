@@ -603,7 +603,7 @@ function Plugin:CreateCommands()
 		local TargetPlayer = Target:GetControllingPlayer()
 		if not TargetPlayer then return end
 		
-		Gamerules:JoinTeam( Player, CaptainTeam, nil, true )
+		Gamerules:JoinTeam( TargetPlayer, CaptainTeam, nil, true )
 	end
 	local CommandAddPlayer = self:BindCommand( "sh_captain_addplayer", "captainaddplayer", AddPlayer, true )
 	CommandAddPlayer:AddParam{ Type = "client", NotSelf = true, IgnoreCanTarget = true }
@@ -623,10 +623,10 @@ function Plugin:CreateCommands()
 			return 
 		end
 
-		Gamerules:JoinTeam( Player, 0, nil, true )
+		Gamerules:JoinTeam( TargetPlayer, 0, nil, true )
 	end
 	local CommandRemovePlayer = self:BindCommand( "sh_captain_removeplayer", "captainremoveplayer", RemovePlayer, true )
-	CommandRemovePlayer:AddParam{ Type = "client", NotSelf = true }
+	CommandRemovePlayer:AddParam{ Type = "client", NotSelf = true, IgnoreCanTarget = true }
 	CommandRemovePlayer:Help( "<player> Removes the given player from your team [this command is only available for captains]" )
 	
 	-- removecaptain
