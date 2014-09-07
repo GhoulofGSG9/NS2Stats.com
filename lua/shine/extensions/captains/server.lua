@@ -1,4 +1,6 @@
 local Plugin = Plugin
+local Vote = {}
+
 local Shine = Shine
 local GetAllPlayers = Shine.GetAllPlayers
 local GetAllClients = Shine.GetAllClients
@@ -509,8 +511,8 @@ function Plugin:RestoreTeams()
 	
 	for i = 1, #AllPlayer do
 		local Player = AllPlayer[ i ]
-		local steamId = Player:GetSteamId()
-		local Team = self:GetTeamNumber( steamId )
+		local SteamId = Player:GetSteamId()
+		local Team = self:GetTeamNumber( SteamId )
 		local TeamNumber = Team and self.Teams[ Team ].TeamNumber
 		if Player:GetTeamNumber() == 0 then
 			Gamerules:JoinTeam( Player, TeamNumber, nil, true )
@@ -694,7 +696,6 @@ function Plugin:CreateCommands()
 end
 
 --Vote Class
-local Vote = {}
 function Vote:New( NewVote, Team )
 	NewVote = NewVote or {}
 	setmetatable( NewVote, self )
