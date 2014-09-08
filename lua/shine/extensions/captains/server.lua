@@ -163,7 +163,7 @@ function Plugin:SetCaptain( SteamId, TeamNumber )
 	
 	self:Notify( nil, "%s is now the Captain of Team %s", true, Player:GetName(), TeamNumber )
 	
-	Gamerules:JoinTeam( Player, Teams[ TeamNumber ].TeamNumber, nil, true )
+	Gamerules:JoinTeam( Player, self.Teams[ TeamNumber ].TeamNumber, nil, true )
 	self:SendNetworkMessage( nil, "SetCaptain", { steamid = SteamId, team = TeamNumber, add = true }, true )
 	
 	CaptainsNum = CaptainsNum + 1
