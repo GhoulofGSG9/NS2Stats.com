@@ -35,7 +35,7 @@ Plugin.HasConfig = true
 Plugin.ConfigName = "CaptainMode.json"
 Plugin.DefaultConfig = {
 	MinPlayers = 12,
-	MaxVoteTime = 4,
+	MaxVoteTime = 1,
 	MinVotesToPass = 0.8,
 	MaxWaitForCaptains = 4,
 	BlockGameStart = false,
@@ -840,18 +840,24 @@ function Vote:End()
 	else
 		Winners[ 1 ] = self.Ranks[ HighestRank ][ 1 ]
 		--get next rank
-		local NextRank = HighestRank
-		for i = 1, HighestRank - 1 do
-			if self.Ranks[ NextRank - i ] then
-				NextRank = NextRank - i
+		local NextRank
+		for i = HighestRank - 1, 1, -1 do
+			if self.Ranks[ i ] and #self.Ranks[ i ] > 0 then
+				NextRank = i
 				break
 			end
 		end
+		
+		if not NextRank then
+			Shine:DebugPrint("Captains Vote had a issue while picking a winner.\n Class table:\n%s", true, table.ToString( self ) )
+			return
+		end
+		
 		local j = Random( 1, #self.Ranks[ NextRank ] )
 		Winners[ 2 ] = self.Ranks[ j ]
 	end
 	
-	if self.Team ~= 0 then 
+	if self.Team > 0 then 
 		Plugin:SetCaptain( Winners[ 1 ], self.Team )
 	else
 		Plugin:SetCaptain( Winners[ 1 ], 1 )
