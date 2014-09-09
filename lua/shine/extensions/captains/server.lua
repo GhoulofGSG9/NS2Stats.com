@@ -92,7 +92,7 @@ function Plugin:CheckStart()
 		self.Config.Cache = {}
 		self:SaveConfig( true )		
 		self:CreateTimer( "CaptainWait", 1, self.Config.MaxWaitForCaptains, function() self:Reset() end )	
-	elseif Shine.GetHumanPlayerCount() > self.Config.MinPlayers and self.dt.State == 0 and not self:TimerExists( "CaptainWait" ) then
+	elseif Shine.GetHumanPlayerCount() >= self.Config.MinPlayers and self.dt.State == 0 and not self:TimerExists( "CaptainWait" ) then
 		local Players = GetAllPlayers()
 		if Gamerules then 
 			for i = 1, #Players do
