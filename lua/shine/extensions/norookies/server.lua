@@ -1,25 +1,14 @@
 --[[
     Shine No Rookies - Server
 ]]
-Script.Load( "lua/shine/core/server/playerinfohub.lua" )
-
 local Shine = Shine
-
 local InfoHub = Shine.PlayerInfoHub
-
 local Plugin = Plugin
 
 local Notify = Shared.Message
 local StringFormat = string.format
-local GetOwner = Server.GetOwner
-
-local HTTPRequest = Shared.SendHTTPRequest
-
-local JsonDecode = json.decode
 
 Plugin.Version = "1.5"
-Plugin.DefaultState = false
-
 Plugin.HasConfig = true
 
 Plugin.ConfigName = "norookies.json"
@@ -31,7 +20,7 @@ Plugin.DefaultConfig =
     DisableAfterRoundtime = 0,
     MinPlaytime = 8,
     MinComPlaytime = 8,
-    InformAtConnect = true,
+    ShowInform = true,
     InformMessage = "This server is not rookie friendly",
     BlockTeams = true,
     ShowSwitchAtBlock = false,
@@ -44,17 +33,15 @@ Plugin.DefaultConfig =
     WaitMessage = "Please wait while your Player data is retrieved",
 }
 Plugin.CheckConfig = true
+Plugin.CheckConfigTypes = true
 
-Shine.Hook.SetupClassHook( "CommandStructure", "OnUse", "CheckComLogin", "ActivePre" )
-
+Plugin.Name = "No Rookies"
+Plugin.DisconnectReason = "You didn't fit to the required playtime"
 local Enabled = true
-function Plugin:ClientConfirmConnect( Client )
-    if self.Config.InformAtConnect then
-        local Player = Client:GetControllingPlayer()
-        if not Player then return end
-        
-        self:Notify( Player, self.Config.InformMessage )
-    end  
+
+function Plugin:Initialise()
+	self.Enabled = true
+	return true
 end
 
 function Plugin:SetGameState( Gamerules, NewState, OldState )
@@ -81,7 +68,7 @@ function Plugin:CheckComLogin( Chair, Player )
 end
 
 function Plugin:Check( Player, ComCheck )
-    local Client = GetOwner( Player )
+    local Client = Player:GetClient()
     if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignorestatus" ) then return end
     
     local SteamId = Client:GetUserId()
@@ -116,55 +103,11 @@ function Plugin:Check( Player, ComCheck )
     
     if PlayTime < CheckTime * 3600 then
         self:Notify( Player, self.Config.BlockMessage )
-		Notify( StringFormat("[NoRookies]: %s failed the check with %s hours", Shine.GetClientInfo( Client ), PlayTime / 3600 ))
+		Notify( StringFormat("[No Rookies]: %s failed the check with %s hours", Shine.GetClientInfo( Client ), PlayTime / 3600 ))
         if self.Config.ShowSwitchAtBlock then
            self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
         end
         self:Kick( Player )
         return false
     end
-end
-
-function Plugin:Notify( Player, Message )
-    Shine:NotifyDualColour( Player, 100, 255, 100, "[No Rookies]", 255, 255, 255, Message )
-end
-
-local Kicktimes = {}
-function Plugin:Kick( Player )
-    if not self.Config.Kick then return end
-    
-    local Client = Player:GetClient()
-    if not Shine:IsValidClient(Client) then return end
-    
-    local SteamId = Client:GetUserId() or 0
-    if SteamId <= 0 then return end
-    
-    if self:TimerExists( StringFormat( "Kick_%s", SteamId )) then return end
-    self:Notify(Player, StringFormat( self.Config.KickMessage, self.Config.Kicktime ))
-    
-    Kicktimes[ SteamId ] = self.Config.Kicktime
-    self:CreateTimer(StringFormat( "Kick_%s", SteamId ), 1, self.Config.Kicktime, function()
-        if not Shine:IsValidClient( Client ) then
-            Plugin:DestroyTimer( StringFormat( "Kick_%s", SteamId ))
-            return
-        end
-        
-        local Player = Client:GetControllingPlayer()
-        
-        Kicktimes[ SteamId ] = Kicktimes[ SteamId ] - 1
-        if Kicktimes[ SteamId ] == 10 then self:Notify(Player, StringFormat( self.Config.KickMessage, Kicktimes[ SteamId ] )) end
-        if Kicktimes[ SteamId ] <= 5 then self:Notify(Player, StringFormat( self.Config.KickMessage, Kicktimes[ SteamId ] )) end        
-        if Kicktimes[ SteamId ] <= 0 then
-            Shine:Print( "Client %s [ %s ] was kicked by NoRookies. Kicking...", true, Player:GetName(), SteamId )
-            Client.DisconnectReason = "You didn't fit to the set min playtime"
-            Server.DisconnectClient( Client )
-        end
-    end )    
-end
-
-function Plugin:ClientDisconnect( Client )
-    local SteamId = Client:GetUserId()
-    if not SteamId or SteamId <= 0 then return end
-    
-    self:DestroyTimer( StringFormat( "Kick_%s", SteamId ))
 end
