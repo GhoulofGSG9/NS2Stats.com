@@ -854,7 +854,7 @@ function Vote:End()
 		end
 		
 		local j = Random( 1, #self.Ranks[ NextRank ] )
-		Winners[ 2 ] = self.Ranks[ j ]
+		Winners[ 2 ] = self.Ranks[ NextRank ][ j ]
 	end
 	
 	if self.Team > 0 then 
