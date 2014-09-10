@@ -218,10 +218,12 @@ function Plugin:Kick( Player )
             Timer:Destroy()
             return
         end
-        
+		
+		local Player = Client:GetControllingPlayer()
+		
         local Kicktimes = Timer:GetReps()
-        if Kicktimes == 10 then self:Notify(Player, StringFormat( self.Config.KickMessage, Kicktimes )) end
-        if Kicktimes <= 5 then self:Notify( Player, StringFormat( self.Config.KickMessage, Kicktimes )) end
+        if Kicktimes == 10 then self:Notify( Player, StringFormat( self.Config.KickMessage, Kicktimes ) ) end
+        if Kicktimes <= 5 then self:Notify( Player, StringFormat( self.Config.KickMessage, Kicktimes ) ) end
         if Kicktimes <= 0 then
             Shine:Print( "Client %s [ %s ] was kicked by %s. Kicking...", true, Player:GetName(), SteamId, self.Name)
             Client.DisconnectReason = self.DisconnectReason
