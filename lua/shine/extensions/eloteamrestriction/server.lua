@@ -56,29 +56,25 @@ function Plugin:ClientConfirmConnect( Client )
     if self.Config.ShowInform and Player then self:Notify( Player, self.Config.InformMessage ) end
 end
 
-function Plugin:ClientDisconnect(Client)
+function Plugin:ClientDisconnect( Client )
     local SteamId = Client:GetUserId()
     if not SteamId or SteamId <= 0 then return end
     
     self:DestroyTimer(StringFormat( "Kick_%s", SteamId ))
 end
 
-Plugin.IgnoreRight = "sh_ignoreelo"
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
-    
-	local Client = Player:GetClient()
-    
-    if ShineForce or not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, self.IgnoreRight ) or NewTeam == kTeamReadyRoom then return end
-    
-    local SteamId = Client:GetUserId()
-    if not SteamId or SteamId <= 0 then return end
-    
-    if self.Config.AllowSpectating and NewTeam == kSpectatorIndex then self:DestroyTimer( StringFormat( "Kick_%s", SteamId )) return end
+    if ShineForce or self.Config.AllowSpectating and NewTeam == kSpectatorIndex or NewTeam == kTeamReadyRoom then self:DestroyTimer( StringFormat( "Kick_%s", SteamId )) return end
 	
 	return self:Check( Player )
 end
 
 function Plugin:Check( Player )
+	local Client = Player:GetClient()
+    if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignoreelo" ) then return end
+    
+    local SteamId = Client:GetUserId()
+    if not SteamId or SteamId <= 0 then return end
 	
     if not InfoHub:GetIsRequestFinished( SteamId ) then
         self:Notify( Player, self.Config.WaitMessage )

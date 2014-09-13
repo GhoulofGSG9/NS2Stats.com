@@ -1005,8 +1005,8 @@ end
 function Plugin:AddLog( Params )    
 	if self.RoundFinished == 1 or not Params then return end
 	
-	if not Plugin.Log then Plugin.Log = {} end
-	if not Plugin.Log[ Plugin.LogPartNumber ] then Plugin.Log[ Plugin.LogPartNumber ] = "" end
+	if not self.Log then self.Log = {} end
+	if not self.Log[ self.LogPartNumber ] then self.Log[ self.LogPartNumber ] = "" end
 
 	if Shared.GetCheatsEnabled() and self.StatsEnabled then 
 		self.StatsEnabled = false
@@ -1018,7 +1018,7 @@ function Plugin:AddLog( Params )
 	Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(Params))	
 	
 	--avoid that log gets too long
-	if StringLen( self.Log[self.LogPartNumber] ) > 160000 then
+	if StringLen( self.Log[ self.LogPartNumber ] ) > 160000 then
 		self.LogPartNumber = self.LogPartNumber + 1    
 		if self.StatsEnabled then self:SendData() end        
 	end
@@ -1239,7 +1239,7 @@ end
 
 function Plugin:GetPlayerByName( Name )
 	if not Name then return end
-	for _,PlayerInfo in pairs( self.PlayersInfos ) do        
+	for _, PlayerInfo in pairs( self.PlayersInfos ) do        
 		if PlayerInfo.name == Name then return PlayerInfo end	
 	end
 	return
