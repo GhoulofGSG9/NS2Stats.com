@@ -111,7 +111,7 @@ function Plugin:Check( Player )
     end
     
     if self.Config.ForceSteamTime then
-		if SteamTime or SteamTime < 0 or SteamTime / 60 < self.Config.MinPlayTime or SteamTime / 60 > self.Config.MaxPlayTime then
+		if not SteamTime or SteamTime < 0 or SteamTime / 60 < self.Config.MinPlayTime or SteamTime / 60 > self.Config.MaxPlayTime then
 			self:Notify( Player, self.Config.BlockMessage:sub( 1, self.Config.BlockMessage:find( ".", 1, true )))
 			if self.Config.ShowSwitchAtBlock then
 			   self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
@@ -119,7 +119,7 @@ function Plugin:Check( Player )
 			self:Kick( Player )
 			return false
 		end
-    elseif Playtime or Playtime < 0 or Playtime / 60 < self.Config.MinPlayTime or Playtime / 60 > self.Config.MaxPlayTime then
+    elseif not Playtime or Playtime < 0 or Playtime / 60 < self.Config.MinPlayTime or Playtime / 60 > self.Config.MaxPlayTime then
         self:Notify( Player, self.Config.BlockMessage:sub( 1, self.Config.BlockMessage:find( ".", 1, true )))
         if self.Config.ShowSwitchAtBlock then
            self:SendNetworkMessage( Client, "ShowSwitch", {}, true )
