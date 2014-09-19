@@ -1,5 +1,4 @@
 local Plugin = Plugin
-local Vote = {}
 
 local Shine = Shine
 local GetAllPlayers = Shine.GetAllPlayers
@@ -15,6 +14,10 @@ local SetupClassHook = Shine.Hook.SetupClassHook
 if not Shine.PlayerInfoHub then 
 	Script.Load( "lua/shine/core/server/playerinfohub.lua" )
 end
+
+--Vote Class
+Script.Load( "lua/shine/extensions/captains/vote.lua" )
+
 local PlayerInfoHub = Shine.PlayerInfoHub
 
 local HiveData = {}
@@ -40,7 +43,6 @@ Plugin.DefaultConfig = {
 	MaxWaitForCaptains = 4,
 	BlockGameStart = false,
 	AllowPregameJoin = true,
-	Cache = { temp },
 	StateMessageFirst = "Captain Mode enabled",
 	StateMessages =
 	{
@@ -60,13 +62,55 @@ Plugin.DefaultConfig = {
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
 
-function Plugin:Initialise()
-	self.Enabled = true
-	self.Votes = {}
-	self:ResetTeams()
-	self.Cache = false
+local function OnSucess( self, Winners )
+	local Team = 0
+	if self.Team > 0 then
+		Team = self.Team == Plugin.Teams[ 1 ].TeamNumber and 1 or 2
+	end
+	
+	Plugin:SendNetworkMessage( nil, "VoteState", { team = Team, start = false, timeleft = self:GetTimeLeft() }, true )
+	
+	if Team > 0 then
+		Plugin:SetCaptain( Winners[ 1 ].Name, self.Team == Team )
+	else
+		Plugin:SetCaptain( Winners[ 1 ].Name, 1 )
+		Plugin:SetCaptain( Winners[ 2 ].Name, 2 )
+	end
+end
 
-	--update HiveData of players we allready received their HiveInfo
+local function OnFailure( self )
+	local Team = 0
+	if self.Team > 0 then
+		Team = self.Team == Plugin.Teams[ 1 ].TeamNumber and 1 or 2
+	end
+	
+	Plugin:SendNetworkMessage( nil, "VoteState", { team = Team, start = false, timeleft = self:GetTimeLeft() }, true )
+	Plugin:Notify( nil, "CaptainVote%s failed because not enough players voted or we did not got enough Captain candidates! Restarting Vote...", true, self.Team == 1 and " for Team 1" or self.Team == 2 and " for Team 2" or "")
+	
+	self:Start()
+	Plugin:SendNetworkMessage( nil, "VoteState", { team = Team, start = true, timeleft = self:GetTimeLeft() }, true )
+end
+
+local function CreateVote( Team )
+	local Vote = Vote()
+	local WinnerNum = Team > 0 and 1 or 2
+	local Name = StringFormat( "Vote%s", Team )
+	Vote:Setup( Name, {}, Plugin.Config.MaxVoteTime * 60, OnSucess, OnFailure, WinnerNum, Team )
+	return Vote
+end
+
+function Plugin:Initialise()
+	self.Votes = { 
+		[ 0 ] = CreateVote( 0 ),
+		[ 1 ] = CreateVote( 1 ), 
+		[ 2 ] = CreateVote( 2 ) 
+	}
+	
+	self:ResetTeams()
+	
+	self.Enabled = true
+	
+	--update HiveData of players we already received their HiveInfo
 	for _, Client in ipairs( GetAllClients() ) do
 		local ClientId = Client:GetUserId()
 		local HiveInfo = PlayerInfoHub:GetHiveData( ClientId )
@@ -85,14 +129,8 @@ function Plugin:Initialise()
 	return true
 end
 
-function Plugin:CheckStart()	
-	if self.Config.Cache.Teams then
-		self.Cache = true
-		self.Teams = self.Config.Cache.Teams
-		self.Config.Cache = {}
-		self:SaveConfig( true )		
-		self:CreateTimer( "CaptainWait", 1, self.Config.MaxWaitForCaptains, function() self:Reset() end )	
-	elseif Shine.GetHumanPlayerCount() >= self.Config.MinPlayers and self.dt.State == 0 and not self:TimerExists( "CaptainWait" ) then
+function Plugin:CheckStart()
+	if Shine.GetHumanPlayerCount() >= self.Config.MinPlayers and self.dt.State == 0 and not self:TimerExists( "CaptainWait" ) then
 		local Players = GetAllPlayers()
 		if Gamerules then 
 			for i = 1, #Players do
@@ -103,6 +141,12 @@ function Plugin:CheckStart()
 		end
 		self.dt.State = 1
 		self:StartVote()
+	end
+end
+
+function Plugin:Think()
+	for i = 0, 2 do
+		self.Votes[ i ]:OnUpdate()
 	end
 end
 
@@ -126,7 +170,6 @@ end
 function Plugin:Reset()
 	self:Notify( nil, "The Teams have been reset, restarting Captain Mode ..." )
 	self:ResetTeams()
-	self.Config.Cache = {}
 	self:SaveConfig( true )
 	
 	self:DestroyAllTimers()
@@ -144,8 +187,10 @@ function Plugin:StartVote( Team )
 	if not self.Config.VoteforCaptains then return end
 	
 	Team = Team or 0
-	self.Votes[ Team ] = Vote:New( self.Votes[ Team ], Team )
-	self.Votes[ Team ]:Start()
+	
+	local Vote = self.Votes[ Team ]
+	Vote:Start()
+	self:SendNetworkMessage( nil, "VoteState", { team = Team, start = true, timeleft = Vote:GetTimeLeft() }, true )
 end
 
 local CaptainsNum = 0
@@ -215,16 +260,10 @@ function Plugin:RemoveCaptain( TeamNumber, SetCall )
 end
 
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
-	if ShineForce or self.Config.AllowSpectating and NewTeam == kSpectatorIndex or 
+	if ShineForce or self.dt.State ~= 1 and self.Config.AllowSpectating and NewTeam == kSpectatorIndex or 
 	self.Config.AllowPregameJoin and self.dt.State == 0 then return end
 	
 	return false
-end
-
-function Plugin:OnPlayerRename( Player, Name )
-	if Name == kDefaultPlayerName then return end
-	
-	self:SendPlayerData( nil, Player )
 end
 
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
@@ -241,6 +280,15 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineF
 			self:Notify( nil, "%s joined Team %s", true, Player:GetName(), Team )
 		end
 	end
+	
+	if self.Votes[ OldTeam ] then self.Votes[ OldTeam ]:RemoveOption( SteamId ) end
+	if self.Votes[ NewTeam ] then self.Votes[ NewTeam ]:AddVoteOption( SteamId ) end
+	
+	self:SendPlayerData( nil, Player )
+end
+
+function Plugin:OnPlayerRename( Player, Name )
+	if Name == kDefaultPlayerName or self.dt.State == 0 then return end
 	
 	self:SendPlayerData( nil, Player )
 end
@@ -259,6 +307,7 @@ function Plugin:SendPlayerData( Client, Player, Disconnect )
 	local TeamNumber = self:GetTeamNumber( steamId )
 	if Disconnect then TeamNumber = 3 end
 	
+	local Vote = self.Votes[ Player:GetTeamNumber() ]
 	local PlayerData =
 	{
 		steamid = steamId,
@@ -270,7 +319,7 @@ function Plugin:SendPlayerData( Client, Player, Disconnect )
 		skill = 0,
 		win = 0,
 		loses = 0,
-		votes = self.dt.State == 1 and self.Votes[ 0 ].Votes[ steamId ] and self.Votes[ 0 ].Votes[ steamId ].Count or self.Votes[ TeamNumber ] and self.Votes[ TeamNumber ].Votes[ steamId ] and self.Votes[ TeamNumber ].Votes[ steamId ].Count or 0,
+		votes = Vote and Vote:GetIsStarted() and Vote:GetVotes( Vote:OptionToId( steamId ) ) or 0,
 		team = TeamNumber
 	}
 	
@@ -335,7 +384,9 @@ function Plugin:ClientConfirmConnect( Client )
 	local SteamId = Client:GetUserId()
 	
 	self:SendMessages( Client )
-	self:SendPlayerData( nil, Player )
+	
+	self.Votes[ 0 ]:AddVoteOption( SteamId )
+	if self.dt.State == 0 then self:SendPlayerData( nil, Player ) end
 	
 	self:SimpleTimer( 1, function()
 		for _, Player in ipairs( GetAllPlayers() ) do
@@ -348,15 +399,8 @@ function Plugin:ClientConfirmConnect( Client )
 		self:SendNetworkMessage( Client, "VoteState", { team = 0, start = true, timeleft = math.Round( Timer:GetTimeUntilNextRun(), 0 ) }, true )
 	end
 	
-	local CaptainTeam = self:GetCaptainTeamNumbers( SteamId )
-	if CaptainTeam then
-		self:SetCaptain( SteamId, CaptainTeam)
-	elseif self.dt.State == 0 then
+	if self.dt.State == 0 then
 		self:CheckStart()
-	elseif self.dt.State == 2 then 
-		for i = 1, 2 do
-			self.Teams[ i ].Players[ SteamId ] = nil
-		end
 	end
 	
 	if self.dt.State ~= 3 then return end
@@ -368,38 +412,17 @@ function Plugin:ClientConfirmConnect( Client )
 	local MarinesNumPlayers = Marines:GetNumPlayers()
 	local AliensNumPlayers = Aliens:GetNumPlayers()
 	
-	local PlayingTeamNumber
-	local TeamNumber
-	for i = 1, 2 do
-		if self.Teams[ i ].Players[ SteamId ] then
-			PlayingTeamNumber = self.Teams[ i ].TeamNumber
-			TeamNumber = i
-			break
-		end
-	end
+	if MarinesNumPlayers == AliensNumPlayers then
+		local Random = Random( 1, 2 )
 	
-	if MarinesNumPlayers == AliensNumPlayers then		
-		if PlayingTeamNumber then
-			Gamerules:JoinTeam( Player, PlayingTeamNumber, nil, true )
-		else
-			local Random = Random( 1, 2 )
-			
-			self.Teams[ Random ].Players[ SteamId ] = true
-		
-			Gamerules:JoinTeam( Player, self.Teams[ Random ].TeamNumber, nil, true )
-		end
-	else
-		if PlayingTeamNumber then
-			self.Teams[ TeamNumber ].Players[ SteamId ] = nil
-		end
-		
+		Gamerules:JoinTeam( Player, self.Teams[ Random ].TeamNumber, nil, true )
+	else		
 		if MarinesNumPlayers < AliensNumPlayers then
 			TeamNumber = self.Teams[ 1 ].TeamNumber == 1 and 1 or 2
 		else
 			TeamNumber = self.Teams[ 1 ].TeamNumber == 2 and 1 or 2
 		end
 		
-		self.Teams[ TeamNumber ].Players[ SteamId ] = true
 		Gamerules:JoinTeam( Player, self.Teams[ TeamNumber ].TeamNumber, nil, true )
 	end
 end
@@ -423,11 +446,6 @@ function Plugin:ReceiveOnResolutionChanged( Client )
 	end
 end
 
-function Plugin:MapChange()
-	self.Config.Cache.Teams = self.Teams
-	self:SaveConfig( true )
-end
-
 function Plugin:ClientDisconnect( Client )
 	local Player = Client:GetControllingPlayer()
 	self:SendPlayerData( nil, Player, true )
@@ -444,11 +462,6 @@ function Plugin:ClientDisconnect( Client )
 		self.Teams[ TeamNumber ].Players[ SteamId ] = nil
 	end
 	
-	for i = 0, 2 do
-		if self.Votes[ i ] and self.Votes[ i ]:GetIsStarted() then
-			self.Votes[ i ]:Remove( SteamId )
-		end
-	end
 end
 
 function Plugin:CheckGameStart()
@@ -550,13 +563,23 @@ end
 function Plugin:CreateCommands()
 	
 	local function VoteCaptain( Client, Target )
-		local ClientId = Client:GetUserId()
 		local TargetId = Target:GetUserId()
-		local TeamNumber = self:GetTeamNumber( ClientId )
+		local TeamNumber = Client:GetControllingPlayer():GetTeamNumber()
 		
 		local Vote = self.Votes[ TeamNumber ]
 		if Vote and Vote:GetIsStarted() then
-			Vote:Add( ClientId, TargetId )
+			local OldVoteId = Vote:GetOptionName( Vote:GetVote( Client ) )
+			if OldVoteId == TargetId then return end --revote 
+			if OldVoteId then
+				local OldVoteClient = GetClientByNS2ID( OldVoteId )
+				local OldVotePlayer = OldVoteClient:GetControllingPlayer()
+				self:SendPlayerData( nil, Player )
+			end
+			Vote:AddVote( Client, Vote:OptionToId( TargetId ) )
+			
+			if Vote:GetOptionName( Vote:GetVote( Client ) ) == TargetId then
+				self:SendPlayerData( nil, Target:GetControllingPlayer() )
+			end
 		end
 	end
 	local CommandVoteCaptain = self:BindCommand( "sh_votecaptain", "votecaptain", VoteCaptain, true )
@@ -566,9 +589,8 @@ function Plugin:CreateCommands()
 	-- addplayer
 	local function AddPlayer( Client, Target )
 		local SteamId = Client:GetUserId()
-		local TargetId = Target:GetUserId()
 		
-		if self:GetTeamNumber( TargetId ) ~= 0 then
+		if Client:GetControllingPlayer():GetTeamNumber() ~= 0 then
 			self:Notify( Client:GetControllingPlayer(), "Please pick a player from the Ready Room" )
 			return
 		end
@@ -651,6 +673,7 @@ function Plugin:CreateCommands()
 		local TeamNumber = self:GetCaptainTeamNumbers( SteamId )
 		if not TeamNumber then return end
 		self.Teams[ TeamNumber ].Ready = not self.Teams[ TeamNumber ].Ready
+		
 		self:Notify( nil, "Team %s is now %s", true, TeamNumber, self.Teams[ TeamNumber ].Ready and "ready" or "not ready" )
 	end
 	local CommandReady = self:BindCommand("sh_ready", { "rdy", "ready" }, Ready, true )
@@ -693,174 +716,4 @@ function Plugin:CreateCommands()
 	end
 	local ChangeStateCommand = self:BindCommand("sh_captainstate", "captainstate", ChangeState)
 	ChangeStateCommand:AddParam{ Type = "number", Min = 0, Max = 5 }
-end
-
---Vote Class
-function Vote:New( NewVote, Team )
-	NewVote = NewVote or {}
-	setmetatable( NewVote, self )
-	self.__index = self
-	
-	NewVote.Team = Team or 0
-	return NewVote
-end
-
-function Vote:Reset()	
-	if self.Votes then
-		for ClientId in pairs( self.Votes ) do
-			local Client = GetClientByNS2ID( ClientId )
-			local Player = Client and Client:GetControllingPlayer()
-			self.Votes[ ClientId ] = nil
-			if Player then
-				Plugin:SendPlayerData( nil, Player )
-			end
-		end
-	else
-		self.Votes = {}
-	end
-	
-	self.Count = 0
-	self.Ranks = {}
-	self.Voted = {}
-end
-
-function Vote:Start()
-	self:Reset()
-	self.Started = true
-
-	local Vote = self
-	local VoteTime = Plugin.Config.MaxVoteTime * 60
-	Plugin:CreateTimer( StringFormat( "CaptainVote%s", self.Team ), VoteTime, 1, function()
-		self:End()
-	end)
-	Plugin:SendNetworkMessage( nil, "VoteState", { team = self.Team, start = true, timeleft = VoteTime }, true )
-end
-
-function Vote:GetIsStarted()
-	return self.Started
-end
-
-function Vote:Remove( ClientId )
-	local VoteId = self.Voted[ ClientId ]
-	if not VoteId then return end
-
-	local Count = self.Votes[ VoteId ].Count
-	TableRemove( self.Ranks[ Count ], self.Votes[ VoteId ].RankId )
-
-	Count = Count - 1
-	self.Votes[ VoteId ].Count = Count
-
-	if Count > 0 then
-		self.Ranks[ Count ] =  self.Ranks[ Count ] or {}
-		TableInsert( self.Ranks[ Count ], VoteId )
-		self.Votes[ VoteId ].RankId = #self.Ranks[ Count ]
-	else
-		self.Votes[ VoteId ] = nil
-	end
-	
-	self.Count = self.Count - 1
-	local VoteClient = GetClientByNS2ID( VoteId )
-	local Player = VoteClient and VoteClient:GetControllingPlayer()
-	if not Player then return end
-	
-	Plugin:SendPlayerData( nil, Player )
-end
-
-function Vote:Add( ClientId, TargetId )
-	
-	self:Remove( ClientId )
-	
-	local Vote = self.Votes[ TargetId ] or { Count = 0, RankId = 0 }
-	if Vote.Count > 0 then 
-		TableRemove( self.Ranks[ Vote.Count ], Vote.RankId )
-	end
-
-	Vote.Count = Vote.Count + 1
-	self.Ranks[ Vote.Count ] = self.Ranks[ Vote.Count ] or {}
-	TableInsert( self.Ranks[ Vote.Count ], TargetId )
-	Vote.RankId = #self.Ranks[ Vote.Count ]
-
-	self.Votes[ TargetId ] = Vote
-	self.Voted[ ClientId ] = TargetId
-	
-	self.Count = self.Count + 1
-	
-	local TargetClient = GetClientByNS2ID( TargetId )
-	local TargetPlayer = TargetClient and TargetClient:GetControllingPlayer()
-	
-	if not TargetPlayer then return end	
-	Plugin:SendPlayerData( nil, TargetPlayer )
-	
-	local PlayerCount = Shine.GetHumanPlayerCount()
-	
-	if self.Team ~= 0 then
-		local TeamNumber = self.Team
-		
-		if not ( Plugin.Teams[ TeamNumber ].Players[ ClientId ] and Plugin.Teams[ TeamNumber ].Players[ TargetId ] ) then
-			return 
-		end
-		
-		PlayerCount = #Shine.GetTeamClients( Plugin.Teams[ TeamNumber ].TeamNumber )
-	end
-	
-	if self.Count >= PlayerCount * Plugin.Config.MinVotesToPass then
-		self:End()
-	end
-end
-
-function Vote:End()
-	self.Started = false
-	
-	local Winners = {}
-	local HighestRank = #self.Ranks
-	local HighestRankSize = self.Ranks[ HighestRank ] and #self.Ranks[ HighestRank ] or 0
-	
-	local WinnersNeeded = self.Team > 0 and 1 or 2
-	if WinnersNeeded > HighestRank and WinnersNeeded > HighestRankSize then
-		Plugin:Notify( nil, "CaptainVote%s failed because not enough players voted or we did not got enough Captain candidates! Restarting Vote...", true, self.Team == 1 and " for Team 1" or self.Team == 2 and " for Team 2" or "")
-		self:Start()
-		return
-	end
-	
-	Plugin:DestroyTimer( StringFormat( "CaptainVote%s", self.Team ) )
-	Plugin:SendNetworkMessage( nil, "VoteState", { team = self.Team, start = false, timeleft = 0 }, true )
-	
-	if HighestRankSize > WinnersNeeded then
-		--Notify?
-		for i = 1, WinnersNeeded do
-			local j = Random( 1, HighestRankSize )
-			Winners[ i ] = self.Ranks[ HighestRank ][ j ]
-			TableRemove( self.Ranks[ HighestRank ], j )
-			HighestRankSize = HighestRankSize - 1
-		end
-	elseif HighestRankSize == WinnersNeeded then
-		for i = 1, WinnersNeeded do
-			Winners[ i ] = self.Ranks[ HighestRank ][ i ]
-		end
-	else
-		Winners[ 1 ] = self.Ranks[ HighestRank ][ 1 ]
-		--get next rank
-		local NextRank
-		for i = HighestRank - 1, 1, -1 do
-			if self.Ranks[ i ] and #self.Ranks[ i ] > 0 then
-				NextRank = i
-				break
-			end
-		end
-		
-		if not NextRank then
-			Shine:DebugPrint("Captains Vote had a issue while picking a winner.\n Class table:\n%s", true, table.ToString( self ) )
-			return
-		end
-		
-		local j = Random( 1, #self.Ranks[ NextRank ] )
-		Winners[ 2 ] = self.Ranks[ NextRank ][ j ]
-	end
-	
-	if self.Team > 0 then 
-		Plugin:SetCaptain( Winners[ 1 ], self.Team )
-	else
-		Plugin:SetCaptain( Winners[ 1 ], 1 )
-		Plugin:SetCaptain( Winners[ 2 ], 2 )
-	end
 end

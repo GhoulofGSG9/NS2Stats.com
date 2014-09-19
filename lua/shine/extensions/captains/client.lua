@@ -594,6 +594,11 @@ function Plugin:ReceiveVoteState( Message )
 	else
 		self:DestroyTimer( "VoteMessage" )
 		self:UpdateTextMessage()
+		
+		local List = CaptainMenu.ListItems[ Message.team + 1 ]
+		for _, Row in ipairs( List.Rows ) do
+			Row:SetColumnText( 8, "0" )
+		end
 
 		CaptainMenu:RemoveCategory( "Vote Captain" )
 	end
