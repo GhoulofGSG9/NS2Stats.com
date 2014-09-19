@@ -55,19 +55,15 @@ function Plugin:EndGame( Gamerules, WinningTeam )
     Enabled = true
 end
 
-function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
-    if not Enabled or ShineForce or not self.Config.BlockTeams or Shine.GetHumanPlayerCount() < self.Config.MinPlayer or NewTeam == kTeamReadyRoom then return end
-    
-    return self:Check( Player )
-end
-
-function Plugin:CheckComLogin( Chair, Player )
-    if not Enabled or not self.Config.BlockCC or not Player or not Player.GetClient or Shine.GetHumanPlayerCount() < self.Config.MinPlayer then return end
+function Plugin:CheckCommLogin( CommandStation, Player )
+    if not self.Config.BlockCC or not Player or not Player.GetClient or Shine.GetHumanPlayerCount() < self.Config.MinPlayer then return end
 
     return self:Check( Player, true )
 end
 
 function Plugin:Check( Player, ComCheck )
+	if not ComCheck and not self.Config.BlockTeams or not Enabled then return end
+	
     local Client = Player:GetClient()
     if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignorestatus" ) then return end
     
