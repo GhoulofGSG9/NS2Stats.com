@@ -305,7 +305,7 @@ function Plugin:SendPlayerData( Client, Player, Disconnect )
 	local steamId = Player:GetSteamId()
 
 	local TeamNumber = self:GetTeamNumber( steamId )
-	if Disconnect then TeamNumber = 3 end
+	if Disconnect or Player:GetTeamNumber() == kSpectatorIndex then TeamNumber = 3 end
 	
 	local Vote = self.Votes[ Player:GetTeamNumber() ]
 	local PlayerData =
@@ -590,7 +590,10 @@ function Plugin:CreateCommands()
 	local function AddPlayer( Client, Target )
 		local SteamId = Client:GetUserId()
 		
-		if Client:GetControllingPlayer():GetTeamNumber() ~= 0 then
+		local TargetPlayer = Target:GetControllingPlayer()
+		if not TargetPlayer then return end
+		
+		if TargetPlayer:GetTeamNumber() ~= 0 then
 			self:Notify( Client:GetControllingPlayer(), "Please pick a player from the Ready Room" )
 			return
 		end
@@ -605,9 +608,6 @@ function Plugin:CreateCommands()
 			self:Notify( Client:GetControllingPlayer(), "Please wait until the other Captain has also picked the next player!")
 			return 
 		end
-		
-		local TargetPlayer = Target:GetControllingPlayer()
-		if not TargetPlayer then return end
 		
 		Gamerules:JoinTeam( TargetPlayer, CaptainTeam, nil, true )
 	end
