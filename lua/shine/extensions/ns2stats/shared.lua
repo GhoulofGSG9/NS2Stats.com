@@ -15,7 +15,7 @@ function Plugin:SetupDataTable()
 	self:AddNetworkMessage("StatsAwards", AwardMessage, "Client" )
 
 	self:AddDTVar( "boolean", "SendMapData", false )
-	self:AddDTVar( "string(255)", "WebsiteUrl", "http://ns2stats.com" )
+	self:AddDTVar( "string (255)", "WebsiteUrl", "http://ns2stats.com" )
 end
 
 Shine:RegisterExtension( "ns2stats", Plugin )
