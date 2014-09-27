@@ -287,12 +287,6 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineF
 	self:SendPlayerData( nil, Player )
 end
 
-function Plugin:OnPlayerRename( Player, Name )
-	if Name == kDefaultPlayerName or self.dt.State == 0 then return end
-	
-	self:SendPlayerData( nil, Player )
-end
-
 function Plugin:OnReceiveHiveData( Client, HiveInfo )
 	local SteamId = Client:GetUserId()
 	local Player = Client:GetControllingPlayer()
@@ -374,6 +368,7 @@ function Plugin:SendMessages( Client )
 	end
 end
 
+local Connected = {}
 function Plugin:ClientConfirmConnect( Client )
 	if not Gamerules then 
 		Gamerules = GetGamerules()
@@ -387,6 +382,8 @@ function Plugin:ClientConfirmConnect( Client )
 	
 	self.Votes[ 0 ]:AddVoteOption( SteamId )
 	if self.dt.State == 0 then self:SendPlayerData( nil, Player ) end
+	
+	Connected[ SteamId ] = true
 	
 	self:SimpleTimer( 1, function()
 		for _, Player in ipairs( GetAllPlayers() ) do
@@ -427,31 +424,14 @@ function Plugin:ClientConfirmConnect( Client )
 	end
 end
 
-function Plugin:ReceiveOnResolutionChanged( Client )
-	self:SendMessages( Client )
-	
-	for _, Player in ipairs( GetAllPlayers() ) do
-		self:SendPlayerData( Client, Player )
-	end
-	
-	local Timer = self.Timers[ "CaptainVote0" ]
-	if Timer then
-		self:SendNetworkMessage( Client, "VoteState", { team = 0, start = true, timeleft = math.Round( Timer:GetTimeUntilNextRun(), 0 ) }, true )
-	end
-	
-	local SteamId = Client:GetUserId()
-	local TeamNumber = self.GetCaptainTeamNumbers( SteamId )
-	if self.GetCaptainTeamNumbers( SteamId ) then
-		self:SendNetworkMessage( nil, "SetCaptain", { steamid = SteamId, team = TeamNumber, add = true }, true )
-	end
-end
-
 function Plugin:ClientDisconnect( Client )
 	local Player = Client:GetControllingPlayer()
 	self:SendPlayerData( nil, Player, true )
 	
 	local SteamId = Client:GetUserId()
 	local TeamNumber = self:GetTeamNumber( SteamId )
+	
+	Connected[ SteamId ] = nil
 	
 	if TeamNumber > 0 then
 		self:Notify( nil, "%s left Team %s", true, Player:GetName(), TeamNumber )
@@ -462,6 +442,12 @@ function Plugin:ClientDisconnect( Client )
 		self.Teams[ TeamNumber ].Players[ SteamId ] = nil
 	end
 	
+end
+
+function Plugin:OnPlayerRename( Player, Name )
+	if Name == kDefaultPlayerName or not Connected[ SteamId ] then return end
+	
+	self:SendPlayerData( nil, Player )
 end
 
 function Plugin:CheckGameStart()
@@ -532,6 +518,25 @@ function Plugin:RestoreTeams()
 		end
 	end
 	self.dt.State = 2
+end
+
+function Plugin:ReceiveOnResolutionChanged( Client )
+	self:SendMessages( Client )
+	
+	for _, Player in ipairs( GetAllPlayers() ) do
+		self:SendPlayerData( Client, Player )
+	end
+	
+	local Timer = self.Timers[ "CaptainVote0" ]
+	if Timer then
+		self:SendNetworkMessage( Client, "VoteState", { team = 0, start = true, timeleft = math.Round( Timer:GetTimeUntilNextRun(), 0 ) }, true )
+	end
+	
+	local SteamId = Client:GetUserId()
+	local TeamNumber = self.GetCaptainTeamNumbers( SteamId )
+	if self.GetCaptainTeamNumbers( SteamId ) then
+		self:SendNetworkMessage( nil, "SetCaptain", { steamid = SteamId, team = TeamNumber, add = true }, true )
+	end
 end
 
 function Plugin:ChangeState( OldValue, NewValue )
