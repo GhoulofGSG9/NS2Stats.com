@@ -251,7 +251,7 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 end
 
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
-	local Client = Server.GetOwner( Player ) 
+	local Client = GetOwner( Player ) 
 	local SteamId = Client:GetUserId()	
 	if self.dt.State > 0 then
 		if OldTeam == 1 or OldTeam == 2 then
@@ -306,7 +306,7 @@ function Plugin:OnReceiveHiveData( Client, HiveInfo )
 end
 
 function Plugin:SendPlayerData( Client, Player, Disconnect )
-	local client = Server.GetOwner( Player )
+	local client = GetOwner( Player )
 	local steamId = client:GetUserId()
 
 	local TeamNumber = self:GetTeamNumber( steamId )
@@ -443,7 +443,7 @@ function Plugin:ClientDisconnect( Client )
 end
 
 function Plugin:OnPlayerRename( Player, Name )
-	local Client = Server.GetOwner( Player )
+	local Client = GetOwner( Player )
 	if not Client then return end
 	
 	local SteamId = Client:GetUserId()
