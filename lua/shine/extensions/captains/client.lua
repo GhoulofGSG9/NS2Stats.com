@@ -348,15 +348,12 @@ function CaptainMenu:UpdatePlayer( Message )
 		end
 	end
 	
-	if Message.team > 2 then return end 
-	
-	if Message.deaths < 1 then Message.deaths = 1 end
-	if Message.loses < 1 then Message.loose = 1 end
+	if Message.team > 2 then return end
 	
 	local playtime = Round( Message.playtime / 3600, 2 )
-	local kd = Round( Message.kills / Message.deaths, 2 )
-	local sm = Round( Message.score / Message.deaths, 2 )
-	local wl = Round( Message.wins / Message.loses, 2 )
+	local kd = Message.deaths > 0 and Round( Message.kills / Message.deaths, 2 ) or 0
+	local sm = Message.deaths > 0 and Round( Message.score / Message.deaths, 2 ) or 0
+	local wl = Message.loses > 0 and Round( Message.wins / Message.loses, 2 ) or 0
 	
 	local RowData = { Message.steamid, Message.name, playtime, Message.skill, wl, kd, sm, Message.votes }
 	
