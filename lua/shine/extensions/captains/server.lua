@@ -578,13 +578,10 @@ function Plugin:CreateCommands()
 			if OldVoteId then
 				local OldVoteClient = GetClientByNS2ID( OldVoteId )
 				local OldVotePlayer = OldVoteClient:GetControllingPlayer()
-				self:SendPlayerData( nil, Player )
+				self:SendPlayerData( nil, OldVotePlayer )
 			end
-			Vote:AddVote( Client, Vote:OptionToId( TargetId ) )
-			
-			if Vote:GetOptionName( Vote:GetVote( Client ) ) == TargetId then
-				self:SendPlayerData( nil, Target:GetControllingPlayer() )
-			end
+			Vote:AddVote( Client, Vote:OptionToId( TargetId ))			
+			self:SendPlayerData( nil, Target:GetControllingPlayer() )
 		end
 	end
 	local CommandVoteCaptain = self:BindCommand( "sh_votecaptain", "votecaptain", VoteCaptain, true )
