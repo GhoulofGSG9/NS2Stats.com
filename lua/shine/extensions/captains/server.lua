@@ -8,6 +8,7 @@ local ToNumber = tonumber
 local TableInsert = table.insert
 local TableRemove = table.remove
 local Random = math.random
+local GetClientByNS2ID = Shine.GetClientByNS2ID
 local SetupClassHook = Shine.Hook.SetupClassHook
 local GetOwner = Server.GetOwner
 
@@ -201,7 +202,7 @@ function Plugin:SetCaptain( SteamId, TeamNumber )
 	self.Teams[ TeamNumber ].Captain = SteamId
 	self.Teams[ TeamNumber ].Players[ SteamId ] = true
 	
-	local Client = Shine:GetClient( SteamId )
+	local Client = GetClientByNS2ID( SteamId )
 	
 	if not Client then return end
 	local Player = Client:GetControllingPlayer()
@@ -224,7 +225,7 @@ function Plugin:RemoveCaptain( TeamNumber, SetCall )
 	self.Teams[ TeamNumber ].Players[ SteamId ] = false
 	self.Teams[ TeamNumber ].Captain = nil	
 
-	local Client = Shine:GetClient( SteamId )
+	local Client = GetClientByNS2ID( SteamId )
 	local Player = Client:GetControllingPlayer()
 	
 	self:Notify( nil, "%s is now not any longer the Captain of Team %s", true, Player:GetName(), TeamNumber )
@@ -276,7 +277,7 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineF
 			local OldVoteId = Vote:GetOptionName( Vote:GetVote( Client ) )
 			if OldVoteId then
 				Vote:RemoveVote( Client )
-				local OldVoteClient = Shine:GetClient( OldVoteId )
+				local OldVoteClient = GetClientByNS2ID( OldVoteId )
 				local OldVotePlayer = OldVoteClient:GetControllingPlayer()
 				self:SendPlayerData( nil, OldVotePlayer )
 			end
@@ -487,7 +488,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
 	
 	local AllCaptains = true
 	for i = 1, 2 do
-		local Client = Shine:GetClient( self.Teams[ i ].Captain )
+		local Client = GetClientByNS2ID( self.Teams[ i ].Captain )
 		if not Client then
 			AllCaptains = false
 			break
@@ -578,7 +579,7 @@ function Plugin:CreateCommands()
 			local OldVoteId = Vote:GetOptionName( Vote:GetVote( Client ) )
 			if OldVoteId == TargetId then return end --revote 
 			if OldVoteId then
-				local OldVoteClient = Shine:GetClient( OldVoteId )
+				local OldVoteClient = GetClientByNS2ID( OldVoteId )
 				local OldVotePlayer = OldVoteClient:GetControllingPlayer()
 				self:SendPlayerData( nil, OldVotePlayer )
 			end
