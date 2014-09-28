@@ -51,9 +51,9 @@ function Plugin:SetupDataTable()
 	self:AddDTVar( "integer (0 to 10)", "State", 0 )
 end
 
+Shine:RegisterExtension( "captains", Plugin )
+
 function Plugin:NetworkUpdate( Key, OldValue, NewValue )
 	if OldValue == NewValue then return end
 	self:ChangeState( OldValue, NewValue )
 end
-
-Shine:RegisterExtension( "captains", Plugin )
