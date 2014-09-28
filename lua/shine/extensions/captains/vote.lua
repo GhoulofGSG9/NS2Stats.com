@@ -56,6 +56,13 @@ function Vote:AddVote( Client, Vote )
 	if self.Voted[ Client ] then self:RemoveVote( Client ) end
 	
 	self.Voted[ Client ] = Vote
+	
+	if not self.VoteOptions[ Vote ] then
+		local text = string.format( "Invalid Vote: %s\nTable: %s", Vote, table.ToString( self.VoteOptions ))
+		Print( text )
+		return
+	end
+	
 	self.VoteOptions[ Vote ].Count = self.VoteOptions[ Vote ].Count + 1
 	self.VotesCount = self.VotesCount + 1
 	
