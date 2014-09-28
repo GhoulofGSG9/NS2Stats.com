@@ -516,7 +516,7 @@ function Plugin:RestoreTeams()
 		local SteamId = Client:GetUserId()
 		local Team = self:GetTeamNumber( SteamId )
 		local TeamNumber = Team and self.Teams[ Team ].TeamNumber
-		if Player and Player:GetTeamNumber() == 0 then
+		if Player then
 			Gamerules:JoinTeam( Player, TeamNumber, nil, true )
 		end
 	end
