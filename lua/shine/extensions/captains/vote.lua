@@ -213,7 +213,7 @@ function Vote:RemoveOption( OptionName )
 	self.VotesCount = self.VotesCount - count
 	
 	for i = OptionId + 1, #self.VoteOptions do
-		self.VoteOptionIds[ self.VoteOptions[ i ].Name ] = self.VoteOptionIds[ self.VoteOptions[ i ].Name ] - 1
+		self.VoteOptionIds[ self.VoteOptions[ i ].Name ] = i - 1
 	end
 	
 	TableRemove( self.VoteOptions, OptionId )

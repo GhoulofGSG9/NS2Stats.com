@@ -130,7 +130,7 @@ function Plugin:Initialise()
 end
 
 function Plugin:CheckStart()
-	if Shine.GetHumanPlayerCount() >= self.Config.MinPlayers and self.dt.State == 0 and not self:TimerExists( "CaptainWait" ) then
+	if Shine.GetHumanPlayerCount() >= self.Config.MinPlayers and self.dt.State == 0 then
 		local Players = GetAllPlayers()
 		if Gamerules then 
 			for i = 1, #Players do
@@ -213,24 +213,7 @@ function Plugin:SetCaptain( SteamId, TeamNumber )
 	
 	CaptainsNum = CaptainsNum + 1
 	if CaptainsNum == 2 and self.dt.State < 2 then
-		self:DestroyTimer( "CaptainWait" )
 		self.dt.State = 2
-		local Clients = Shine.GetAllClients()
-		for i = 1, #Clients do
-			local Client = Clients[ i ]
-			local SteamId = Client:GetUserId()
-			local Team
-			if self.Teams[ 1 ].Players[ SteamId ] then
-				Team = 1
-			elseif self.Teams[ 2 ].Players[ SteamId ] then
-				Team = 2
-			end
-			
-			if Team then
-				local Player = Client:GetControllingPlayer()
-				Gamerules:JoinTeam( Player, self.Teams[ Team ].TeamNumber, nil, true )
-			end
-		end
 	end
 end
 
@@ -426,7 +409,7 @@ end
 
 function Plugin:ClientDisconnect( Client )
 	local Player = Client:GetControllingPlayer()
-	self:SendPlayerData( nil, Player, true )
+	if Player then self:SendPlayerData( nil, Player, true ) end
 	
 	local SteamId = Client:GetUserId()
 	local TeamNumber = self:GetTeamNumber( SteamId )
@@ -435,7 +418,7 @@ function Plugin:ClientDisconnect( Client )
 	
 	if TeamNumber > 0 then
 		self:Notify( nil, "%s left Team %s", true, Player:GetName(), TeamNumber )
-		if self.Teams[ TeamNumber ].Captain == SteamId and not self:TimerExists( "CaptainWait" ) then
+		if self.Teams[ TeamNumber ].Captain == SteamId then
 			self:Notify( nil, "Also Team %s is now without a Captain. Starting a vote for a new Captain ...", true, TeamNumber )
 			self:RemoveCaptain( TeamNumber )
 		end
