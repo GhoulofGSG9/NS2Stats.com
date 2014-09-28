@@ -271,7 +271,7 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineF
 	end
 	
 	if self.Votes[ OldTeam ] then
-		local Client = Player:GetClient()
+		local Client = GetOwner( Player )
 		local Vote = self.Votes[ OldTeam ]
 		if Vote:GetIsStarted() then
 			local OldVoteId = Vote:GetOptionName( Vote:GetVote( Client ) )
@@ -577,13 +577,16 @@ function Plugin:CreateCommands()
 		local Vote = self.Votes[ TeamNumber ]
 		if Vote and Vote:GetIsStarted() then
 			local OldVoteId = Vote:GetOptionName( Vote:GetVote( Client ) )
-			if OldVoteId == TargetId then return end --revote 
+			if OldVoteId == TargetId then return end --revote
+			
+			Vote:AddVote( Client, Vote:OptionToId( TargetId ))
+			
 			if OldVoteId then
 				local OldVoteClient = GetClientByNS2ID( OldVoteId )
 				local OldVotePlayer = OldVoteClient:GetControllingPlayer()
 				self:SendPlayerData( nil, OldVotePlayer )
-			end
-			Vote:AddVote( Client, Vote:OptionToId( TargetId ))			
+			end	
+			
 			self:SendPlayerData( nil, Target:GetControllingPlayer() )
 		end
 	end
