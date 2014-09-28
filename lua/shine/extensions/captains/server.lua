@@ -10,6 +10,7 @@ local TableRemove = table.remove
 local Random = math.random
 local GetClientByNS2ID = Shine.GetClientByNS2ID
 local SetupClassHook = Shine.Hook.SetupClassHook
+local GetOwner = Server.GetOwner
 
 if not Shine.PlayerInfoHub then 
 	Script.Load( "lua/shine/core/server/playerinfohub.lua" )
@@ -443,6 +444,8 @@ end
 
 function Plugin:OnPlayerRename( Player, Name )
 	local Client = Server.GetOwner( Player )
+	if not Client then return end
+	
 	local SteamId = Client:GetUserId()
 	if Name == kDefaultPlayerName or not Connected[ SteamId ] then return end
 	
