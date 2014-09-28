@@ -250,7 +250,8 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 end
 
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
-	local SteamId = Player:GetSteamId()	
+	local Client = Server.GetOwner( Player ) 
+	local SteamId = Client:GetUserId()	
 	if self.dt.State > 0 then
 		if OldTeam == 1 or OldTeam == 2 then
 			local Team = self.Teams[ 1 ].TeamNumber == OldTeam and 1 or 2
@@ -304,7 +305,8 @@ function Plugin:OnReceiveHiveData( Client, HiveInfo )
 end
 
 function Plugin:SendPlayerData( Client, Player, Disconnect )
-	local steamId = Player:GetSteamId()
+	local client = Server.GetOwner( Player )
+	local steamId = client:GetUserId()
 
 	local TeamNumber = self:GetTeamNumber( steamId )
 	if Disconnect or Player:GetTeamNumber() == kSpectatorIndex then TeamNumber = 3 end
@@ -440,6 +442,8 @@ function Plugin:ClientDisconnect( Client )
 end
 
 function Plugin:OnPlayerRename( Player, Name )
+	local Client = Server.GetOwner( Player )
+	local SteamId = Client:GetUserId()
 	if Name == kDefaultPlayerName or not Connected[ SteamId ] then return end
 	
 	self:SendPlayerData( nil, Player )
@@ -497,18 +501,19 @@ end
 
 function Plugin:RestoreTeams()
 	-- first put captains into teams
-	local AllPlayer = GetAllPlayers()
+	local AllClients = GetAllClients()
 	for i = 1, 2 do
 		local Captain = self.Teams[ i ].Captain
 		self:SetCaptain( Captain, i )
 	end
 	
-	for i = 1, #AllPlayer do
-		local Player = AllPlayer[ i ]
-		local SteamId = Player:GetSteamId()
+	for i = 1, #AllClients do
+		local Client = AllClients[ i ]
+		local Player = Client:GetControllingPlayer()
+		local SteamId = Client:GetUserId()
 		local Team = self:GetTeamNumber( SteamId )
 		local TeamNumber = Team and self.Teams[ Team ].TeamNumber
-		if Player:GetTeamNumber() == 0 then
+		if Player and Player:GetTeamNumber() == 0 then
 			Gamerules:JoinTeam( Player, TeamNumber, nil, true )
 		end
 	end
