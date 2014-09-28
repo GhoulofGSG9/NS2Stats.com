@@ -68,7 +68,7 @@ local function OnSucess( self, Winners )
 		Team = self.Team == Plugin.Teams[ 1 ].TeamNumber and 1 or 2
 	end
 	
-	Plugin:SendNetworkMessage( nil, "VoteState", { team = Team, start = false, timeleft = self:GetTimeLeft() }, true )
+	Plugin:SendNetworkMessage( nil, "VoteState", { team = Team, start = false, timeleft = 0 }, true )
 	
 	if Team > 0 then
 		Plugin:SetCaptain( Winners[ 1 ].Name, self.Team == Team )
@@ -84,7 +84,7 @@ local function OnFailure( self )
 		Team = self.Team == Plugin.Teams[ 1 ].TeamNumber and 1 or 2
 	end
 	
-	Plugin:SendNetworkMessage( nil, "VoteState", { team = Team, start = false, timeleft = self:GetTimeLeft() }, true )
+	Plugin:SendNetworkMessage( nil, "VoteState", { team = Team, start = false, timeleft = 0 }, true )
 	Plugin:Notify( nil, "CaptainVote%s failed because not enough players voted or we did not got enough Captain candidates! Restarting Vote...", true, self.Team == 1 and " for Team 1" or self.Team == 2 and " for Team 2" or "")
 	
 	self:Start()
@@ -283,7 +283,14 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineF
 		
 		Vote:RemoveOption( SteamId ) 
 	end
-	if self.Votes[ NewTeam ] then self.Votes[ NewTeam ]:AddVoteOption( SteamId ) end
+	if self.Votes[ NewTeam ] then
+		local Vote = self.Votes[ NewTeam ]
+		Vote:AddVoteOption( SteamId )
+		
+		if Vote:GetIsStarted() and Connected[ SteamId ] then
+			self:SendNetworkMessage( Client, "VoteState", { team = NewTeam, start = true, timeleft = Vote:GetTimeLeft() }, true )
+		end
+	end
 	
 	self:SendPlayerData( nil, Player, NewTeam == 4 )
 end
@@ -381,7 +388,6 @@ function Plugin:ClientConfirmConnect( Client )
 	
 	self:SendMessages( Client )
 	
-	self.Votes[ 0 ]:AddVoteOption( SteamId )
 	if self.dt.State == 0 then self:SendPlayerData( nil, Player ) end
 	
 	Connected[ SteamId ] = true
@@ -392,9 +398,10 @@ function Plugin:ClientConfirmConnect( Client )
 		end
 	end)
 	
-	local Timer = self.Timers[ "CaptainVote0" ]
-	if Timer then
-		self:SendNetworkMessage( Client, "VoteState", { team = 0, start = true, timeleft = math.Round( Timer:GetTimeUntilNextRun(), 0 ) }, true )
+	local Vote = self.Votes[ 0 ]
+	Vote:AddVoteOption( SteamId )	
+	if Vote:GetIsStarted() then
+		self:SendNetworkMessage( Client, "VoteState", { team = 0, start = true, timeleft = Vote:GetTimeLeft() }, true )
 	end
 	
 	if self.dt.State == 0 then

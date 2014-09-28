@@ -622,9 +622,10 @@ function Plugin:OnResolutionChanged()
 end
 
 function Plugin:Cleanup()
+	self.Enabled = false
+	
 	CaptainMenu:Destroy()
 	self:RemoveTextMessage()
 	
 	self.BaseClass.Cleanup( self )
-	self.Enabled = false
 end
