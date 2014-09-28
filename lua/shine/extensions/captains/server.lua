@@ -256,6 +256,10 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineF
 			local Team = self.Teams[ 1 ].TeamNumber == OldTeam and 1 or 2
 			self.Teams[ Team ].Players[ SteamId ] = nil
 			self:Notify( nil, "%s left Team %s", true, Player:GetName(), Team)
+			if self.Teams[ Team ].Captain == SteamId then
+				self:Notify( nil, "Also Team %s is now without a Captain. Starting a vote for a new Captain ...", true, Team )
+				self:RemoveCaptain( Team )
+			end
 		end
 		if NewTeam == 1 or NewTeam == 2 then
 			local Team = self.Teams[ 1 ].TeamNumber == NewTeam and 1 or 2
@@ -264,10 +268,24 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineF
 		end
 	end
 	
-	if self.Votes[ OldTeam ] then self.Votes[ OldTeam ]:RemoveOption( SteamId ) end
+	if self.Votes[ OldTeam ] then
+		local Client = Player:GetClient()
+		local Vote = self.Votes[ OldTeam ]
+		if Vote:GetIsStarted() then
+			local OldVoteId = Vote:GetOptionName( Vote:GetVote( Client ) )
+			if OldVoteId then
+				Vote:RemoveVote( Client )
+				local OldVoteClient = GetClientByNS2ID( OldVoteId )
+				local OldVotePlayer = OldVoteClient:GetControllingPlayer()
+				self:SendPlayerData( nil, Player )
+			end
+		end
+		
+		Vote:RemoveOption( SteamId ) 
+	end
 	if self.Votes[ NewTeam ] then self.Votes[ NewTeam ]:AddVoteOption( SteamId ) end
 	
-	self:SendPlayerData( nil, Player )
+	self:SendPlayerData( nil, Player, NewTeam == 4 )
 end
 
 function Plugin:OnReceiveHiveData( Client, HiveInfo )
@@ -409,22 +427,9 @@ end
 
 function Plugin:ClientDisconnect( Client )
 	local Player = Client:GetControllingPlayer()
-	if Player then self:SendPlayerData( nil, Player, true ) end
-	
-	local SteamId = Client:GetUserId()
-	local TeamNumber = self:GetTeamNumber( SteamId )
-	
-	Connected[ SteamId ] = nil
-	
-	if TeamNumber > 0 then
-		self:Notify( nil, "%s left Team %s", true, Player:GetName(), TeamNumber )
-		if self.Teams[ TeamNumber ].Captain == SteamId then
-			self:Notify( nil, "Also Team %s is now without a Captain. Starting a vote for a new Captain ...", true, TeamNumber )
-			self:RemoveCaptain( TeamNumber )
-		end
-		self.Teams[ TeamNumber ].Players[ SteamId ] = nil
-	end
-	
+	if Player then
+		self:PostJoinTeam( nil, Player, Player:GetTeamNumber(), 4 )
+	end	
 end
 
 function Plugin:OnPlayerRename( Player, Name )
