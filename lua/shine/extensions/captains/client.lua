@@ -272,6 +272,11 @@ function CaptainMenu:AskforTeamName()
 end
 
 function CaptainMenu:AddCategory( Name )
+	if not self.Created then 
+		Plugin:SimpleTimer( 1, function() self:AddCategory( Name ) end )
+		return
+	end
+	
 	if self.Categories[ Name ] then return end
 	
 	self.Categories[ Name ] = true
@@ -319,6 +324,7 @@ function CaptainMenu:AddCategory( Name )
 end
 
 function CaptainMenu:RemoveCategory( Name )
+	if not self.Created then return end
 	if not self.Categories[ Name ] then return end
 	
 	self.Categories[ Name ] = false
