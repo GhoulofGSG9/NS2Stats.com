@@ -583,16 +583,18 @@ function Plugin:ReceiveVoteState( Message )
 	
 	if Message.start then
 		if Message.timeleft > 1 then
+			CaptainMenu:AddCategory( "Vote Captain" )
 			self:CreateTimer( "VoteMessage", 1, Message.timeleft - 1, function( Timer )
 				self:UpdateTextMessage( Timer:GetReps() )
 			end )			
-		end		
-		CaptainMenu:AddCategory( "Vote Captain" )
+		end
 	else
 		self:DestroyTimer( "VoteMessage" )
 		self:UpdateTextMessage()
 		
-		local List = CaptainMenu.ListItems[ Message.team + 1 ]
+		local List = CaptainMenu.ListItems and CaptainMenu.ListItems[ Message.team + 1 ]
+		if not List then return end
+		
 		for _, Row in ipairs( List.Rows ) do
 			Row:SetColumnText( 8, "0" )
 		end

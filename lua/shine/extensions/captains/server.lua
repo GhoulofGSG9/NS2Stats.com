@@ -285,6 +285,7 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineF
 		
 		Vote:RemoveOption( SteamId ) 
 	end
+	
 	if self.Votes[ NewTeam ] then
 		local Vote = self.Votes[ NewTeam ]
 		Vote:AddVoteOption( SteamId )
@@ -515,7 +516,7 @@ function Plugin:RestoreTeams()
 		local Player = Client:GetControllingPlayer()
 		local SteamId = Client:GetUserId()
 		local Team = self:GetTeamNumber( SteamId )
-		local TeamNumber = Team and self.Teams[ Team ].TeamNumber
+		local TeamNumber = Team and self.Teams[ Team ].TeamNumber or 0
 		if Player then
 			Gamerules:JoinTeam( Player, TeamNumber, nil, true )
 		end
