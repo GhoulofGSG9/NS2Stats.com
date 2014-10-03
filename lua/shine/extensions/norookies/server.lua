@@ -28,9 +28,9 @@ Plugin.DefaultConfig =
     AllowSpectating = false,
     BlockMessage = "This server is not rookie friendly",
     Kick = true,
-    Kicktime = 60,
+    Kicktime = 20,
     KickMessage = "You will be kicked in %s seconds",
-    WaitMessage = "Please wait while your Player data is retrieved",
+    WaitMessage = "Please wait while your data is retrieved",
 }
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
@@ -53,6 +53,30 @@ end
 function Plugin:EndGame( Gamerules, WinningTeam )
     self:DestroyTimer( "Disable" )
     Enabled = true
+end
+
+function Plugin:OnReceiveSteamData( Client )
+	local SteamId = Client:GetUserId()
+	if not InfoHub:GetIsRequestFinished( SteamId ) then return end
+	
+	local Player = Client:GetControllingPlayer()
+	self:Check( Player )
+end
+
+function Plugin:OnReceiveHiveData( Client )
+	local SteamId = Client:GetUserId()
+	if not InfoHub:GetIsRequestFinished( SteamId ) then return end
+	
+	local Player = Client:GetControllingPlayer()
+	self:Check( Player )
+end
+
+function Plugin:OnReceiveNs2StatsData( Client )
+	local SteamId = Client:GetUserId()
+	if not InfoHub:GetIsRequestFinished( SteamId ) then return end
+	
+	local Player = Client:GetControllingPlayer()
+	self:Check( Player )
 end
 
 function Plugin:CheckCommLogin( CommandStation, Player )
