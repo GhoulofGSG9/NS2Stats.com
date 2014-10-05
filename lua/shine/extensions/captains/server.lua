@@ -69,10 +69,28 @@ local function OnSucess( self, Winners )
 		Team = self.Team == Plugin.Teams[ 1 ].TeamNumber and 1 or 2
 	end
 	
+	for _, Winner in ipairs( Winners ) do
+		local Client = GetClientByNS2ID( Winner.Name )
+		if not Client then
+			self:RemoveOption( Winner.Name )
+			
+			local Winners = self:GetWinners( self.WinnersNeeded )
+
+			if Winners and #Winners == self.WinnersNeeded then
+				self.Winners = Winners
+				OnSucess( self, Winners )
+			else
+				OnFailure( self )
+			end
+			
+			return
+		end
+	end
+	
 	Plugin:SendNetworkMessage( nil, "VoteState", { team = Team, start = false, timeleft = 0 }, true )
 	
 	if Team > 0 then
-		Plugin:SetCaptain( Winners[ 1 ].Name, self.Team == Team )
+		Plugin:SetCaptain( Winners[ 1 ].Name, Team )
 	else
 		Plugin:SetCaptain( Winners[ 1 ].Name, 1 )
 		Plugin:SetCaptain( Winners[ 2 ].Name, 2 )
@@ -134,8 +152,7 @@ function Plugin:CheckStart()
 	if Shine.GetHumanPlayerCount() >= self.Config.MinPlayers and self.dt.State == 0 then
 		local Players = GetAllPlayers()
 		if Gamerules then 
-			for i = 1, #Players do
-				local Player = Players[ i ]
+			for _, Player in ipairs(Players) do
 				Gamerules:JoinTeam( Player, 0, nil, true )
 			end	
 			Gamerules:ResetGame()
@@ -239,7 +256,12 @@ function Plugin:RemoveCaptain( TeamNumber, SetCall )
 	CaptainsNum = CaptainsNum - 1
 	
 	if not SetCall and self.dt.State ~= 1 then
-		self:StartVote( TeamNumber )
+		if table.Count( self.Teams[ TeamNuber ].Player ) > 0 then
+			self:StartVote( TeamNumber )
+		else
+			self:Notify( nil, "Oh no, Team %s is empty! We have to restart the captain mode.", true, TeamNumber )
+			self:Reset()
+		end
 	end	
 end
 
