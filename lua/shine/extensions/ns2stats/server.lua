@@ -1720,9 +1720,7 @@ function Plugin:GetStatsURL()
 	return self.Config.WebsiteUrl
 end 
 
-function Plugin:CleanUp()
-	self.BaseClass.Cleanup( self )
-	
+function Plugin:Cleanup()	
 	self.StatsEnabled = nil
 	self.SuccessfulSends = nil
 	self.ResendCount = nil
@@ -1743,5 +1741,7 @@ function Plugin:CleanUp()
 	self.FakeIds = nil
 	self.DoDamageHeathChange = nil
 	
+	self.BaseClass.Cleanup( self )
+		
 	self.Enabled = false
 end
