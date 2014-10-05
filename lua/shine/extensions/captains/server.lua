@@ -245,7 +245,7 @@ end
 
 function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 	if ShineForce or self.dt.State ~= 1 and self.Config.AllowSpectating and NewTeam == kSpectatorIndex or 
-	self.Config.AllowPregameJoin and self.dt.State == 0 then return end
+	self.Config.AllowPregameJoin and self.dt.State == 0 or Player:GetTeamNumber() == kSpectatorIndex and NewTeam == kTeamReadyRoom then return end
 	
 	return false
 end
