@@ -32,7 +32,6 @@ function CaptainMenu:Create()
 		Pos = Vector( ScreenWidth * 0.1, ScreenHeight * 0.1, 0 )
 	}
 	Panel:SkinColour()
-	Panel:SetIsVisible( false )
 	
 	self.Panel = Panel
 	
@@ -128,7 +127,9 @@ function CaptainMenu:Create()
 	Commands:SetPos( Vector( 0, Label:GetSize().y + 20, 0 ) )
 	Commands:SetSize( Vector( CommandPanelSize.x , CommandPanelSize.y - Label:GetSize().y - 20, 0 ) )
 	self.Commands = Commands
-		
+	
+	Panel:SetIsVisible( false )
+	
 	self.Created = true
 end
 
