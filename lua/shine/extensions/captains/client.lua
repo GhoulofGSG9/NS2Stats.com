@@ -472,7 +472,7 @@ Plugin.MessageConfig =
 	b = 0,
 }
 function Plugin:CreateTextMessage()
-	Shine:AddMessageToQueue( 16, self.MessageConfig.x, self.MessageConfig.y, StringFormat("%s\n%s\n%s", Messages[ 1 ], Messages[ self.dt.State + 2 ], Messages[ 6 ] ), 1800, self.MessageConfig.r, self.MessageConfig.g, self.MessageConfig.y, 0, 1, 0 )
+	Shine:AddMessageToQueue( 16, self.MessageConfig.x, self.MessageConfig.y, StringFormat("%s\n%s\n%s", Messages[ 1 ], Messages[ self.dt.State + 2 ], Messages[ 6 ] ), 1800, self.MessageConfig.r, self.MessageConfig.g, self.MessageConfig.b, 0, 1, 0 )
 end
 
 function Plugin:UpdateTextMessage( VoteTime )
