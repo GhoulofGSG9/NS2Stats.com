@@ -59,9 +59,13 @@ Plugin.DefaultConfig = {
 	StateMessageColour = { 51, 153, 0 },
 	VoteforCaptains = true,
 	AllowSpectating = true,
+	CountdownTime = 15	
 }
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
+
+Plugin.CountdownTimer = "Countdown"
+Plugin.FiveSecondTimer = "5SecondCount"
 
 local function OnSucess( self, Winners )
 	local Team = 0
@@ -152,7 +156,8 @@ function Plugin:CheckStart()
 	if Shine.GetHumanPlayerCount() >= self.Config.MinPlayers and self.dt.State == 0 then
 		local Players = GetAllPlayers()
 		if Gamerules then 
-			for _, Player in ipairs(Players) do
+			for i = 1, #Players do
+				local Player = Players[ i ]
 				Gamerules:JoinTeam( Player, 0, nil, true )
 			end	
 			Gamerules:ResetGame()
@@ -252,11 +257,15 @@ function Plugin:RemoveCaptain( TeamNumber, SetCall )
 	end
 	
 	self:SendNetworkMessage( nil, "SetCaptain", { steamid = SteamId, team = TeamNumber, add = false }, true )
-	Gamerules:JoinTeam( Player, 0, nil, true )
+	
+	if Player:GetTeamNumber() ~= 0 then
+		Gamerules:JoinTeam( Player, 0, nil, true )
+	end
+	
 	CaptainsNum = CaptainsNum - 1
 	
 	if not SetCall and self.dt.State ~= 1 then
-		if table.Count( self.Teams[ TeamNuber ].Player ) > 0 then
+		if table.Count( self.Teams[ TeamNumber ].Players ) > 0 then
 			self:StartVote( TeamNumber )
 		else
 			self:Notify( nil, "Oh no, Team %s is empty! We have to restart the captain mode.", true, TeamNumber )
@@ -475,17 +484,89 @@ function Plugin:OnPlayerRename( Player, Name )
 	self:SendPlayerData( nil, Player )
 end
 
-function Plugin:CheckGameStart()
-	if self.dt.State ~= 3 then
-		if self.Teams[ 1 ].Ready and self.Teams[ 2 ].Ready then 
-			self.Teams[ 1 ].Ready = nil
-			self.Teams[ 2 ].Ready = nil
-			self.dt.State = 3
-			return true
-		else
-			return false
+function Plugin:CheckGameStart( Gamerules )
+	if self.dt.State == 2 then
+		self:CheckCommanders( Gamerules )
+		return false
+	end
+end
+
+function Plugin:CheckStart()
+	--Both teams are ready, start the countdown.
+	if self.Teams[ 1 ].Ready and self.Teams[ 2 ].Ready then
+		local CountdownTime = self.Config.CountdownTime
+		local GameStartTime = string.TimeToString( CountdownTime )
+		Shine:SendText( nil, Shine.BuildScreenMessage( 2, 0.5, 0.7, StringFormat( "Game starts in %s", GameStartTime ), 5, 255, 255, 255, 1, 3, 1 ) )
+		
+		--Game starts in 5 seconds!
+		self:CreateTimer( self.FiveSecondTimer, CountdownTime - 5, 1, function()
+			Shine:SendText( nil, Shine.BuildScreenMessage( 2, 0.5, 0.7, "Game starts in %s", 5, 255, 0, 0, 1, 3, 0 ) )
+		end )
+		
+		--If we get this far, then we can start.
+		self:CreateTimer( self.CountdownTimer, self.Config.CountdownTime, 1, function()
+			self:StartGame( GetGamerules() )
+		end )
+		
+		return
+	end
+	
+	--One or both teams are not ready, halt the countdown.
+	if self:TimerExists( self.CountdownTimer ) then
+		self:DestroyTimer( self.FiveSecondTimer )
+		self:DestroyTimer( self.CountdownTimer )
+		
+		--Remove the countdown text.
+		Shine:RemoveText( nil, { ID = 2 } )
+		
+		self:Notify( nil, "Game start aborted." )
+	end
+end
+
+function Plugin:GetTeamName( Team )
+	local Team = self.Teams[ 1 ].TeamNumber == 1 and self.Teams[ 1 ] or self.Teams[ 2 ]
+	return Team.Name or Shine:GetTeamName( Team, true )
+end
+
+function Plugin:CheckCommanders( Gamerules )
+	local Team1 = Gamerules.team1
+	local Team2 = Gamerules.team2
+	
+	local Team1Com = Team1:GetCommander()
+	local Team2Com = Team2:GetCommander()
+	
+	local MarinesReady = self.Teams[ 1 ].TeamNumber == 1 and self.Teams[ 1 ].Ready or self.Teams[ 2 ].Ready
+	local AliensReady = self.Teams[ 1 ].TeamNumber == 2 and self.Teams[ 1 ].Ready or self.Teams[ 2 ].Ready
+	
+	if MarinesReady and not Team1Com then
+		MarinesReady = false
+		self:Notify( nil, "%s is no longer ready.", true, self:GetTeamName( 1 ) )
+		self:CheckStart()
+	end
+	if AliensReady and not Team2Com then
+		AliensReady = false
+		self:Notify(nil, "%s is no longer ready.", true, self:GetTeamName( 2 ) )
+		self:CheckStart()
+	end
+end
+
+function Plugin:StartGame( Gamerules )
+	Gamerules:ResetGame()
+	Gamerules:SetGameState( kGameState.Countdown )
+	Gamerules.countdownTime = kCountDownLength
+	Gamerules.lastCountdownPlayed = nil
+	
+	local Players, Count = Shine.GetAllPlayers()
+	for i = 1, Count do
+		local Player = Players[ i ]
+		if Player.ResetScores then
+			Player:ResetScores()
 		end
 	end
+	
+	self.Teams[ 1 ].Ready = false
+	self.Teams[ 2 ].Ready = false
+	self.dt.State = 3
 end
 
 function Plugin:EndGame( Gamerules, WinningTeam )
@@ -499,7 +580,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
 					number = i,
 					name = Team.Name,
 					wins = Team.Wins,
-					teamnumber = Team.TeamNuber,
+					teamnumber = Team.TeamNumber,
 				}
 				self:SendNetworkMessage( nil, "TeamInfo", Info, true )
 				break
@@ -703,9 +784,17 @@ function Plugin:CreateCommands()
 		local SteamId = Client:GetUserId()
 		local TeamNumber = self:GetCaptainTeamNumbers( SteamId )
 		if not TeamNumber then return end
-		self.Teams[ TeamNumber ].Ready = not self.Teams[ TeamNumber ].Ready
 		
-		self:Notify( nil, "Team %s is now %s", true, TeamNumber, self.Teams[ TeamNumber ].Ready and "ready" or "not ready" )
+		local Captain = GetGamerules():GetTeam( TeamNumber ):GetCommander()
+		local Ready = self.Teams[ TeamNumber ].Ready
+		if not Commander and not Ready then
+			self:Notify( Client:GetControllingPlayer(), "Your team needs to have a Commander before you can set it ready !")
+			return
+		end
+		
+		Ready = not Ready
+		
+		self:Notify( nil, "%s is now %s", true, self.GetTeamName( TeamNumber ), Ready and "ready" or "not ready" )
 	end
 	local CommandReady = self:BindCommand("sh_ready", { "rdy", "ready" }, Ready, true )
 	CommandReady:Help( "Sets your team to be ready [this command is only available for captains]" )
