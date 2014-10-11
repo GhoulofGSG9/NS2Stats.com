@@ -146,13 +146,13 @@ function Plugin:Initialise()
 	self.dt.State = 0
 
 	self:CreateCommands()
-	self:CheckStart()
+	self:CheckModeStart()
 	
 	SetupClassHook( "Player", "SetName", "OnPlayerRename", "PassivePost" )
 	return true
 end
 
-function Plugin:CheckStart()
+function Plugin:CheckModeStart()
 	if Shine.GetHumanPlayerCount() >= self.Config.MinPlayers and self.dt.State == 0 then
 		local Players = GetAllPlayers()
 		if Gamerules then 
@@ -203,7 +203,7 @@ function Plugin:Reset()
 	end
 	
 	self.dt.State = 0
-	self:CheckStart()
+	self:CheckModeStart()
 end
 
 function Plugin:StartVote( Team )
@@ -440,7 +440,7 @@ function Plugin:ClientConfirmConnect( Client )
 	end
 	
 	if self.dt.State == 0 then
-		self:CheckStart()
+		self:CheckModeStart()
 	end
 	
 	if self.dt.State ~= 3 then return end
