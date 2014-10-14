@@ -794,7 +794,7 @@ function Plugin:CreateCommands()
 		
 		Ready = not Ready
 		
-		self:Notify( nil, "%s is now %s", true, self.GetTeamName( TeamNumber ), Ready and "ready" or "not ready" )
+		self:Notify( nil, "%s is now %s", true, self:GetTeamName( TeamNumber ), Ready and "ready" or "not ready" )
 	end
 	local CommandReady = self:BindCommand("sh_ready", { "rdy", "ready" }, Ready, true )
 	CommandReady:Help( "Sets your team to be ready [this command is only available for captains]" )
