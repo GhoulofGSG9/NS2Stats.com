@@ -158,7 +158,9 @@ function Plugin:CheckModeStart()
 		if Gamerules then 
 			for i = 1, #Players do
 				local Player = Players[ i ]
-				Gamerules:JoinTeam( Player, 0, nil, true )
+				if Player and Player:GetClient() then
+					Gamerules:JoinTeam( Player, 0, nil, true )
+				end
 			end	
 			Gamerules:ResetGame()
 		end
@@ -619,7 +621,7 @@ function Plugin:RestoreTeams()
 		local Player = Client:GetControllingPlayer()
 		local SteamId = Client:GetUserId()
 		local Team = self:GetTeamNumber( SteamId )
-		local TeamNumber = Team and self.Teams[ Team ].TeamNumber or 0
+		local TeamNumber = Team and self.Teams[ Team ] and self.Teams[ Team ].TeamNumber or 0
 		if Player then
 			Gamerules:JoinTeam( Player, TeamNumber, nil, true )
 		end
