@@ -144,7 +144,8 @@ function Plugin:Initialise()
 	end
 	
 	self.dt.State = 0
-
+	self.Connected = {}
+	
 	self:CreateCommands()
 	self:CheckModeStart()
 	
@@ -323,7 +324,7 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineF
 		local Vote = self.Votes[ NewTeam ]
 		Vote:AddVoteOption( SteamId )
 		
-		if Vote:GetIsStarted() and Connected[ SteamId ] then
+		if Vote:GetIsStarted() and self.Connected[ SteamId ] then
 			self:SendNetworkMessage( Client, "VoteState", { team = NewTeam, start = true, timeleft = Vote:GetTimeLeft() }, true )
 		end
 	end
@@ -413,7 +414,6 @@ function Plugin:SendMessages( Client )
 	end
 end
 
-local Connected = {}
 function Plugin:ClientConfirmConnect( Client )
 	if not Gamerules then 
 		Gamerules = GetGamerules()
@@ -427,7 +427,7 @@ function Plugin:ClientConfirmConnect( Client )
 	
 	self:SendPlayerData( nil, Player )
 	
-	Connected[ SteamId ] = true
+	self.Connected[ SteamId ] = true
 	
 	self:SimpleTimer( 1, function()
 		for _, Player in ipairs( GetAllPlayers() ) do
@@ -477,11 +477,8 @@ function Plugin:ClientDisconnect( Client )
 end
 
 function Plugin:OnPlayerRename( Player, Name )
-	local Client = GetOwner( Player )
-	if not Client then return end
-	
-	local SteamId = Client:GetUserId()
-	if Name == kDefaultPlayerName or not Connected[ SteamId ] then return end
+	local SteamId = Player:GetClient() and Player:GetSteamId()
+	if Name == kDefaultPlayerName or not self.Connected[ SteamId ] then return end
 	
 	self:SendPlayerData( nil, Player )
 end
