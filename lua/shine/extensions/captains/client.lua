@@ -515,7 +515,7 @@ function Plugin:ChangeState( OldState, NewState )
 	
 	local Player = Client.GetLocalPlayer()
 	local TeamNumber = Player and Player:GetTeamNumber() or 0
-	if NewState == 3 and ( TeamNumber == 1 or TeamNumber == 2 ) then
+	if NewState == 3 then
 		self:RemoveTextMessage()
 	elseif not self:TimerExists( "VoteMessage" ) then
 		self:SimpleTimer( 0.5, function() self:UpdateTextMessage() end)

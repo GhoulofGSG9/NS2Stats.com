@@ -425,7 +425,7 @@ function Plugin:ClientConfirmConnect( Client )
 	
 	self:SendMessages( Client )
 	
-	if self.dt.State == 0 then self:SendPlayerData( nil, Player ) end
+	self:SendPlayerData( nil, Player )
 	
 	Connected[ SteamId ] = true
 	
