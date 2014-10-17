@@ -784,7 +784,7 @@ function Plugin:CreateCommands()
 		local TeamNumber = self:GetCaptainTeamNumbers( SteamId )
 		if not TeamNumber then return end
 		
-		local Captain = GetGamerules():GetTeam( TeamNumber ):GetCommander()
+		local Commander = GetGamerules():GetTeam( TeamNumber ):GetCommander()
 		local Ready = self.Teams[ TeamNumber ].Ready
 		if not Commander and not Ready then
 			self:Notify( Client:GetControllingPlayer(), "Your team needs to have a Commander before you can set it ready !")
