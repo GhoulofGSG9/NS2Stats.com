@@ -681,15 +681,14 @@ function Plugin:CreateCommands()
 		local Vote = self.Votes[ TeamNumber ]
 		if Vote and Vote:GetIsStarted() then
 			local OldVoteId = Vote:GetOptionName( Vote:GetVote( Client ) )
+			local OldVoteClient = OldVoteId and GetClientByNS2ID( OldVoteId )
 			if OldVoteId == TargetId then return end --revote
 			
 			Vote:AddVote( Client, Vote:OptionToId( TargetId ))
 			
-			if OldVoteId then
-				local OldVoteClient = GetClientByNS2ID( OldVoteId )
-				local OldVotePlayer = OldVoteClient:GetControllingPlayer()
-				self:SendPlayerData( nil, OldVotePlayer )
-			end	
+			if OldVoteClient then
+				self:SendPlayerData( nil, OldVoteClient:GetControllingPlayer() )
+			end
 			
 			self:SendPlayerData( nil, Target:GetControllingPlayer() )
 		end
