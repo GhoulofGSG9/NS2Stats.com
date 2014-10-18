@@ -522,31 +522,32 @@ function Plugin:CheckStart()
 	end
 end
 
-function Plugin:GetTeamName( Team )
-	local Team = self.Teams[ 1 ].TeamNumber == 1 and self.Teams[ 1 ] or self.Teams[ 2 ]
-	return Team.Name or Shine:GetTeamName( Team, true )
+function Plugin:GetTeamName( TeamNumber )
+	local Team = self.Teams[ TeamNumber ]
+	if not Team then return end
+	return Team.Name or Shine:GetTeamName( Team.TeamNumber, true )
 end
 
 function Plugin:CheckCommanders( Gamerules )
-	local Team1 = Gamerules.team1
-	local Team2 = Gamerules.team2
+	local Team1 = Gamerules:GetTeam( self.Teams[ 1 ].TeamNumber )
+	local Team2 = Gamerules:GetTeam( self.Teams[ 1 ].TeamNumber )
 	
-	local Team1Com = Team1:GetCommander()
-	local Team2Com = Team2:GetCommander()
+	local Team1Com = Team1 and Team1:GetCommander()
+	local Team2Com = Team2 and Team2:GetCommander()
 	
-	local MarinesReady = self.Teams[ 1 ].TeamNumber == 1 and self.Teams[ 1 ].Ready or self.Teams[ 2 ].Ready
-	local AliensReady = self.Teams[ 1 ].TeamNumber == 2 and self.Teams[ 1 ].Ready or self.Teams[ 2 ].Ready
+	local Team1Ready = self.Teams[ 1 ].Ready
+	local Team2Ready = self.Teams[ 2 ].Ready
 	
-	if MarinesReady and not Team1Com then
-		MarinesReady = false
+	if Team1Ready and not Team1Com then
+		Team1Ready = false
 		self:Notify( nil, "%s is no longer ready.", true, self:GetTeamName( 1 ) )
-		self:CheckStart()
 	end
-	if AliensReady and not Team2Com then
-		AliensReady = false
+	if Team2Ready and not Team2Com then
+		Team2Ready = false
 		self:Notify(nil, "%s is no longer ready.", true, self:GetTeamName( 2 ) )
-		self:CheckStart()
 	end
+	
+	self:CheckStart()
 end
 
 function Plugin:StartGame( Gamerules )
