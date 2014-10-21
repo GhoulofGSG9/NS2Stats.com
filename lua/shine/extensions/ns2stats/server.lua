@@ -24,6 +24,7 @@ local JsonDecode = json.decode
 local HTTPRequest = Shared.SendHTTPRequest
 
 local SetupClassHook = Shine.Hook.SetupClassHook
+local SetupGlobalHook = Shine.Hook.SetupGlobalHook
 
 Plugin.Version = "shine"
 
@@ -65,6 +66,26 @@ local function SetupHooks()
 	SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
 	SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
 	SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
+	
+	SetupGlobalHook( "CheckMeleeCapsule", "OnCheckMeleeCapsule", function( OldFunc, ... )
+		local didHit, target, endPoint, direction, surface = OldFunc( ... )
+		
+		if not didHit then
+			Shine.Hook.Call( "OnMeleeMiss", ... )
+		end
+
+		return didHit, target, endPoint, direction, surface
+	
+	end)
+	
+	SetupGlobalHook( "RadiusDamage", "OnRadiusDamage", function( OldFunc, ... )
+		Shine.Hook.Call( "PreRadiusDamage", ... )
+		
+		OldFunc( ... )
+		
+		Shine.Hook.Call( "PostRadiusDamage", ... )
+	end)
+
 end
 
 function Plugin:Initialise()
@@ -137,6 +158,7 @@ function Plugin:OnGameReset()
 	self.DoDamageHeathChange = {}
 	self.HitCache = {}
 	self.FireCache = {}
+	self.DetonateCache = {}
 	
 	-- update stats all connected players
 	for _, Client in ipairs( Shine.GetAllClients() ) do
@@ -309,15 +331,17 @@ function Plugin:OnBotRenamed( Bot )
 end
 
 local function GetAttacker( Mixin )
+	if not Mixin then return end
+	
 	local Parent = Mixin:GetParent()
 	local Owner = HasMixin( Mixin, "Owner" ) and Mixin:GetOwner()
 	
 	local Attacker 
-	if Mixin:isa("Player") then
+	if Mixin:isa( "Player" ) then
 		Attacker = Mixin
 	elseif Parent and Parent:isa( "Player" ) then
 		Attacker = Parent
-	elseif Owner:isa( "Player" ) then
+	elseif Owner and Owner:isa( "Player" ) then
 		Attacker = Owner
 	end
 	
@@ -353,8 +377,6 @@ function Plugin:PreDoDamage( DamageMixin, Damage, Target, Point )
 	end
 end
 
-local DetonateCache = {}
-
 function Plugin:PastDoDamage( DamageMixin, Damage, Target, Point )
 	if not self.RoundStarted then return end
 	
@@ -368,46 +390,41 @@ function Plugin:PastDoDamage( DamageMixin, Damage, Target, Point )
 		
 		self.DoDamageHeathChange[ TargetId ] = nil
 		
-		if Damage > 0 then 
+		if Damage > 0 then
 			self:AddHitToLog( Target, Attacker, DamageMixin, Damage )
 		end
 	end
 	
 	local Id = DamageMixin:GetId()
+	
 	self.HitCache[ Id ] = nil
 	self.FireCache[ Id ] = nil
-	DetonateCache[ Id ] = nil
+	self.DetonateCache[ Id ] = nil
 end
 
 --grenades
-local OldRadiusDamage = RadiusDamage
-function RadiusDamage(entities, centerOrigin, radius, fullDamage, doer, ignoreLOS, fallOffFunc)
+function Plugin:PreRadiusDamage( entities, centerOrigin, radius, fullDamage, doer, ignoreLOS, fallOffFunc )
+	if not self.RoundStarted then return end
+	
+	self.DetonateCache[ doer:GetId() ] = true
+end
+
+function Plugin:PostRadiusDamage( entities, centerOrigin, radius, fullDamage, doer, ignoreLOS, fallOffFunc )
 	local Id = doer:GetId()
-	DetonateCache[ Id ] = true
+	if not self.DetonateCache[ Id ] then return end
 	
-	OldRadiusDamage(entities, centerOrigin, radius, fullDamage, doer, ignoreLOS, fallOffFunc)
-	
-	if DetonateCache[ Id ] then
-		Plugin:AddMissToLog( GetAttacker(doer) , doer )
-		DetonateCache[ Id ] = nil
-	end
+	self:AddMissToLog( GetAttacker( doer ) , doer )
+	self.DetonateCache[ Id ] = nil
 end
 
---melee weapons
-local OldCheckMeleeCapsule = CheckMeleeCapsule
-function CheckMeleeCapsule(weapon, player, damage, range, optionalCoords, traceRealAttack, scale, priorityFunc, filter, mask)
-	local didHit, target, endPoint, direction, surface = OldCheckMeleeCapsule( 
-		weapon, player, damage, range, optionalCoords, traceRealAttack, scale, priorityFunc, filter, mask )
-	if not didHit then 
-		Plugin:AddMissToLog( player, weapon )
-	end
-	
-	return didHit, target, endPoint, direction, surface
+function Plugin:OnMeleeMiss( weapon, player )
+	self:AddMissToLog( player, weapon )
 end
-
 
 --add Hit
 function Plugin:AddHitToLog( Target, Attacker, Doer, Damage )
+	if not Attacker then return end
+	
 	if Target:isa( "Player" ) then
 		self:WeaponsAddHit( Attacker, StringLower( Doer:GetMapName() ), Damage )		
 	else --Target is a structure
@@ -417,7 +434,7 @@ end
 
 --Add miss
 function Plugin:AddMissToLog( Attacker, Doer )
-	local Client = Attacker:GetClient()
+	local Client = Attacker and Attacker:GetClient()
 	if not Client then return end
 
 	local Player = Plugin:GetPlayerByClient( Client )
@@ -783,17 +800,15 @@ end
 function Plugin:OnStructureKilled( Structure, Attacker , Doer )
 	if not self.BuildingsInfos[ Structure:GetId() ] then return end
 	self.BuildingsInfos[ Structure:GetId() ] = nil
-			
+	
 	local tOrigin = Structure:GetOrigin()
-	local TechId = Structure:GetTechId()        
-	if not Doer then Doer = "None" end
+	local TechId = Structure:GetTechId()
+	Attacker = GetAttacker( Attacker )
+	Doer = Doer or "none"
+	
 	--Structure killed
-	if Attacker then 
-		if not Attacker:isa( "Player" ) then 
-			Attacker = GetAttacker( Attacker )
-			if not Attacker then return end
-		end
-		
+	if Attacker then
+	
 		local Player = Attacker                 
 		local Client = Player:GetClient()
 		local SteamId = self:GetId( Client ) or -1
@@ -1722,8 +1737,9 @@ function Plugin:Cleanup()
 	self.DoDamageHeathChange = nil
 	self.HitCache = nil
 	self.FireCache = nil
+	self.DetonateCache = nil
 	
 	self.BaseClass.Cleanup( self )
-		
+
 	self.Enabled = false
 end
