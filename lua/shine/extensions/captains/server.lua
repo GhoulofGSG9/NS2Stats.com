@@ -129,27 +129,36 @@ function Plugin:Initialise()
 		[ 2 ] = CreateVote( 2 ) 
 	}
 	
+	self.Connected = {}
+	self.dt.State = 0
+	
 	self:ResetTeams()
 	
 	self.Enabled = true
 	
-	--update HiveData of players we already received their HiveInfo
-	for _, Client in ipairs( GetAllClients() ) do
-		local ClientId = Client:GetUserId()
-		local HiveInfo = PlayerInfoHub:GetHiveData( ClientId )
-		if HiveInfo then
-			HiveData[ ClientId ] = HiveInfo
+	self:CreateCommands()
+	
+	local Clients = GetAllClients()
+	
+	--check if there are already players at the server
+	if #Clients > 0 then
+		for i = 1, #Clients do
+			local Client = Clients[ i ]
+			local ClientId = Client:GetUserId()
+			local HiveInfo = PlayerInfoHub:GetHiveData( ClientId )
+			
+			if HiveInfo then
+				HiveData[ ClientId ] = HiveInfo
+			end
+			
+			self:ClientConfirmConnect( Client )
 		end
-		self:ClientConfirmConnect( Client )
+	else
+		self:CheckModeStart()
 	end
 	
-	self.dt.State = 0
-	self.Connected = {}
-	
-	self:CreateCommands()
-	self:CheckModeStart()
-	
 	SetupClassHook( "Player", "SetName", "OnPlayerRename", "PassivePost" )
+	
 	return true
 end
 
