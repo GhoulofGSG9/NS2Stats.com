@@ -294,22 +294,24 @@ function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )
 end
 
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
-	local Client = GetOwner( Player ) 
-	local SteamId = Client:GetUserId()	
+	local Client = Player:GetClient()
+	local SteamId = Client and Client:GetUserId()
+		Print("Hi")
 	if self.dt.State > 0 then
 		if OldTeam == 1 or OldTeam == 2 then
 			local Team = self.Teams[ 1 ].TeamNumber == OldTeam and 1 or 2
 			self.Teams[ Team ].Players[ SteamId ] = nil
-			self:Notify( nil, "%s left Team %s", true, Player:GetName(), Team)
+			self:Notify( nil, "%s left %s", true, Player:GetName(), self:GetTeamName( OldTeam ) )
 			if self.Teams[ Team ].Captain == SteamId then
 				self:Notify( nil, "Also Team %s is now without a Captain. Starting a vote for a new Captain ...", true, Team )
 				self:RemoveCaptain( Team )
 			end
 		end
+		
 		if NewTeam == 1 or NewTeam == 2 then
 			local Team = self.Teams[ 1 ].TeamNumber == NewTeam and 1 or 2
 			self.Teams[ Team ].Players[ SteamId ] = true
-			self:Notify( nil, "%s joined Team %s", true, Player:GetName(), Team )
+			self:Notify( nil, "%s joined %s", true, Player:GetName(), self:GetTeamName( NewTeam ))
 		end
 	end
 	
