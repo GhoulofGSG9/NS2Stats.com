@@ -25,6 +25,7 @@ local HTTPRequest = Shared.SendHTTPRequest
 
 local SetupClassHook = Shine.Hook.SetupClassHook
 local SetupGlobalHook = Shine.Hook.SetupGlobalHook
+local Call = Shine.Hook.Call
 
 Plugin.Version = "shine"
 
@@ -49,13 +50,19 @@ Plugin.DefaultConfig =
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
 
---All needed Hooks
 local function SetupHooks()
 	SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
-	SetupClassHook( "DamageMixin", "DoDamage", "PreDoDamage", "PassivePre" )
-	SetupClassHook( "DamageMixin", "DoDamage", "PastDoDamage", "PassivePost" )
-	SetupClassHook( "Flamethrower", "FirePrimary", "PreFirePrimary", "PassivePre" )
-	SetupClassHook( "Flamethrower", "FirePrimary", "PostFirePrimary", "PassivePost" )
+	SetupClassHook( "DamageMixin", "DoDamage", "OnDoDamage", function ( OldFunc, ...)
+		Call( "PreDoDamage", ... )
+		local a = OldFunc( ... )
+		Call( "PastDoDamage", ... )
+		return a
+	end)
+	SetupClassHook( "Flamethrower", "FirePrimary", "OnFirePrimary", function( OldFunc, ... )
+		Call( "PreFirePrimary", ... )
+		OldFunc( ... )
+		Call( "PostFirePrimary", ... )
+	end )
 	SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
 	SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
 	SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
@@ -66,35 +73,43 @@ local function SetupHooks()
 	SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
 	SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
 	SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
-	
+
 	SetupGlobalHook( "CheckMeleeCapsule", "OnCheckMeleeCapsule", function( OldFunc, ... )
 		local didHit, target, endPoint, direction, surface = OldFunc( ... )
 		
 		if not didHit then
-			Shine.Hook.Call( "OnMeleeMiss", ... )
+			Call( "OnMeleeMiss", ... )
 		end
 
 		return didHit, target, endPoint, direction, surface
-	
+
 	end)
-	
+
 	SetupGlobalHook( "RadiusDamage", "OnRadiusDamage", function( OldFunc, ... )
-		Shine.Hook.Call( "PreRadiusDamage", ... )
+		Call( "PreRadiusDamage", ... )
 		
 		OldFunc( ... )
 		
-		Shine.Hook.Call( "PostRadiusDamage", ... )
+		Call( "PostRadiusDamage", ... )
 	end)
-
 end
 
 function Plugin:Initialise()
 	self.Enabled = false
-	self:SimpleTimer( 1, function()
-		SetupHooks()
-		self:Setup()
-	end )
-
+	
+	self:Setup()
+	
+	local Clients = Shine.GetAllClients()	
+	--check if there are already players at the server
+	if #Clients > 0 then
+		for i = 1, #Clients do
+			local Client = Clients[ i ]
+			self:ClientConfirmConnect( Client )
+		end	
+	end
+	
+	SetupHooks()
+	
 	return true
 end
 
@@ -854,6 +869,7 @@ end
 --Entity Killed
 function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor)
 	if not self.RoundStarted then return end
+	
 	if TargetEntity:isa( "Player" ) then
 		self:AddDeathToLog( TargetEntity, Attacker, Inflictor )     
 	elseif self.BuildingsInfos[ TargetEntity:GetId() ] and not TargetEntity.isGhostStructure then 
@@ -1246,13 +1262,14 @@ function Plugin:GetPlayerByClient( Client )
 	if Client.GetUserId then
 		local steamId = self:GetId( Client )
 		for _, PlayerInfo in pairs( self.PlayersInfos ) do	
-		if PlayerInfo.steamId == steamId then return PlayerInfo end
+			if PlayerInfo.steamId == steamId then return PlayerInfo end
 		end
 	elseif Client.GetControllingPlayer then
 		local Player = Client:GetControllingPlayer()
 		local name = Player:GetName()
 		self:GetPlayerByName( Name )
 	end
+	
 	return
 end
 --Player Table end
