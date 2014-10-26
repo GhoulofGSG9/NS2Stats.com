@@ -997,7 +997,7 @@ end
 
 --Check Killstreaks
 function Plugin:AddKill( AttackerSteamId )
-	for _,PlayerInfo in pairs(self.PlayersInfos) do	
+	for _,PlayerInfo in ipairs(self.PlayersInfos) do	
 		if PlayerInfo.steamId == AttackerSteamId then	
 			PlayerInfo.killstreak = PlayerInfo.killstreak + 1	
 			if PlayerInfo.killstreak > PlayerInfo.highestKillstreak then
@@ -1240,7 +1240,7 @@ end
 
 --All search functions
 function Plugin:GetTeamCommanderSteamid( TeamNumber )
-	for _, PlayerInfo in pairs( self.PlayersInfos ) do
+	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		if PlayerInfo.isCommander and PlayerInfo.teamnumber == TeamNumber then
 			return PlayerInfo.steamId
 		end	
@@ -1250,7 +1250,7 @@ end
 
 function Plugin:GetPlayerByName( Name )
 	if not Name then return end
-	for _, PlayerInfo in pairs( self.PlayersInfos ) do        
+	for _, PlayerInfo in ipairs( self.PlayersInfos ) do        
 		if PlayerInfo.name == Name then return PlayerInfo end	
 	end
 	return
@@ -1261,7 +1261,7 @@ function Plugin:GetPlayerByClient( Client )
 	
 	if Client.GetUserId then
 		local steamId = self:GetId( Client )
-		for _, PlayerInfo in pairs( self.PlayersInfos ) do	
+		for _, PlayerInfo in ipairs( self.PlayersInfos ) do	
 			if PlayerInfo.steamId == steamId then return PlayerInfo end
 		end
 	elseif Client.GetControllingPlayer then
@@ -1538,7 +1538,7 @@ function Plugin:AwardMostDamage()
 	local HighestSteamId = ""
 	local Rating = 0
 	
-	for _, PlayerInfo in pairs( self.PlayersInfos ) do
+	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		local TotalDamage = 0
 		
 		for i=1, #PlayerInfo.weapons do
@@ -1564,7 +1564,7 @@ function Plugin:AwardMostKillsAndAssists()
 	local HighestPlayer = "Nobody"
 	local HighestSteamId = ""
 	
-	for _, PlayerInfo in pairs( self.PlayersInfos ) do
+	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		local Total = PlayerInfo.kills + PlayerInfo.assists
 		if Total > HighestTotal then
 			HighestTotal = Total
@@ -1585,7 +1585,7 @@ function Plugin:AwardMostConstructed()
 	local HighestPlayer = "was not present"
 	local HighestSteamId = ""
 	
-	for _, PlayerInfo in pairs( self.PlayersInfos ) do
+	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		if PlayerInfo.total_constructed > HighestTotal then
 			HighestTotal = PlayerInfo.total_constructed
 			HighestPlayer = PlayerInfo.name
@@ -1604,7 +1604,7 @@ function Plugin:AwardMostStructureDamage()
 	local HighestSteamId = ""
 	local Rating = 0
 	
-	for _, PlayerInfo in pairs( self.PlayersInfos ) do
+	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		local Total = 0
 		
 		for i=1, #PlayerInfo.weapons do
@@ -1629,7 +1629,7 @@ function Plugin:AwardMostPlayerDamage()
 	local HighestSteamId = ""
 	local Rating = 0
 	
-	for _, PlayerInfo in pairs( self.PlayersInfos ) do
+	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		local Total = 0
 		
 		for i = 1, #PlayerInfo.weapons do
@@ -1655,7 +1655,7 @@ function Plugin:AwardBestAccuracy()
 	local HighestTeam = 0
 	local Rating = 0
 	
-	for _, PlayerInfo in pairs( self.PlayersInfos ) do
+	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		local Total = 0
 		
 		for i = 1, #PlayerInfo.weapons do
@@ -1689,7 +1689,7 @@ function Plugin:AwardMostJumps()
 	local HighestSteamId = ""
 	local Rating = 0
 	
-	for _, PlayerInfo in pairs(self.PlayersInfos) do
+	for _, PlayerInfo in ipairs(self.PlayersInfos) do
 	
 		local Total = PlayerInfo.jumps or 0
 	
@@ -1711,8 +1711,7 @@ function Plugin:AwardHighestKillstreak()
 	local HighestPlayer = "nobody"
 	local HighestSteamId = ""
 	
-	for _, PlayerInfo in pairs( self.PlayersInfos ) do
-				
+	for _, PlayerInfo in ipairs( self.PlayersInfos ) do				
 		local Total = PlayerInfo.highestKillstreak or 0
 		
 		if Total > HighestTotal then
