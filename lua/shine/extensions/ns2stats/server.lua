@@ -46,11 +46,12 @@ Plugin.DefaultConfig =
 	Tags = {}, --Tags added to log
 	Competitive = false, -- tag rounds as Competitive
 	Lastroundlink = "", --Link of last round
+	DisableSponitor = false,
 }
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
 
-local function SetupHooks()
+function Plugin:SetupHooks()
 	SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
 	SetupClassHook( "DamageMixin", "DoDamage", "OnDoDamage", function ( OldFunc, ...)
 		Call( "PreDoDamage", ... )
@@ -92,6 +93,11 @@ local function SetupHooks()
 		
 		Call( "PostRadiusDamage", ... )
 	end)
+	
+	if self.Config.DisableSponitor then
+		SetupClassHook( "ServerSponitor", "OnStartMatch", "OnStartMatch", function() end )
+	end
+	
 end
 
 function Plugin:Initialise()
@@ -108,7 +114,7 @@ function Plugin:Initialise()
 		end	
 	end
 	
-	SetupHooks()
+	self:SetupHooks()
 	
 	return true
 end
