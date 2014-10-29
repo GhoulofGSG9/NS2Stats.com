@@ -242,7 +242,7 @@ function Plugin:ClientConfirmConnect( Client )
 	local Params =
 	{
 		action = "connect",
-		steamId = Plugin:GetId( Client )
+		steamId = self:GetId( Client )
 	}
 	self:AddLog( Params )
 	
@@ -250,7 +250,7 @@ function Plugin:ClientConfirmConnect( Client )
 	local PlayerInfo = self:GetPlayerByClient( Client )
 	
 	if not PlayerInfo then
-		Plugin:AddPlayerToTable( Client )  
+		self:AddPlayerToTable( Client )  
 	else 
 		PlayerInfo.dc = false 
 	end
@@ -1167,6 +1167,7 @@ end
 --add Player to table
 function Plugin:AddPlayerToTable( Client )
 	if not Client then return end
+	
 	local Entry = self:CreatePlayerEntry( Client )
 	if not Entry then return end
 	
@@ -1179,7 +1180,9 @@ function Plugin:CreatePlayerEntry(Client)
 		Notify( "[NS2Stats Debug]: Tried to create nil Player" )
 		return
 	end
+	
 	local Player = Client:GetControllingPlayer()
+	
 	if not Player then return end
 	local PlayerInfo = {}
 	
@@ -1196,7 +1199,7 @@ function Plugin:CreatePlayerEntry(Client)
 	PlayerInfo.totalScore = Player.totalScore or 0
 	PlayerInfo.totalPlayTime = Player.totalPlayTime or 0
 	PlayerInfo.playerLevel = Player.playerLevel or 0   
-	PlayerInfo.steamId = Plugin:GetId(Client) or 0
+	PlayerInfo.steamId = self:GetId(Client) or 0
 	PlayerInfo.name = Player:GetName() or ""
 	PlayerInfo.ping = Client:GetPing() or 0
 	PlayerInfo.isbot = Client:GetIsVirtual() or false
