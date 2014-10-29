@@ -186,6 +186,9 @@ function Plugin:Think()
 end
 
 function Plugin:ResetTeams()
+	self:RemoveCaptain( 1 )
+	self:RemoveCaptain( 2 )
+	
 	self.Teams = {
 		{
 			Name = "Team 1",
@@ -200,12 +203,27 @@ function Plugin:ResetTeams()
 			Wins = 0
 		}
 	}
+	
+	self:SendTeamInfo( 1 )
+	self:SendTeamInfo( 2 )
+end
+
+function Plugin:SendTeamInfo( TeamNumber )
+	local Team = self.Teams[ TeamNumber ]
+	if not Team then return end
+	
+	local Info = {
+		name = Team.Name,
+		wins = Team.Wins,
+		number = TeamNumber,
+		teamnumber = Team.TeamNumber
+	}
+	self:SendNetworkMessage( nil, "TeamInfo", Info, true )
 end
 
 function Plugin:Reset()
 	self:Notify( nil, "The Teams have been reset, restarting Captain Mode ..." )
 	self:ResetTeams()
-	self:SaveConfig( true )
 	
 	self:DestroyAllTimers()
 	for i = 0, 2 do
@@ -255,7 +273,7 @@ end
 function Plugin:RemoveCaptain( TeamNumber, SetCall )
 	local SteamId = self.Teams[ TeamNumber ].Captain
 	if not SteamId or CaptainsNum == 0 then return end
-		
+
 	self.Teams[ TeamNumber ].Players[ SteamId ] = false
 	self.Teams[ TeamNumber ].Captain = nil	
 
@@ -587,13 +605,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
 			local Team = self.Teams[ i ]
 			if Team.TeamNumber == Winner then
 				Team.Wins = Team.Wins + 1
-				local Info = {
-					number = i,
-					name = Team.Name,
-					wins = Team.Wins,
-					teamnumber = Team.TeamNumber,
-				}
-				self:SendNetworkMessage( nil, "TeamInfo", Info, true )
+				self:SendTeamInfo( i )
 				break
 			end
 		end
@@ -823,14 +835,11 @@ function Plugin:CreateCommands()
 		end
 
 		local Team = self.Teams[ TeamNumber ]
-		Team.Name = TeamName
-		local Info = {
-			name = TeamName,
-			wins = Team.Wins,
-			number = TeamNumber,
-			teamnumber = Team.TeamNumber
-		}
-		self:SendNetworkMessage( nil, "TeamInfo", Info, true )
+		
+		if Team then
+			Team.Name = TeamName
+			self:SendTeamInfo( TeamNumber )
+		end
 	end
 	local CommandSetTeamName = self:BindCommand( "sh_setteamname", "setteamname", SetTeamName, true )
 	CommandSetTeamName:AddParam{ Type = "number", Min = 1, Max = 2, Round = true, Error = "TeamNumber must be either 1 or 2 " }

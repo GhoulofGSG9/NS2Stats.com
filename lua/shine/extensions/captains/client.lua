@@ -629,7 +629,7 @@ end
 
 function Plugin:Cleanup()
 	self.BaseClass.Cleanup( self )
-	 
+
 	CaptainMenu:Destroy()
 	self:RemoveTextMessage()
 end
