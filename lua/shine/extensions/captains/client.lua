@@ -515,10 +515,11 @@ function Plugin:ChangeState( OldState, NewState )
 	
 	local Player = Client.GetLocalPlayer()
 	local TeamNumber = Player and Player:GetTeamNumber() or 0
-	if NewState == 3 then
+	
+	if NewState == 3 and TeamNumber ~= kTeamReadyRoom then	
 		self:RemoveTextMessage()
 	elseif not self:TimerExists( "VoteMessage" ) then
-		self:SimpleTimer( 0.5, function() self:UpdateTextMessage() end)
+		self:UpdateTextMessage()
 	end
 	
 end
@@ -539,7 +540,15 @@ function Plugin:ReceivePlayerData( Message )
 	end
 	
 	if Message.steamid == LocalId then
+		if LocalTeam then
+			self:RemoveVoteFromGui(LocalTeam)
+		end
+		
 		LocalTeam = Message.team
+		
+		if LocalTeam ~= kTeamReadyRoom and self.dt.State == 3 then
+			self:RemoveTextMessage()
+		end
 	end
 	
 	CaptainMenu:UpdatePlayer( Message )
@@ -585,6 +594,20 @@ function Plugin:ReceiveSetCaptain( Message )
 	
 end
 
+function Plugin:RemoveVoteFromGui( Team )
+		self:DestroyTimer( "VoteMessage" )
+		self:UpdateTextMessage()
+		
+		local List = CaptainMenu.ListItems and CaptainMenu.ListItems[ Team ]
+		if not List then return end
+		
+		for _, Row in ipairs( List.Rows ) do
+			Row:SetColumnText( 8, "0" )
+		end
+
+		CaptainMenu:RemoveCategory( "Vote Captain" )
+end
+
 function Plugin:ReceiveVoteState( Message )
 	if Message.team > 0 and Message.team ~= LocalTeam then return end
 	
@@ -596,17 +619,7 @@ function Plugin:ReceiveVoteState( Message )
 			end )			
 		end
 	else
-		self:DestroyTimer( "VoteMessage" )
-		self:UpdateTextMessage()
-		
-		local List = CaptainMenu.ListItems and CaptainMenu.ListItems[ Message.team + 1 ]
-		if not List then return end
-		
-		for _, Row in ipairs( List.Rows ) do
-			Row:SetColumnText( 8, "0" )
-		end
-
-		CaptainMenu:RemoveCategory( "Vote Captain" )
+		self:RemoveVoteFromGui( Message.team + 1 )
 	end
 end
 

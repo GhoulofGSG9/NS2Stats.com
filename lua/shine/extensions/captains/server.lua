@@ -186,9 +186,12 @@ function Plugin:Think()
 end
 
 function Plugin:ResetTeams()
-	self:RemoveCaptain( 1 )
-	self:RemoveCaptain( 2 )
-	
+
+	if self.Teams then
+		self:RemoveCaptain( 1 )
+		self:RemoveCaptain( 2 )
+	end
+
 	self.Teams = {
 		{
 			Name = "Team 1",
@@ -314,7 +317,7 @@ end
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
 	local Client = Player:GetClient()
 	local SteamId = Client and Client:GetUserId()
-		Print("Hi")
+	
 	if self.dt.State > 0 then
 		if OldTeam == 1 or OldTeam == 2 then
 			local Team = self.Teams[ 1 ].TeamNumber == OldTeam and 1 or 2
