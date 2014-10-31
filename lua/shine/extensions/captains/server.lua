@@ -281,9 +281,9 @@ function Plugin:RemoveCaptain( TeamNumber, SetCall )
 	self.Teams[ TeamNumber ].Captain = nil	
 
 	local Client = GetClientByNS2ID( SteamId )
-	local Player = Client:GetControllingPlayer()
+	local Player = Client and Client:GetControllingPlayer()
 	
-	self:Notify( nil, "%s is now not any longer the Captain of Team %s", true, Player:GetName(), TeamNumber )
+	self:Notify( nil, "%s is now not any longer the Captain of Team %s", true, Player and Player:GetName() or "Unknown", TeamNumber )
 	if self.Teams[ TeamNumber ].Ready then
 		self.Teams[ TeamNumber ].Ready = false
 		self:Notify( nil, "And Team %s is now not any more ready!", true, TeamNumber )
@@ -291,7 +291,7 @@ function Plugin:RemoveCaptain( TeamNumber, SetCall )
 	
 	self:SendNetworkMessage( nil, "SetCaptain", { steamid = SteamId, team = TeamNumber, add = false }, true )
 	
-	if Player:GetTeamNumber() ~= 0 then
+	if Player and Player:GetTeamNumber() ~= 0 then
 		Gamerules:JoinTeam( Player, 0, nil, true )
 	end
 	
@@ -538,12 +538,9 @@ function Plugin:CheckStart()
 		self:CreateTimer( self.CountdownTimer, self.Config.CountdownTime, 1, function()
 			self:StartGame( GetGamerules() )
 		end )
-		
-		return
-	end
-	
+
 	--One or both teams are not ready, halt the countdown.
-	if self:TimerExists( self.CountdownTimer ) then
+	elseif self:TimerExists( self.CountdownTimer ) then
 		self:DestroyTimer( self.FiveSecondTimer )
 		self:DestroyTimer( self.CountdownTimer )
 		
