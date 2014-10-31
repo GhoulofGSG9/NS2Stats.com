@@ -277,14 +277,14 @@ end
 function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
 	if self.RoundFinished == 1 then return end
 	
-	local Player = Shared.GetEntity( PlayerInfoEntity.playerId )  
-	if not Player then return end
-	
-	local Client = Player:GetClient()
+	local Client = Shared.GetEntity( PlayerInfoEntity.clientId )  
 	if not Client then return end
 	
 	local PlayerInfo = self:GetPlayerByClient( Client )
 	if not PlayerInfo then return end
+	
+	local Player = Client:GetControllingPlayer()
+	if not Player then return end
 	
 	local Lifeform = Player:GetMapName()
 	
