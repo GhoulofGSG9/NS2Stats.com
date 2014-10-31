@@ -21,6 +21,26 @@ Plugin.DefaultConfig =
 }
 Plugin.CheckConfig = true
 
+function Plugin:Initialise()
+	self.Enabled = true
+	
+	--assign badges for all already connected clients
+	local InfoHub = Shine.PlayerInfoHub
+	local Clients = Shine.GetAllClients()
+	
+	for i = 1, #Clients do
+		local Client = Clients[ i ]
+		local SteamId = Client:GetUserId()
+		
+		if InfoHub:GetIsRequestFinished( SteamId ) then
+			self:OnReceiveNs2StatsData( Client, InfoHub:GetNs2StatsData( SteamId ) )
+			self:OnReceiveSteamData( Client, InfoHub:GetSteamData( SteamId ) )
+		end
+	end
+	
+	return true
+end
+
 function Plugin:SetBadge( Client, Badge, Row )
     if not ( Badge or Client ) then return end
     

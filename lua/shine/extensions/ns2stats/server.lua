@@ -48,32 +48,46 @@ Plugin.DefaultConfig =
 	Lastroundlink = "", --Link of last round
 	DisableSponitor = false,
 }
+if Shine.IsNS2Combat then 
+	Plugin.DefaultConfig.DisableSponitor = nil
+end
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
 
 function Plugin:SetupHooks()
-	SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
+	
+	if not Shine.IsNS2Combat then
+		SetupClassHook( "ConstructMixin", "SetConstructionComplete", "OnFinishedBuilt", "PassivePost" )
+		
+		SetupClassHook( "ResearchMixin", "OnResearchCancel", "AddUpgradeAbortedToLog", "PassivePost" )
+		SetupClassHook( "ResearchMixin", "SetResearching", "OnTechStartResearch", "PassivePre" )
+		SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
+		SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
+		SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
+
+		if self.Config.DisableSponitor then
+			SetupClassHook( "ServerSponitor", "OnStartMatch", "OnStartMatch", function() end )
+		end
+	end
+	
 	SetupClassHook( "DamageMixin", "DoDamage", "OnDoDamage", function ( OldFunc, ...)
 		Call( "PreDoDamage", ... )
 		local a = OldFunc( ... )
 		Call( "PastDoDamage", ... )
 		return a
 	end)
+	
 	SetupClassHook( "Flamethrower", "FirePrimary", "OnFirePrimary", function( OldFunc, ... )
 		Call( "PreFirePrimary", ... )
 		OldFunc( ... )
 		Call( "PostFirePrimary", ... )
 	end )
+	
 	SetupClassHook( "NS2Gamerules", "OnEntityDestroy", "OnEntityDestroy", "PassivePre" )
 	SetupClassHook( "NS2Gamerules", "ResetGame", "OnGameReset", "PassivePre" )
 	SetupClassHook( "Player", "OnJump", "OnPlayerJump", "PassivePost" )
 	SetupClassHook( "PlayerBot", "UpdateNameAndGender","OnBotRenamed", "PassivePost" )
 	SetupClassHook( "PlayerInfoEntity", "UpdateScore", "OnPlayerScoreChanged", "PassivePost" )
-	SetupClassHook( "ResearchMixin", "OnResearchCancel", "AddUpgradeAbortedToLog", "PassivePost" )
-	SetupClassHook( "ResearchMixin", "SetResearching", "OnTechStartResearch", "PassivePre" )
-	SetupClassHook( "ResearchMixin", "TechResearched", "OnTechResearched", "PassivePost" )
-	SetupClassHook( "ResourceTower", "CollectResources", "OnTeamGetResources", "PassivePost" )
-	SetupClassHook( "UpgradableMixin", "RemoveUpgrade","AddUpgradeLostToLog", "PassivePost" )
 
 	SetupGlobalHook( "CheckMeleeCapsule", "OnCheckMeleeCapsule", function( OldFunc, ... )
 		local didHit, target, endPoint, direction, surface = OldFunc( ... )
@@ -93,10 +107,6 @@ function Plugin:SetupHooks()
 		
 		Call( "PostRadiusDamage", ... )
 	end)
-	
-	if self.Config.DisableSponitor then
-		SetupClassHook( "ServerSponitor", "OnStartMatch", "OnStartMatch", function() end )
-	end
 	
 end
 
@@ -273,18 +283,18 @@ function Plugin:ClientDisconnect( Client )
 	self:AddLog( Params )
 end
 
---score changed (temp for 263)
+--score changed
 function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
 	if self.RoundFinished == 1 then return end
 	
-	local Player = Shared.GetEntity( PlayerInfoEntity.playerId )  
-	if not Player then return end
-	
-	local Client = Player:GetClient()
+	local Client = Shared.GetEntity( PlayerInfoEntity.clientId )  
 	if not Client then return end
 	
 	local PlayerInfo = self:GetPlayerByClient( Client )
 	if not PlayerInfo then return end
+	
+	local Player = Client:GetControllingPlayer()
+	if not Player then return end
 	
 	local Lifeform = Player:GetMapName()
 	
@@ -600,223 +610,226 @@ end
 
 --Team Events
 
---Resource gathered
-function Plugin:OnTeamGetResources( ResourceTower )    
-	local Params =
-	{
-		team = ResourceTower:GetTeam():GetTeamNumber(),
-		action = "resources_gathered",
-		amount = kTeamResourcePerTick
-	}
-	self:AddLog( Params )
-end
+if not Shine.IsNS2Combat then
 
---Structure Events
-
---Building Dropped
-function Plugin:OnConstructInit( Building )    
-	if not self.RoundStarted then return end
-
-	local TechId = Building:GetTechId()
-	local name = EnumToString( kTechId, TechId )
-	
-	if name == "Hydra" or name == "GorgeTunnel"  or name == "BabblerEgg" then return end --Gorge Building Fix
-	
-	self.BuildingsInfos[ Building:GetId() ] = true
-	
-	local StructureOrigin = Building:GetOrigin()
-	local Build =
-	{
-		action = "structure_dropped",
-		id = Building:GetId(),
-		steamId = self:GetTeamCommanderSteamid( Building:GetTeamNumber() ) or 0,       
-		team = Building:GetTeamNumber(),        
-		structure_cost = GetCostForTech( TechId ),
-		structure_name = name,
-		structure_x = StringFormat("%.4f", StructureOrigin.x ),
-		structure_y = StringFormat("%.4f", StructureOrigin.y ),
-		structure_z = StringFormat( "%.4f", StructureOrigin.z ),
-	}
-	Plugin:AddLog( Build )
-	if Building.isGhostStructure then self:OnGhostCreated( Building ) end
-end
-
---Building built
-function Plugin:OnFinishedBuilt( ConstructMixin, Builder )
-	if not self.RoundStarted then return end
-	self.BuildingsInfos[ ConstructMixin:GetId() ] = true 
-
-	local TechId = ConstructMixin:GetTechId()    
-	local StructureOrigin = ConstructMixin:GetOrigin()
-	
-	if Builder and Builder.GetName then
-		local PlayerInfo = Plugin:GetPlayerByName( Builder:GetName() )
+	--Resource gathered
+	function Plugin:OnTeamGetResources( ResourceTower )    
+		local Params =
+		{
+			team = ResourceTower:GetTeam():GetTeamNumber(),
+			action = "resources_gathered",
+			amount = kTeamResourcePerTick
+		}
+		self:AddLog( Params )
 	end
-	
-	local Teamnumber = ConstructMixin:GetTeamNumber()
-	local SteamId = Plugin:GetTeamCommanderSteamid(teamnumber) or 0    
-	local Buildername = ""
+
+	--Structure Events
+
+	--Building Dropped
+	function Plugin:OnConstructInit( Building )    
+		if not self.RoundStarted then return end
+
+		local TechId = Building:GetTechId()
+		local name = EnumToString( kTechId, TechId )
 		
-	if PlayerInfo then
-		SteamId = PlayerInfo.steamId
-		Buildername = PlayerInfo.name
-		PlayerInfo.total_constructed = PlayerInfo.total_constructed + 1
+		if name == "Hydra" or name == "GorgeTunnel"  or name == "BabblerEgg" then return end --Gorge Building Fix
+		
+		self.BuildingsInfos[ Building:GetId() ] = true
+		
+		local StructureOrigin = Building:GetOrigin()
+		local Build =
+		{
+			action = "structure_dropped",
+			id = Building:GetId(),
+			steamId = self:GetTeamCommanderSteamid( Building:GetTeamNumber() ) or 0,       
+			team = Building:GetTeamNumber(),        
+			structure_cost = GetCostForTech( TechId ),
+			structure_name = name,
+			structure_x = StringFormat("%.4f", StructureOrigin.x ),
+			structure_y = StringFormat("%.4f", StructureOrigin.y ),
+			structure_z = StringFormat( "%.4f", StructureOrigin.z ),
+		}
+		Plugin:AddLog( Build )
+		if Building.isGhostStructure then self:OnGhostCreated( Building ) end
 	end
-	
-	local Params =
-	{
-		action = "structure_built",
-		id = ConstructMixin:GetId(),
-		builder_name = Buildername,
-		steamId = SteamId,
-		structure_cost = GetCostForTech( TechId ),
-		team = Teamnumber,
-		structure_name = EnumToString( kTechId, TechId ),
-		structure_x = StringFormat( "%.4f", StructureOrigin.x ),
-		structure_y = StringFormat( "%.4f", StructureOrigin.y ),
-		structure_z = StringFormat( "%.4f", StructureOrigin.z ),
-	}
-	self:AddLog( Params )
-end
 
---Ghost Buildings (Blueprints)
-function Plugin:OnGhostCreated(GhostStructureMixin)
-	if not self.RoundStarted then return end
-	self:GhostStructureAction( "ghost_create", GhostStructureMixin )
-end
+	--Building built
+	function Plugin:OnFinishedBuilt( ConstructMixin, Builder )
+		if not self.RoundStarted then return end
+		self.BuildingsInfos[ ConstructMixin:GetId() ] = true 
 
-function Plugin:OnGhostDestroyed(GhostStructureMixin)
-self.BuildingsInfos[ GhostStructureMixin:GetId() ] = nil
-self:GhostStructureAction( "ghost_destroy", GhostStructureMixin )
-end
+		local TechId = ConstructMixin:GetTechId()    
+		local StructureOrigin = ConstructMixin:GetOrigin()
+		
+		if Builder and Builder.GetName then
+			local PlayerInfo = Plugin:GetPlayerByName( Builder:GetName() )
+		end
+		
+		local Teamnumber = ConstructMixin:GetTeamNumber()
+		local SteamId = Plugin:GetTeamCommanderSteamid(teamnumber) or 0    
+		local Buildername = ""
+			
+		if PlayerInfo then
+			SteamId = PlayerInfo.steamId
+			Buildername = PlayerInfo.name
+			PlayerInfo.total_constructed = PlayerInfo.total_constructed + 1
+		end
+		
+		local Params =
+		{
+			action = "structure_built",
+			id = ConstructMixin:GetId(),
+			builder_name = Buildername,
+			steamId = SteamId,
+			structure_cost = GetCostForTech( TechId ),
+			team = Teamnumber,
+			structure_name = EnumToString( kTechId, TechId ),
+			structure_x = StringFormat( "%.4f", StructureOrigin.x ),
+			structure_y = StringFormat( "%.4f", StructureOrigin.y ),
+			structure_z = StringFormat( "%.4f", StructureOrigin.z ),
+		}
+		self:AddLog( Params )
+	end
 
---addfunction
-function Plugin:GhostStructureAction( Action, Structure )
-	if not Structure then return end
-	local TechId = Structure:GetTechId()
-	local tOrigin = Structure:GetOrigin()
+	--Ghost Buildings (Blueprints)
+	function Plugin:OnGhostCreated(GhostStructureMixin)
+		if not self.RoundStarted then return end
+		self:GhostStructureAction( "ghost_create", GhostStructureMixin )
+	end
 
-	local Params =
-	{
-		action = Action,
-		structure_name = EnumToString( kTechId, TechId),
-		team = Structure:GetTeamNumber(),
-		id = Structure:GetId(),
-		structure_x = StringFormat( "%.4f", tOrigin.x ),
-		structure_y = StringFormat( "%.4f", tOrigin.y ),
-		structure_z = StringFormat( "%.4f", tOrigin.z )
-	}
-	self:AddLog( Params )    
-end
+	function Plugin:OnGhostDestroyed(GhostStructureMixin)
+		self.BuildingsInfos[ GhostStructureMixin:GetId() ] = nil
+		self:GhostStructureAction( "ghost_destroy", GhostStructureMixin )
+	end
 
---Upgrade Stuff
+	--addfunction
+	function Plugin:GhostStructureAction( Action, Structure )
+		if not Structure then return end
+		local TechId = Structure:GetTechId()
+		local tOrigin = Structure:GetOrigin()
 
---Upgrades Started
-function Plugin:OnTechStartResearch( ResearchMixin, ResearchNode, Player )
-	if Player:isa( "Commander" ) then
-		local Client = Player:GetClient()  
-		local SteamId = self:GetId( Client ) or 0
+		local Params =
+		{
+			action = Action,
+			structure_name = EnumToString( kTechId, TechId),
+			team = Structure:GetTeamNumber(),
+			id = Structure:GetId(),
+			structure_x = StringFormat( "%.4f", tOrigin.x ),
+			structure_y = StringFormat( "%.4f", tOrigin.y ),
+			structure_z = StringFormat( "%.4f", tOrigin.z )
+		}
+		self:AddLog( Params )    
+	end
+
+	--Upgrade Stuff
+
+	--Upgrades Started
+	function Plugin:OnTechStartResearch( ResearchMixin, ResearchNode, Player )
+		if Player:isa( "Commander" ) then
+			local Client = Player:GetClient()  
+			local SteamId = self:GetId( Client ) or 0
+			local TechId = ResearchNode:GetTechId()
+
+			local Params =
+			{
+				structure_id = ResearchMixin:GetId(),
+				commander_steamid = SteamId,
+				team = Player:GetTeamNumber(),
+				cost = GetCostForTech( TechId ),
+				upgrade_name = EnumToString( kTechId, TechId ),
+				action = "upgrade_started"
+			}
+
+			self:AddLog( Params )
+		end
+	end
+
+	--Upgradefinished
+	function Plugin:OnTechResearched( ResearchMixin, Structure, ResearchId)
+		if not Structure then return end
+		local ResearchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode( ResearchId )    
+		if not ResearchNode then return end
+		
 		local TechId = ResearchNode:GetTechId()
+		
+		if TechId == self.OldUpgrade then return end
+		self.OldUpgrade = TechId
+		
+		local Params =
+		{
+			structure_id = Structure:GetId(),
+			team = Structure:GetTeamNumber(),
+			commander_steamid = Plugin:GetTeamCommanderSteamid( Structure:GetTeamNumber() ),
+			cost = GetCostForTech( TechId ),
+			upgrade_name = EnumToString( kTechId, TechId ),
+			action = "upgrade_finished"
+		}
+		self:AddLog( Params )
+	end
+
+	--Upgrade lost
+	function Plugin:AddUpgradeLostToLog( UpgradableMixin, TechId )
+		local Params =
+		{
+			team = UpgradableMixin:GetTeamNumber(),
+			cost = GetCostForTech( TechId ),
+			upgrade_name = EnumToString( kTechId, TechId ), 
+			action = "upgrade_lost"
+		}
+		self:AddLog( Params )
+
+	end
+
+	--Research canceled
+	function Plugin:AddUpgradeAbortedToLog( ResearchMixin, ResearchNode )
+		local TechId = ResearchNode:GetTechId()
+		local SteamId = self:GetTeamCommanderSteamid( ResearchMixin:GetTeamNumber() )
 
 		local Params =
 		{
 			structure_id = ResearchMixin:GetId(),
+			team = ResearchMixin:GetTeamNumber(),
 			commander_steamid = SteamId,
-			team = Player:GetTeamNumber(),
 			cost = GetCostForTech( TechId ),
 			upgrade_name = EnumToString( kTechId, TechId ),
-			action = "upgrade_started"
+			action = "upgrade_aborted"
 		}
-
 		self:AddLog( Params )
 	end
-end
 
---Upgradefinished
-function Plugin:OnTechResearched( ResearchMixin, Structure, ResearchId)
-	if not Structure then return end
-	local ResearchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode( ResearchId )    
-	if not ResearchNode then return end
-	
-	local TechId = ResearchNode:GetTechId()
-	
-	if TechId == self.OldUpgrade then return end
-	self.OldUpgrade = TechId
-	
-	local Params =
-	{
-		structure_id = Structure:GetId(),
-		team = Structure:GetTeamNumber(),
-		commander_steamid = Plugin:GetTeamCommanderSteamid( Structure:GetTeamNumber() ),
-		cost = GetCostForTech( TechId ),
-		upgrade_name = EnumToString( kTechId, TechId ),
-		action = "upgrade_finished"
-	}
-	self:AddLog( Params )
-end
-
---Upgrade lost
-function Plugin:AddUpgradeLostToLog( UpgradableMixin, TechId )
-	local Params =
-	{
-		team = UpgradableMixin:GetTeamNumber(),
-		cost = GetCostForTech( TechId ),
-		upgrade_name = EnumToString( kTechId, TechId ), 
-		action = "upgrade_lost"
-	}
-	self:AddLog( Params )
-
-end
-
---Research canceled
-function Plugin:AddUpgradeAbortedToLog( ResearchMixin, ResearchNode )
-	local TechId = ResearchNode:GetTechId()
-	local SteamId = self:GetTeamCommanderSteamid( ResearchMixin:GetTeamNumber() )
-
-	local Params =
-	{
-		structure_id = ResearchMixin:GetId(),
-		team = ResearchMixin:GetTeamNumber(),
-		commander_steamid = SteamId,
-		cost = GetCostForTech( TechId ),
-		upgrade_name = EnumToString( kTechId, TechId ),
-		action = "upgrade_aborted"
-	}
-	self:AddLog( Params )
-end
-
---Building recyled
-function Plugin:OnBuildingRecycled( Structure, ResearchID )
-	local tOrigin = Structure:GetOrigin()
-	local TechId = Structure:GetTechId()
-	
-	if not TechId then return end    
-	--from RecyleMixin.lua
-		local UpgradeLevel =  Structure.GetUpgradeLevel and Structure:GetUpgradeLevel() or 0        
-		local Amount = GetRecycleAmount( TechId, UpgradeLevel ) or 0
-		-- returns a scalar from 0-1 depending on health the Structure has (at the present moment)
-		local Scalar = Structure:GetRecycleScalar() * kRecyclePaybackScalar
+	--Building recyled
+	function Plugin:OnBuildingRecycled( Structure, ResearchID )
+		local tOrigin = Structure:GetOrigin()
+		local TechId = Structure:GetTechId()
 		
-		-- We round it up to the nearest value thus not having weird
-		-- fracts of costs being returned which is not suppose to be
-		-- the case.
-		local FinalRecycleAmount = math.round( Amount * Scalar )
-	--end   
+		if not TechId then return end    
+		--from RecyleMixin.lua
+			local UpgradeLevel =  Structure.GetUpgradeLevel and Structure:GetUpgradeLevel() or 0        
+			local Amount = GetRecycleAmount( TechId, UpgradeLevel ) or 0
+			-- returns a scalar from 0-1 depending on health the Structure has (at the present moment)
+			local Scalar = Structure:GetRecycleScalar() * kRecyclePaybackScalar
+			
+			-- We round it up to the nearest value thus not having weird
+			-- fracts of costs being returned which is not suppose to be
+			-- the case.
+			local FinalRecycleAmount = math.round( Amount * Scalar )
+		--end   
 
-	local Params =
-	{
-		id = Structure:GetId(),
-		team = Structure:GetTeamNumber(),
-		givenback = FinalRecycleAmount,
-		structure_name = EnumToString( kTechId, TechId ),
-		action = "structure_recycled",
-		structure_x = StringFormat( "%.4f", tOrigin.x ),
-		structure_y = StringFormat( "%.4f", tOrigin.y ),
-		structure_z = StringFormat( "%.4f", tOrigin.z )
-	}
-	self:AddLog( Params )
+		local Params =
+		{
+			id = Structure:GetId(),
+			team = Structure:GetTeamNumber(),
+			givenback = FinalRecycleAmount,
+			structure_name = EnumToString( kTechId, TechId ),
+			action = "structure_recycled",
+			structure_x = StringFormat( "%.4f", tOrigin.x ),
+			structure_y = StringFormat( "%.4f", tOrigin.y ),
+			structure_z = StringFormat( "%.4f", tOrigin.z )
+		}
+		self:AddLog( Params )
+	end
+	
 end
-
 --Structure gets killed
 function Plugin:OnStructureKilled( Structure, Attacker , Doer )
 	if not self.BuildingsInfos[ Structure:GetId() ] then return end
@@ -867,7 +880,8 @@ function Plugin:OnStructureKilled( Structure, Attacker , Doer )
 			structure_z = StringFormat( "%.4f", tOrigin.z )
 		}
 		self:AddLog( Params )
-	end 
+	end
+
 end
 
 --Mixed Events 
