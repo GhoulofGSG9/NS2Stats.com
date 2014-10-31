@@ -177,7 +177,6 @@ Add( "ClientConnect", "GetPlayerInfo", function( Client )
     PlayerInfoHub:OnConnect( Client ) 
 end )
 
-
 function PlayerInfoHub:GetNs2StatsData( SteamId )
     return self.Ns2StatsData[ SteamId ]
 end
