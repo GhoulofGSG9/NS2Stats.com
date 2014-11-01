@@ -23,6 +23,12 @@ Plugin.CheckConfigTypes = true
 
 Plugin.Killstreaks = {}
 
+function Plugin:Initialise()
+    self.Enabled = true
+
+    return true
+end
+
 function Plugin:OnEntityKilled( Gamerules, Victim, Attacker )
     if not Attacker or not Victim or not Victim:isa( "Player" ) then return end
     
