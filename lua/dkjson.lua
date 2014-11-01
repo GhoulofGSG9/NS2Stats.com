@@ -52,7 +52,9 @@ local strrep, gsub, strsub, strbyte, strchar, strfind, strlen, strformat =
 local strmatch = string.match
 local concat = table.concat
 
-local json = { version = "dkjson 2.5" }
+--Modification for NS2: made json a global table
+json = { version = "dkjson 2.5" }
+local json = json
 
 if register_global_module_table then
   _G[global_module_name] = json
@@ -709,6 +711,3 @@ end
 if always_try_using_lpeg then
   pcall (json.use_lpeg)
 end
-
-return json
-
