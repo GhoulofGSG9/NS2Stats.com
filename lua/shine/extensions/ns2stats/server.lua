@@ -1201,7 +1201,7 @@ function Plugin:CreatePlayerEntry(Client)
 	local PlayerInfo = {}
 	
 	PlayerInfo.teamnumber = Player:GetTeamNumber() or 0
-	PlayerInfo.Lifeform = Player:GetMapName()
+	PlayerInfo.lifeform = Player:GetMapName()
 	PlayerInfo.score = 0
 	PlayerInfo.assists = 0
 	PlayerInfo.deaths = 0
