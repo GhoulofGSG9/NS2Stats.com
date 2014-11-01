@@ -113,6 +113,10 @@ end
 function Plugin:Initialise()
 	self.Enabled = false
 	
+	if StringSub( self.Config.WebsiteUrl, 1, 7 ) ~= "http://" then
+		return false, "The WebsiteUrl of your config is not legit"
+	end
+	
 	self:Setup()
 	
 	local Clients = Shine.GetAllClients()	
@@ -145,10 +149,9 @@ function Plugin:Setup()
 	self:CreateCommands()
 	
 	if self.Config.ServerKey == "" then
-		self.StatsEnabled = false
-		HTTPRequest( StringFormat( "%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj", self.Config.WebsiteUrl ), "GET", function(Response) self:AcceptKey( Response ) end )
+		self:GenerateServerKey()
 	else
-		self.ServerId = self:GetServerId()
+		self:GetServerId()
 	end  
 	
 	--Timers
@@ -1427,20 +1430,30 @@ function Plugin:AcceptKey( Response )
 		end
 end
 
+function Plugin:GenerateServerKey()
+	self.StatsEnabled = false
+	HTTPRequest( StringFormat( "%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj", self.Config.WebsiteUrl), "GET", function( Response ) 
+		self:AcceptKey( Response ) 
+	end )
+end
+
+local bGettingServerId
 function Plugin:GetServerId()
-	if not self.ServerId then
-		HTTPRequest(StringFormat("%s/api/server?key=%s", self.Config.WebsiteUrl,self.Config.ServerKey), "GET", function(Response)
+	if not self.ServerId and not bGettingServerId then
+		bGettingServerId = true
+		HTTPRequest(StringFormat("%s/api/server?key=%s", self.Config.WebsiteUrl, self.Config.ServerKey), "GET", function(Response)
 			local Data = JsonDecode( Response )
 			if not Data then return end
+			
 			if Data.error == "Invalid server key. Server not found." then
-				self.StatsEnabled = false
-				HTTPRequest( StringFormat( "%s/api/generateKey/?s=7g94389u3r89wujj3r892jhr9fwj", self.Config.WebsiteUrl), "GET", function( Response ) self:AcceptKey( Response ) end )
+				self:GenerateServerKey()
 			else
 				self.ServerId = Data.id or "" 
 			end         
 		end)
+	else
+		return self.ServerId
 	end
-	return self.ServerId
 end
 
 function Plugin:OnSuspend()
