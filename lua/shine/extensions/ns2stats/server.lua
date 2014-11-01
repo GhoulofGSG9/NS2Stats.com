@@ -287,7 +287,7 @@ end
 function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
 	if self.RoundFinished == 1 then return end
 	
-	local Client = Shared.GetEntity( PlayerInfoEntity.clientId )  
+	local Client = Shine.GetClientByID( PlayerInfoEntity.clientId )  
 	if not Client then return end
 	
 	local PlayerInfo = self:GetPlayerByClient( Client )
@@ -297,10 +297,14 @@ function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
 	if not Player then return end
 	
 	local Lifeform = Player:GetMapName()
-	
-	--check if Lifeform changed    
-	if not Player:GetIsAlive() and (Teamnumber == kTeam1Index or Teamnumber == kTeam2Index) then Lifeform = "dead" end
-	if PlayerInfo.lifeform ~= Lifeform then
+	local Teamnumber = PlayerInfo.teamnumber
+
+	--check if Lifeform changed 
+	if (Teamnumber == kTeam1Index or Teamnumber == kTeam2Index) and PlayerInfo.lifeform ~= Lifeform then
+		if not Player:GetIsAlive() then 
+			Lifeform = "dead" 
+		end
+		
 		PlayerInfo.lifeform = Lifeform
 		self:AddLog(
 		{
@@ -318,7 +322,8 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam )
 	local PlayerInfo = self:GetPlayerByName( Player:GetName() )
 	if not PlayerInfo then return end
 	
-	PlayerInfo.teamnumber = Teamnumber
+	
+	PlayerInfo.teamnumber = NewTeam
 
 	local Params =
 	{
@@ -827,6 +832,7 @@ if not Shine.IsNS2Combat then
 	end
 	
 end
+
 --Structure gets killed
 function Plugin:OnStructureKilled( Structure, Attacker , Doer )
 	if not self.BuildingsInfos[ Structure:GetId() ] then return end
@@ -1282,7 +1288,7 @@ function Plugin:GetPlayerByClient( Client )
 	local SteamId = self:GetId( Client )
 	if SteamId then
 		for _, PlayerInfo in ipairs( self.PlayersInfos ) do	
-			if PlayerInfo.steamId == steamId then
+			if PlayerInfo.steamId == SteamId then
 				return PlayerInfo 
 			end
 		end
