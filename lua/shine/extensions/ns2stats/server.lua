@@ -298,28 +298,8 @@ function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
 	
 	local Lifeform = Player:GetMapName()
 	
-	--check teamnumber
-	local Teamnumber = Player:GetTeamNumber() or 0    
-	if Teamnumber < 0 then return end
-	
-	if PlayerInfo.teamnumber == 3 and Teamnumber > 0 then return end   --filter spectator
-	
-	if Teamnumber >= 0 and PlayerInfo.teamnumber ~= Teamnumber then
-		PlayerInfo.teamnumber = Teamnumber
-	
-		local Params =
-		{
-			action = "player_join_team",
-			name = PlayerInfo.name,
-			team = PlayerInfo.teamnumber,
-			steamId = PlayerInfo.steamId,
-			score = PlayerInfo.score
-		}
-		self:AddLog( Params ) 
-	end
-	
 	--check if Lifeform changed    
-	if not Player:GetIsAlive() and (Teamnumber == 1 or Teamnumber == 2) then Lifeform = "dead" end
+	if not Player:GetIsAlive() and (Teamnumber == kTeam1Index or Teamnumber == kTeam2Index) then Lifeform = "dead" end
 	if PlayerInfo.lifeform ~= Lifeform then
 		PlayerInfo.lifeform = Lifeform
 		self:AddLog(
@@ -332,6 +312,23 @@ function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
 	end
 	
 	self:UpdatePlayerInTable( Client, Player, PlayerInfo )
+end
+
+function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam )	
+	local PlayerInfo = self:GetPlayerByName( Player:GetName() )
+	if not PlayerInfo then return end
+	
+	PlayerInfo.teamnumber = Teamnumber
+
+	local Params =
+	{
+		action = "player_join_team",
+		name = PlayerInfo.name,
+		team = PlayerInfo.teamnumber,
+		steamId = PlayerInfo.steamId,
+		score = PlayerInfo.score
+	}
+	self:AddLog( Params ) 
 end
 
 --Bots renamed
@@ -1272,28 +1269,24 @@ function Plugin:GetTeamCommanderSteamid( TeamNumber )
 end
 
 function Plugin:GetPlayerByName( Name )
-	if not Name then return end
-	for _, PlayerInfo in ipairs( self.PlayersInfos ) do        
-		if PlayerInfo.name == Name then return PlayerInfo end	
+	if Name then
+		for _, PlayerInfo in ipairs( self.PlayersInfos ) do        
+			if PlayerInfo.name == Name then
+				return PlayerInfo 
+			end	
+		end
 	end
-	return
 end
 
 function Plugin:GetPlayerByClient( Client )
-	if not Client then return end
-	
-	if Client.GetUserId then
-		local steamId = self:GetId( Client )
+	local SteamId = self:GetId( Client )
+	if SteamId then
 		for _, PlayerInfo in ipairs( self.PlayersInfos ) do	
-			if PlayerInfo.steamId == steamId then return PlayerInfo end
+			if PlayerInfo.steamId == steamId then
+				return PlayerInfo 
+			end
 		end
-	elseif Client.GetControllingPlayer then
-		local Player = Client:GetControllingPlayer()
-		local name = Player:GetName()
-		self:GetPlayerByName( Name )
 	end
-	
-	return
 end
 --Player Table end
 
@@ -1303,7 +1296,6 @@ function Plugin:GetId( Client )
 		if Client:GetIsVirtual() then return Plugin:GetIdbyName( Client:GetControllingPlayer():GetName() ) or 0
 		else return Client:GetUserId() end
 	end
-	return
 end
 
 --For Bots
