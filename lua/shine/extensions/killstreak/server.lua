@@ -194,13 +194,13 @@ function Plugin:CreateCommands()
 		self:SendNetworkMessage( Client, "Command",{ Name = "Sounds", Value = Value } , true)
 	end, true, true )
 	CSound:AddParam{ Type = "boolean", Optional = true }
-	CSound:Help( "<boolean> Allows you to set if kill-streak sounds should be played for you or not." )
+	CSound:Help( "<boolean> Allows you to set if killstreak sounds should be played for you or not." )
 	
 	local CVolume = self:BindCommand( "sh_soundvolume", {"quakevolume", "soundvolume"}, function( Client, Value)
 		self:SendNetworkMessage( Client, "SoundVolume",{ Name = "Sounds", Value = Value } , true)
 	end, true, true)
 	CVolume:AddParam{ Type = "number", Min = 0, Max = 200, Round= true, Error = "Please set a value between 0 and 200. Any value outside this limit is not allowed" }
-	CVolume:Help( "<volume in percent> Set the killstreak volume to whatever you like between 0 and 200%" )
+	CVolume:Help( "<volume in percent> Set the killstreak's sound volume to whatever you like between 0 and 200%" )
 end
 
 function Plugin:Cleanup()

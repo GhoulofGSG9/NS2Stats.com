@@ -1066,7 +1066,7 @@ function Plugin:AddLog( Params )
 	self.Log[ self.LogPartNumber ].Length = self.Log[ self.LogPartNumber ].Length + StringLen( LogString )
 	
 	--avoid that log gets too long
-	if self.Log[ self.LogPartNumber ].Length > 56000 then
+	if self.Log[ self.LogPartNumber ].Length > 32000 then
 		self.LogPartNumber = self.LogPartNumber + 1    
 		if self.StatsEnabled then self:SendData() end        
 	end
