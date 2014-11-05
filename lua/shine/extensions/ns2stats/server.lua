@@ -1152,7 +1152,7 @@ function Plugin:SendData()
 		self.ResendCount = self.ResendCount + 1 
 		if self.ResendCount > 5 then 
 			self.StatsEnabled = false
-			Notify( "Ns2Stats.com seems to be not avaible at the moment. Disabling stats sending" )
+			Notify( "Ns2Stats.com seems to be not available at the moment. Disabling stats sending" )
 			return
 		end
 		self:SendData()

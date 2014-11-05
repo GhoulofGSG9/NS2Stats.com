@@ -21,13 +21,13 @@ Plugin.DefaultConfig =
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
 
-Plugin.Killstreaks = {}
-
 function Plugin:Initialise()
     self.Enabled = true
 	
 	--create Commands
 	self:CreateCommands()
+	
+	self.Killstreaks = {}
 	
     return true
 end
