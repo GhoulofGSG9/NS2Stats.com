@@ -20,14 +20,6 @@ Plugin.SilentConfigSave = true
 
 function Plugin:Initialise()
     self.Enabled = true
-    Shine.AddStartupMessage( StringFormat( "Shine is set to %s killstreak sounds. You can change this with sh_disablesounds", self.Config.PlaySounds and "play" or "mute" ))
-    
-    if self.Config.SoundVolume < 0 or self.Config.SoundVolume > 200 or self.Config.SoundVolume % 1 ~= 0 then
-       Shine.AddStartupMessage( "Warning: The set Sound Volume was outside the limit of 0 to 200" )
-       self.Config.SoundVolume = 100
-    end
-     
-    if self.Config.PlaySounds then Shine.AddStartupMessage( StringFormat( "Shine is set to play killstreak sounds with a volume of %s . You can change this with sh_setsoundvolume.",self.Config.SoundVolume)) end
 	
 	--Sounds
 	self.Sounds = {       
@@ -52,35 +44,59 @@ function Plugin:Initialise()
 		Client.PrecacheLocalSound( Sound )
 	end
 	
+	if Shine.AddStartupMessage then 
+		Shine.AddStartupMessage( StringFormat( "Shine is set to %s killstreak sounds. You can change this with sh_sounds", self.Config.PlaySounds and "play" or "mute" ))
+		
+		if self.Config.SoundVolume < 0 or self.Config.SoundVolume > 200 or self.Config.SoundVolume % 1 ~= 0 then
+		   Shine.AddStartupMessage( "Warning: The set Sound Volume was outside the limit of 0 to 200" )
+		   self.Config.SoundVolume = 100
+		end
+		 
+		if self.Config.PlaySounds then Shine.AddStartupMessage( StringFormat( "Shine is set to play killstreak sounds with a volume of %s . You can change this with sh_setsoundvolume.",self.Config.SoundVolume)) end
+	end
+	
     return true
 end
 
 function Plugin:ReceivePlaySound( Message )
     if not Message.Name then return end
-    
+	
     if self.Config.PlaySounds then    
         StartSoundEffect( self.Sounds[ Message.Name ], self.Config.SoundVolume / 100 )
     end
 end
 
-local DisableSounds = Shine:RegisterClientCommand( "sh_disablesounds", function( Bool )
-    Plugin.Config.PlaySounds = Bool
-    Plugin:SaveConfig()
+function Plugin:ReceiveCommand( Message )
+	local Commands = {
+		["Sounds"] = function( Value )
+			if Value == 0 then 
+				Value = not self.Config.PlaySounds
+			else 
+				Value = Value == 2
+			end
+			
+			self.Config.PlaySounds = Bool
+			self:SaveConfig()
+			
+			Notify( StringFormat( "[Shine] Playing Killstreak Sounds has been %s.", Bool and "enabled" or "disabled" )) 
+		end,
+		["SoundVolume"] = function( Volume )
+			self.Config.SoundVolume = Volume    
+			self:SaveConfig()
     
-    Notify( StringFormat( "[Shine] Playing Killstreak Sounds has been %s.", Bool and "enabled" or "disabled" )) 
-end)
-DisableSounds:AddParam{ Type = "boolean", Optional = true, Default = function() return not Plugin.Config.PlaySounds end }
-
-local SetSoundVolume = Shine:RegisterClientCommand("sh_setsoundvolume",function (Volume)
-    Plugin.Config.SoundVolume = Volume    
-    Plugin:SaveConfig()
-    
-    Notify( StringFormat( "[Shine] Killstreak Sounds Volume has been set to %s.", Volume ))
-end)
-SetSoundVolume:AddParam{ Type = "number", Min= 0, Max=200, Round= true, Error = "Please set a value between 0 and 200. Any value outside this limit is not allowed" }
+			Notify( StringFormat( "[Shine] Killstreak Sounds Volume has been set to %s.", Volume ))
+		end		
+	}
+	
+	if Commands[ Message.Name ] and Message.Value then
+		Commands[ Message.Name ]( Message.Value )
+	end	
+end
 
 function Plugin:Cleanup()
     self.BaseClass.Cleanup( self )
+	
     self.Sounds = nil
+	
     self.Enabled = false
 end
