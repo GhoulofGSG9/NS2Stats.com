@@ -1134,13 +1134,10 @@ function Plugin:SendData()
 	{
 		key = self.Config.ServerKey,
 		roundlog = TableConcat( self.Log[ self.LogPartToSend ].Strings, "\n") ,
-		part_number = self.LogPartToSend ,
+		part_number = self.LogPartToSend,
 		last_part = self.RoundFinished and self.LogPartNumber == self.LogPartToSend and 1 or 0,
 		map = Shared.GetMapName(),
 	}
-	
-	PrintTable(Params)	
-	return
 	
 	Shine.TimedHTTPRequest( StringFormat( "%s/api/sendlog", self.Config.WebsiteUrl ), "POST", Params, function( Response ) self:OnHTTPResponseFromSend( Response ) end, function()
 		self.working = false 
