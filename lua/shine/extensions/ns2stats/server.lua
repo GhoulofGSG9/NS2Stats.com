@@ -183,7 +183,7 @@ function Plugin:OnGameReset()
 	self.LogPartNumber = 1
 	self.LogPartToSend  = 1
 	self.GameStartTime = 0
-	self.RoundFinished = 0
+	self.RoundFinished = false
 	self.NextAwardId = 0
 	self.Awards = {}
 	self.RoundStarted = false
@@ -244,7 +244,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
 		}
 	self:AddServerInfos( Params )
 	
-	self.RoundFinished = 1
+	self.RoundFinished = true
 	self.RoundStarted = false
 	if self.StatsEnabled then self:SendData() end        
 end
@@ -291,7 +291,7 @@ end
 
 --score changed
 function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
-	if self.RoundFinished == 1 then return end
+	if self.RoundFinished then return end
 	
 	local Client = Shine.GetClientByID( PlayerInfoEntity.clientId )  
 	if not Client then return end
@@ -1036,13 +1036,13 @@ function Plugin:AddKill( AttackerSteamId )
 	end
 end
 
---Events endPlugin
+--Events end
 
 --Log functions
 
 --add to log
 function Plugin:AddLog( Params )    
-	if self.RoundFinished == 1 or not Params then return end
+	if self.RoundFinished or not Params then return end
 	
 	if not self.Log then self.Log = {} end
 	if not self.Log[ self.LogPartNumber ] then
@@ -1062,9 +1062,9 @@ function Plugin:AddLog( Params )
 
 	local LogString = JsonEncode( Params )
 
-	TableInsert( self.Log[self.LogPartNumber].Strings , LogString )	
+	TableInsert( self.Log[ self.LogPartNumber ].Strings , LogString )
 	self.Log[ self.LogPartNumber ].Length = self.Log[ self.LogPartNumber ].Length + StringLen( LogString )
-	
+
 	--avoid that log gets too long
 	if self.Log[ self.LogPartNumber ].Length > 32000 then
 		self.LogPartNumber = self.LogPartNumber + 1    
@@ -1134,7 +1134,7 @@ end
 
 --send Log to NS2Stats Server
 function Plugin:SendData()
-	if not self.StatsEnabled or self.Working or self.LogPartNumber <= self.LogPartToSend and self.RoundFinished ~= 1 then return end
+	if not self.StatsEnabled or self.Working or self.LogPartNumber <= self.LogPartToSend and not self.RoundFinished then return end
 	
 	self.Working = true
 	
@@ -1143,7 +1143,7 @@ function Plugin:SendData()
 		key = self.Config.ServerKey,
 		roundlog = TableConcat( self.Log[ self.LogPartToSend ].Strings, "\n") ,
 		part_number = self.LogPartToSend ,
-		last_part = self.RoundFinished and self.LogPartNumber == self.LogPartToSend,
+		last_part = self.RoundFinished and self.LogPartNumber == self.LogPartToSend and 1 or 0,
 		map = Shared.GetMapName(),
 	}
 	
@@ -1408,7 +1408,7 @@ end
 
 --send Status report to NS2Stats
 function Plugin:SendServerStatus( GameState )
-	if self.RoundFinished == 1 then return end
+	if self.RoundFinished then return end
 	local stime = Shared.GetGMTString( false )
 	local gameTime = Shared.GetTime() - self.GameStartTime
 	local Params =
@@ -1794,7 +1794,6 @@ function Plugin:Cleanup()
 	self.LogPartNumber = nil
 	self.LogPartToSend  = nil
 	self.GameStartTime = nil
-	self.RoundFinished = nil
 	self.NextAwardId = nil
 	self.Awards = nil
 	self.RoundStarted = nil
