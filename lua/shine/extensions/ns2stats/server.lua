@@ -114,48 +114,38 @@ function Plugin:SetupHooks()
 end
 
 function Plugin:Initialise()
-	self.Enabled = false
 	
 	if StringSub( self.Config.WebsiteUrl, 1, 7 ) ~= "http://" then
 		return false, "The WebsiteUrl of your config is not legit"
 	end
 	
-	self:Setup()
-	
-	local Clients = Shine.GetAllClients()	
-	--check if there are already players at the server
-	if #Clients > 0 then
-		for i = 1, #Clients do
-			local Client = Clients[ i ]
-			self:ClientConfirmConnect( Client )
-		end	
-	end
-	
 	self:SetupHooks()
 	
-	return true
-end
-
-function Plugin:Setup()
 	self.Enabled = true
 	
 	self.dt.WebsiteUrl = self.Config.WebsiteUrl
 	self.dt.SendMapData = self.Config.SendMapData
-	
-	--create values
-	self.StatsEnabled = true
-	self.SuccessfulSends = 0
-	self.ResendCount = 0
-	self:OnGameReset()
-	
-	--create Commands
-	self:CreateCommands()
 	
 	if self.Config.ServerKey == "" then
 		self:GenerateServerKey()
 	else
 		self:GetServerId()
 	end  
+	
+	--create values
+	self.StatsEnabled = true
+	self.SuccessfulSends = 0
+	self.ResendCount = 0
+	
+	self:OnGameReset()
+	
+	--create Commands
+	self:CreateCommands()	
+
+	--check if there are already players at the server
+	for _, Client in ipairs( Shine.GetAllClients() ) do
+		self:ClientConfirmConnect( Client )
+	end
 	
 	--Timers
 	
@@ -169,6 +159,8 @@ function Plugin:Setup()
 	if self.Config.StatusReport then
 		self:CreateTimer( "SendStatus" , 30, -1, function() self:SendServerStatus( self.CurrentGameState ) end) --Plugin:DevourSendStatus()
 	end
+	
+	return true
 end
 
 -- Events
@@ -1147,6 +1139,9 @@ function Plugin:SendData()
 		map = Shared.GetMapName(),
 	}
 	
+	PrintTable(Params)	
+	return
+	
 	Shine.TimedHTTPRequest( StringFormat( "%s/api/sendlog", self.Config.WebsiteUrl ), "POST", Params, function( Response ) self:OnHTTPResponseFromSend( Response ) end, function()
 		self.working = false 
 		self.ResendCount = self.ResendCount + 1 
@@ -1354,7 +1349,6 @@ function Plugin:GetIdbyName( Name )
 		NewId = StringFormat( "%s%s", NewId, Num )
 	end
 	
-	
 	--make a int
 	NewId = tonumber( NewId )
 	
@@ -1382,28 +1376,24 @@ function Plugin:UpdateWeaponData( Client )
 	local Player = Client:GetControllingPlayer()
 	if not Player then return end
 
-	local Weapon = Player.GetActiveWeaponName and Player:GetActiveWeaponName() or "none"
-	Weapon = StringLower( Weapon )
+	local WeaponName = Player.GetActiveWeaponName and StringLower( Player:GetActiveWeaponName() ) or "none"
 	
-	local FoundId
-	for i = 1, #PlayerInfo.weapons do
-		if PlayerInfo.weapons[ i ].name == Weapon then FoundId = i end
+	for _, Weapon in ipairs( PlayerInfo.weapons ) do
+		if Weapon.name == WeaponName then 
+			Weapon.time = Weapon.time + 1
+			return
+		end
 	end
 	
-	if FoundId then
-		PlayerInfo.weapons[ FoundId ].time = PlayerInfo.weapons[ FoundId ].time + 1
-	else --add new weapon
-		TableInsert( PlayerInfo.weapons,
-		{
-			name = Weapon,
-			time = 1,
-			miss = 0,
-			player_hit = 0,
-			structure_hit = 0,
-			player_damage = 0,
-			structure_damage = 0
-		})
-	end
+	TableInsert( PlayerInfo.weapons, {
+		name = WeaponName,
+		time = 1,
+		miss = 0,
+		player_hit = 0,
+		structure_hit = 0,
+		player_damage = 0,
+		structure_damage = 0
+	})
 end
 
 --send Status report to NS2Stats
@@ -1568,6 +1558,7 @@ function Plugin:SendAwardListToClients()
 	AwardMessage.ColourB = self.Config.AwardMsgColour[3]
 	
 	local AwardMessages = {}
+	
 	for i = 1, self.Config.ShowNumAwards do
 		if i > #self.Awards then break end
 		if self.Awards[ i ].message then 
@@ -1595,9 +1586,9 @@ function Plugin:AwardMostDamage()
 	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		local TotalDamage = 0
 		
-		for i=1, #PlayerInfo.weapons do
-			TotalDamage = TotalDamage + PlayerInfo.weapons[ i ].structure_damage
-			TotalDamage = TotalDamage + PlayerInfo.weapons[ i ].player_damage
+		for _, Weapon in ipairs( PlayerInfo.weapons ) do
+			TotalDamage = TotalDamage + Weapon.structure_damage
+			TotalDamage = TotalDamage + Weapon.player_damage
 		end
 		
 		if Floor( TotalDamage ) > Floor( HighestDamage ) then
@@ -1661,8 +1652,8 @@ function Plugin:AwardMostStructureDamage()
 	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		local Total = 0
 		
-		for i=1, #PlayerInfo.weapons do
-			Total = Total + PlayerInfo.weapons[ i ].structure_damage
+		for _, Weapon in ipairs( PlayerInfo.weapons ) do
+			Total = Total + Weapon.structure_damage
 		end
 		
 		if Floor( Total ) > Floor( HighestTotal ) then
@@ -1686,8 +1677,8 @@ function Plugin:AwardMostPlayerDamage()
 	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		local Total = 0
 		
-		for i = 1, #PlayerInfo.weapons do
-			Total = Total + PlayerInfo.weapons[ i ].player_damage
+		for _, Weapon in ipairs( PlayerInfo.weapons ) do
+			Total = Total + Weapon.player_damage
 		end
 		
 		if Floor( Total ) > Floor( HighestTotal ) then
@@ -1712,12 +1703,9 @@ function Plugin:AwardBestAccuracy()
 	for _, PlayerInfo in ipairs( self.PlayersInfos ) do
 		local Total = 0
 		
-		for i = 1, #PlayerInfo.weapons do
-			if i == 1 then 
-				Total = PlayerInfo.weapons[ i ].player_hit / ( PlayerInfo.weapons[ i ].miss + 1 )
-			else    
-				Total = 0.5 * ( Total + PlayerInfo.weapons[ i ].player_hit / ( PlayerInfo.weapons[ i ].miss + 1 ) )
-			end    
+		for _, Weapon in ipairs( PlayerInfo.weapons ) do
+			local m = Total > 0 and 0.5 or 1
+			Total = m * ( Total +  Weapon.player_hit / (  Weapon.miss + 1 ) )   
 		end
 		
 		if Total > HighestTotal then
