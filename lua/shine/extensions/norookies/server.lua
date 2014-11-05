@@ -45,7 +45,7 @@ function Plugin:Initialise()
 end
 
 function Plugin:SetGameState( Gamerules, NewState, OldState )
-    if NewState == kGameState.Started and self.Config.DisableAfterRoundtime > 0 then        
+    if NewState == kGameState.Started and self.Config.DisableAfterRoundtime and self.Config.DisableAfterRoundtime > 0 then        
         self:CreateTimer( "Disable", self.Config.DisableAfterRoundtime * 60 , 1, function() Enabled = false end )
     end
 end

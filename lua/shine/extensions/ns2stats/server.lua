@@ -17,6 +17,7 @@ local StringLower = string.UTF8Lower
 local StringReverse = string.UTF8Reverse
 
 local TableInsert = table.insert
+local TableConcat = table.concat
 
 local JsonEncode = json.encode
 local JsonDecode = json.decode
@@ -46,11 +47,13 @@ Plugin.DefaultConfig =
 	Tags = {}, --Tags added to log
 	Competitive = false, -- tag rounds as Competitive
 	Lastroundlink = "", --Link of last round
-	DisableSponitor = false,
+	DisableSponitor = false, --disable the vanilla stats system?
 }
+
 if Shine.IsNS2Combat then 
 	Plugin.DefaultConfig.DisableSponitor = nil
 end
+
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
 
@@ -218,7 +221,7 @@ end
 
 --Gameend
 function Plugin:EndGame( Gamerules, WinningTeam )         
-	if self.Config.Awards then Plugin:SendAwardListToClients() end
+	if self.Config.Awards then self:SendAwardListToClients() end
 	self:AddPlayersToLog( 1 )
 	
 	local Winner = WinningTeam and WinningTeam:GetTeamNumber() or 0
@@ -239,7 +242,7 @@ function Plugin:EndGame( Gamerules, WinningTeam )
 			start_path_distance = Gamerules.startingLocationsPathDistance,
 			start_hive_tech = InitialHiveTechIdString,
 		}
-	Plugin:AddServerInfos( Params )
+	self:AddServerInfos( Params )
 	
 	self.RoundFinished = 1
 	self.RoundStarted = false
@@ -322,9 +325,8 @@ function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
 end
 
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam )	
-	local PlayerInfo = self:GetPlayerByName( Player:GetName() )
+	local PlayerInfo = self:GetPlayerByClient( Player:GetClient() )
 	if not PlayerInfo then return end
-	
 	
 	PlayerInfo.teamnumber = NewTeam
 
@@ -348,7 +350,7 @@ function Plugin:OnBotRenamed( Bot )
 	local Client = Player:GetClient()
 	if not Client then return end
 		
-	local PlayerInfo = Plugin:GetPlayerByClient( Client )
+	local PlayerInfo = self:GetPlayerByClient( Client )
 	if not PlayerInfo then
 		self:AddPlayerToTable( Client )
 		PlayerInfo = self:GetPlayerByClient( Client )
@@ -473,7 +475,7 @@ function Plugin:AddMissToLog( Attacker, Doer )
 	local Client = Attacker and Attacker:GetClient()
 	if not Client then return end
 
-	local Player = Plugin:GetPlayerByClient( Client )
+	local Player = self:GetPlayerByClient( Client )
 	if not Player then return end
 	
 	local WeaponName = StringLower( Doer and Doer:GetMapName() or Attacker:GetActiveWeaponName() or "none" )
@@ -520,7 +522,7 @@ function Plugin:WeaponsAddHit( Player, Weapon, Damage )
 	local Client = Player:GetClient()
 	if not Client then return end
 	
-	local PlayerInfo = Plugin:GetPlayerByClient( Client )
+	local PlayerInfo = self:GetPlayerByClient( Client )
 	if not PlayerInfo then return end
 	
 	local FoundId
@@ -555,7 +557,7 @@ function Plugin:WeaponsAddStructureHit( Player, Weapon, Damage)
 	local Client = Player:GetClient()
 	if not Client then return end
 	
-	local PlayerInfo = Plugin:GetPlayerByClient( Client )
+	local PlayerInfo = self:GetPlayerByClient( Client )
 	if not PlayerInfo then return end
 	
 	local FoundId
@@ -598,7 +600,7 @@ end
 
 --Chatlogging
 function Plugin:PlayerSay( Client, Message )
-	if not Plugin.Config.LogChat then return end
+	if not self.Config.LogChat then return end
 	
 	local Player = Client:GetControllingPlayer()
 	if not Player then return end
@@ -606,7 +608,7 @@ function Plugin:PlayerSay( Client, Message )
 	self:AddLog({
 		action = "chat_message",
 		team = Player:GetTeamNumber(),
-		steamid = Plugin:GetId( Client ),
+		steamid = self:GetId( Client ),
 		name = Player:GetName(),
 		message = Message.message,
 		toteam = Message.teamOnly
@@ -667,11 +669,11 @@ if not Shine.IsNS2Combat then
 		local StructureOrigin = ConstructMixin:GetOrigin()
 		
 		if Builder and Builder.GetName then
-			local PlayerInfo = Plugin:GetPlayerByName( Builder:GetName() )
+			local PlayerInfo = self:GetPlayerByName( Builder:GetName() )
 		end
 		
 		local Teamnumber = ConstructMixin:GetTeamNumber()
-		local SteamId = Plugin:GetTeamCommanderSteamid(teamnumber) or 0    
+		local SteamId = self:GetTeamCommanderSteamid(teamnumber) or 0    
 		local Buildername = ""
 			
 		if PlayerInfo then
@@ -764,7 +766,7 @@ if not Shine.IsNS2Combat then
 		{
 			structure_id = Structure:GetId(),
 			team = Structure:GetTeamNumber(),
-			commander_steamid = Plugin:GetTeamCommanderSteamid( Structure:GetTeamNumber() ),
+			commander_steamid = self:GetTeamCommanderSteamid( Structure:GetTeamNumber() ),
 			cost = GetCostForTech( TechId ),
 			upgrade_name = EnumToString( kTechId, TechId ),
 			action = "upgrade_finished"
@@ -930,7 +932,7 @@ function Plugin:AddDeathToLog( Target, Attacker, Doer )
 				action = "death",	
 				
 				--Attacker
-				attacker_steamId = Plugin:GetId( AttackerClient ) or 0,
+				attacker_steamId = self:GetId( AttackerClient ) or 0,
 				attacker_team = HasMixin( Attacker, "Team" ) and Attacker:GetTeamType() or kNeutralTeamType,
 				attacker_weapon = StringLower( Doer:GetMapName() ),
 				attacker_lifeform = StringLower( Attacker:GetMapName() ), 
@@ -941,7 +943,7 @@ function Plugin:AddDeathToLog( Target, Attacker, Doer )
 				attackerz = StringFormat( "%.4f", aOrigin.z ),
 				
 				--Target
-				target_steamId = Plugin:GetId(TargetClient) or 0,
+				target_steamId = self:GetId(TargetClient) or 0,
 				target_team = Target:GetTeamType(),
 				target_weapon = StringLower(TargetWeapon),
 				target_lifeform = StringLower(Target:GetMapName()), 
@@ -952,11 +954,11 @@ function Plugin:AddDeathToLog( Target, Attacker, Doer )
 				targetz = StringFormat("%.4f", tOrigin.z),
 				target_lifetime = StringFormat( "%.4f", Shared.GetTime() - Target:GetCreationTime() )
 			}
-			Plugin:AddLog(Params)
+			self:AddLog(Params)
 				
 			if Attacker:GetTeamNumber() ~= Target:GetTeamNumber() then
 				--addkill
-				Plugin:AddKill( Plugin:GetId(AttackerClient) )
+				self:AddKill( self:GetId(AttackerClient) )
 			end
 		else
 			--natural causes death
@@ -969,7 +971,7 @@ function Plugin:AddDeathToLog( Target, Attacker, Doer )
 				attacker_weapon	= "natural causes",
 	
 				--Target
-				target_steamId = Plugin:GetId( TargetClient ),
+				target_steamId = self:GetId( TargetClient ),
 				target_team = Target:GetTeamType(),
 				target_weapon = TargetWeapon,
 				target_lifeform = Target:GetMapName(),
@@ -997,7 +999,7 @@ function Plugin:AddDeathToLog( Target, Attacker, Doer )
 				--Attacker
 				attacker_weapon = "self",
 				attacker_lifeform = Attacker:GetMapName(),
-				attacker_steamId = Plugin:GetId(AttackerClient),
+				attacker_steamId = self:GetId(AttackerClient),
 				attacker_team = HasMixin( Attacker, "Team" ) and Attacker:GetTeamType() or kNeutralTeamType,
 				attacker_hp = Attacker:GetHealth(),
 				attacker_armor = Attacker:GetArmorAmount(),
@@ -1006,7 +1008,7 @@ function Plugin:AddDeathToLog( Target, Attacker, Doer )
 				attackerz = StringFormat( "%.4f", aOrigin.z ),
 				
 				--Target
-				target_steamId = Plugin:GetId( TargetClient ),
+				target_steamId = self:GetId( TargetClient ),
 				target_team = Target:GetTeamType(),
 				target_weapon = TargetWeapon,
 				target_lifeform = Target:GetMapName(),
@@ -1034,7 +1036,7 @@ function Plugin:AddKill( AttackerSteamId )
 	end
 end
 
---Events end
+--Events endPlugin
 
 --Log functions
 
@@ -1043,19 +1045,28 @@ function Plugin:AddLog( Params )
 	if self.RoundFinished == 1 or not Params then return end
 	
 	if not self.Log then self.Log = {} end
-	if not self.Log[ self.LogPartNumber ] then self.Log[ self.LogPartNumber ] = "" end
+	if not self.Log[ self.LogPartNumber ] then
+		self.Log[ self.LogPartNumber ] = { 
+			Strings = {},
+			Length = 0
+		}	
+	end
 
 	if Shared.GetCheatsEnabled() and self.StatsEnabled then 
 		self.StatsEnabled = false
 		Shine:Notify( nil, "", "NS2Stats", "Cheats were enabled! NS2Stats will disable itself now!")
 	end
-	
-	Params.time = Shared.GetGMTString(false)
+
+	Params.time = Shared.GetGMTString( false )
 	Params.gametime = Shared.GetTime() - self.GameStartTime
-	Plugin.Log[Plugin.LogPartNumber] = StringFormat("%s%s\n",Plugin.Log[Plugin.LogPartNumber], JsonEncode(Params))	
+
+	local LogString = JsonEncode( Params )
+
+	TableInsert( self.Log[self.LogPartNumber].Strings , LogString )	
+	self.Log[ self.LogPartNumber ].Length = self.Log[ self.LogPartNumber ].Length + StringLen( LogString )
 	
 	--avoid that log gets too long
-	if StringLen( self.Log[ self.LogPartNumber ] ) > 160000 then
+	if self.Log[ self.LogPartNumber ].Length > 56000 then
 		self.LogPartNumber = self.LogPartNumber + 1    
 		if self.StatsEnabled then self:SendData() end        
 	end
@@ -1083,6 +1094,7 @@ end
 
 --Add server infos
 function Plugin:AddServerInfos( Params )
+
 	local Mods = {}
 	local GetMod = Server.GetActiveModId
 	for i = 1, Server.GetNumActiveMods() do
@@ -1096,7 +1108,7 @@ function Plugin:AddServerInfos( Params )
 	end
 	
 	Params.action = "game_ended"
-	Params.statsVersion = Plugin.Version
+	Params.statsVersion = self.Version
 	Params.serverName = Server.GetName()
 	Params.gamemode = Shine.GetGamemode()
 	Params.successfulSends = self.SuccessfulSends 
@@ -1106,14 +1118,17 @@ function Plugin:AddServerInfos( Params )
 	Params.tags = self.Config.Tags    
 	Params.private = self.Config.Competitive
 	Params.autoarrange = false --use Shine plugin settings later?
+	
 	local Ip = IPAddressToString( Server.GetIpAddress() ) 
 	if not StringFind( Ip, ":" ) then Ip = StringFormat( "%s:%s", Ip, Server.GetPort() ) end
+	
 	Params.serverInfo =
 	{
 		password = "",
 		IP = Ip,
 		count = 30 --servertick?
-	}    
+	}
+	
 	self:AddLog( Params )
 end
 
@@ -1126,21 +1141,21 @@ function Plugin:SendData()
 	local Params =
 	{
 		key = self.Config.ServerKey,
-		roundlog = self.Log[ Plugin.LogPartToSend ],
+		roundlog = TableConcat( self.Log[ self.LogPartToSend ].Strings, "\n") ,
 		part_number = self.LogPartToSend ,
-		last_part = self.RoundFinished,
+		last_part = self.RoundFinished and self.LogPartNumber == self.LogPartToSend,
 		map = Shared.GetMapName(),
 	}
 	
-	Shine.TimedHTTPRequest( StringFormat( "%s/api/sendlog", self.Config.WebsiteUrl ), "POST", Params, function( Response ) Plugin:OnHTTPResponseFromSend( Response ) end, function()
-		Plugin.working = false 
-		Plugin.ResendCount = Plugin.ResendCount + 1 
-		if Plugin.ResendCount > 5 then 
+	Shine.TimedHTTPRequest( StringFormat( "%s/api/sendlog", self.Config.WebsiteUrl ), "POST", Params, function( Response ) self:OnHTTPResponseFromSend( Response ) end, function()
+		self.working = false 
+		self.ResendCount = self.ResendCount + 1 
+		if self.ResendCount > 5 then 
 			self.StatsEnabled = false
 			Notify( "Ns2Stats.com seems to be not avaible at the moment. Disabling stats sending" )
 			return
 		end
-		Plugin:SendData()
+		self:SendData()
 	end, 30)
 end
 
@@ -1155,6 +1170,7 @@ function Plugin:OnHTTPResponseFromSend( Response )
 		end
 	
 		if Message.error == "NOT_ENOUGH_PLAYERS" then
+			self.StatsEnabled = false
 			Notify( "[NS2Stats]: Send failed because of too less players " )
 			return
 		end	
@@ -1169,11 +1185,11 @@ function Plugin:OnHTTPResponseFromSend( Response )
 	end
 	
 	if StringLen( Response ) > 1 and StringFind( Response, "LOG_RECEIVED_OK", nil, true ) then
-		self.Log[ Plugin.LogPartToSend ] = nil
-		self.LogPartToSend = Plugin.LogPartToSend  + 1
+		self.Log[ self.LogPartToSend ] = nil
+		self.LogPartToSend = self.LogPartToSend  + 1
 		self.SuccessfulSends  = self.SuccessfulSends  + 1
 		self.Working = false
-		Plugin:SendData()
+		self:SendData()
 	else --we couldn't reach the NS2Stats Servers
 		self.Working = false
 		self:SimpleTimer( 5, function() self:SendData() end)
@@ -1260,10 +1276,12 @@ function Plugin:UpdatePlayerInTable(Client, Player, PlayerInfo)
 	PlayerInfo.totalPlayTime = Player.totalPlayTime or 0
 	PlayerInfo.playerLevel = Player.playerLevel or 0
 	PlayerInfo.isCommander = Player:GetIsCommander() or false
+	
 	--if Player is dead
 	if not Player:GetIsAlive() then
 		PlayerInfo.killstreak = 0
 	end
+	
 	if not PlayerInfo.isbot then PlayerInfo.ping = Client:GetPing() end
 end
 
@@ -1302,7 +1320,7 @@ end
 --GetIds
 function Plugin:GetId( Client )
 	if Client and Client.GetUserId then     
-		if Client:GetIsVirtual() then return Plugin:GetIdbyName( Client:GetControllingPlayer():GetName() ) or 0
+		if Client:GetIsVirtual() then return self:GetIdbyName( Client:GetControllingPlayer():GetName() ) or 0
 		else return Client:GetUserId() end
 	end
 end
@@ -1328,7 +1346,7 @@ function Plugin:GetIdbyName( Name )
 	
 	for i = 1, 6 do
 		local Num = 99
-		if #Input >=i then
+		if #Input >= i then
 			local Char = StringSub( Input, i, i )
 			Num = StringFind( Letters, Char, nil, true) or 99
 			if Num < 10 then Num = 80 + Num end
@@ -1351,7 +1369,7 @@ end
 function Plugin:UpdateWeaponTable() 
 	if not self.RoundStarted then return end
 	for _, Client in ipairs( Shine.GetAllClients() ) do
-		Plugin:UpdateWeaponData( Client )
+		self:UpdateWeaponData( Client )
 	end
 end   
 
@@ -1466,8 +1484,7 @@ end
 --Commands
 function Plugin:CreateCommands()    
 	local ShowPStats = self:BindCommand( "sh_showplayerstats", { "showplayerstats", "showstats" }, function( Client, Target )
-		local target = Target or Client
-		HTTPRequest( StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl, Plugin:GetId( target )), "GET", function( Response )
+		HTTPRequest( StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl, self:GetId( Target or Client )), "GET", function( Response )
 			local Data = JsonDecode( Response )
 			local PlayerId = ""
 			if Data then PlayerId = Data.id or "" end
@@ -1478,33 +1495,33 @@ function Plugin:CreateCommands()
 	ShowPStats:AddParam{ Type = "client", Optional = true, Default = false }
 	ShowPStats:Help( "<optional player> Shows stats from the given player or yourself" )
 	
-	local ShowLastRound = self:BindCommand( "sh_showlastround", { "showlastround", "lastround" }, function(Client)
-		if Plugin.Config.Lastroundlink == "" then Shine:Notify( Client, "", "", "[NS2Stats]: Last round was not saved at NS2Stats" )       
-		else Server.SendNetworkMessage( Client, "Shine_Web", { URL = Plugin.Config.Lastroundlink, Title = "Last Rounds Stats" }, true )
+	local ShowLastRound = self:BindCommand( "sh_showlastround", { "showlastround", "lastround" }, function( Client )
+		if self.Config.Lastroundlink == "" then Shine:Notify( Client, "", "", "[NS2Stats]: Last round was not saved at NS2Stats" )       
+		else Server.SendNetworkMessage( Client, "Shine_Web", { URL = self.Config.Lastroundlink, Title = "Last Rounds Stats" }, true )
 		end
 	end, true )   
 	ShowLastRound:Help("Shows stats of last round played on this server")
 	
-	local ShowSStats = self:BindCommand( "sh_showserverstats", "showserverstats", function(Client)
-		local URL = StringFormat( "%s/server/server/%s",self.Config.WebsiteUrl,Plugin:GetServerId() )
+	local ShowSStats = self:BindCommand( "sh_showserverstats", "showserverstats", function( Client )
+		local URL = StringFormat( "%s/server/server/%s",self.Config.WebsiteUrl, self:GetServerId() )
 		Server.SendNetworkMessage( Client, "Shine_Web", { URL = URL, Title = "Server Stats" }, true )
 	end, true )
 	ShowSStats:Help("Shows server stats") 
 	
-	local ShowLStats = self:BindCommand( "sh_showlivestats", "showlivestats", function(Client)
-		local URL = StringFormat( "%s/live/scoreboard/%s", self.Config.WebsiteUrl, Plugin:GetServerId() )
+	local ShowLStats = self:BindCommand( "sh_showlivestats", "showlivestats", function( Client )
+		local URL = StringFormat( "%s/live/scoreboard/%s", self.Config.WebsiteUrl, self:GetServerId() )
 		Server.SendNetworkMessage( Client, "Shine_Web", { URL = URL, Title = "Scoreboard" }, true )
 	end, true )
 	ShowLStats:Help( "Shows server live stats" )
 	
 	local Verify = self:BindCommand( "sh_verify", {"verifystats","verify"},function(Client)
-			HTTPRequest(StringFormat("%s/api/verifyServer/%s?s=479qeuehq2829&key=%s", self.Config.WebsiteUrl, Plugin:GetId(Client), self.Config.ServerKey), "GET",
+			HTTPRequest(StringFormat("%s/api/verifyServer/%s?s=479qeuehq2829&key=%s", self.Config.WebsiteUrl, self:GetId(Client), self.Config.ServerKey), "GET",
 			function( Response ) ServerAdminPrint( Client, Response ) end )
 	end )
 	Verify:Help( "Sets yourself as serveradmin at NS2Stats.com" )
 	
 	local Tag = self:BindCommand( "sh_addtag", "addtag", function(Client,tag)
-		TableInsert(Plugin.Config.Tags, tag)
+		TableInsert(self.Config.Tags, tag)
 		Notify( StringFormat( "[NS2Stats]: %s  has been added as Tag to this roundlog", tag ))
 	end )    
 	Tag:AddParam{ Type = "string", TakeRestOfLine = true, Error = "Please specify a tag to be added.", MaxLength = 30 }
@@ -1512,24 +1529,24 @@ function Plugin:CreateCommands()
 	
 	local Debug = self:BindCommand( "sh_statsdebug", "statsdebug", function( Client )
 		Shine:AdminPrint( Client, "NS2Stats Debug Report:" )
-		Shine:AdminPrint( Client, StringFormat( "Ns2Stats is%s sending data to website", Plugin.StatsEnabled and "" or " not"))
-		Shine:AdminPrint( Client, StringFormat( "Currently uploading log part: %s", Plugin.working and "Yes" or "No"))
-		Shine:AdminPrint( Client, StringFormat( "%s Players in PlayerTable.", #Plugin.PlayersInfos ))
-		Shine:AdminPrint( Client, StringFormat( "Current Logparts %s / %s . Length of ToSend: %s", Plugin.LogPartToSend, Plugin.LogPartNumber, StringLen( Plugin.Log[ Plugin.LogPartToSend ] )))
+		Shine:AdminPrint( Client, StringFormat( "Ns2Stats is%s sending data to website", self.StatsEnabled and "" or " not"))
+		Shine:AdminPrint( Client, StringFormat( "Currently uploading log part: %s", self.working and "Yes" or "No"))
+		Shine:AdminPrint( Client, StringFormat( "%s Players in PlayerTable.", #self.PlayersInfos ))
+		Shine:AdminPrint( Client, StringFormat( "Current Logparts %s / %s . Length of ToSend: %s", self.LogPartToSend, self.LogPartNumber, self.Log[ self.LogPartToSend ].Length ))
 	end, true )
 	Debug:Help( "Prints some ns2stats debug values into the console (only usefull for debugging)" )
 end
 
 --Awards
 function Plugin:MakeAwardsList()
-	self:AddAward( Plugin:AwardMostDamage() )
-	self:AddAward( Plugin:AwardMostKillsAndAssists() )
-	self:AddAward( Plugin:AwardMostConstructed() )
-	self:AddAward( Plugin:AwardMostStructureDamage() )
-	self:AddAward( Plugin:AwardMostPlayerDamage() )
-	self:AddAward( Plugin:AwardBestAccuracy() )
-	self:AddAward( Plugin:AwardMostJumps() )
-	self:AddAward( Plugin:AwardHighestKillstreak() )
+	self:AddAward( self:AwardMostDamage() )
+	self:AddAward( self:AwardMostKillsAndAssists() )
+	self:AddAward( self:AwardMostConstructed() )
+	self:AddAward( self:AwardMostStructureDamage() )
+	self:AddAward( self:AwardMostPlayerDamage() )
+	self:AddAward( self:AwardBestAccuracy() )
+	self:AddAward( self:AwardMostJumps() )
+	self:AddAward( self:AwardHighestKillstreak() )
 end
 
 function Plugin:SendAwardListToClients()
@@ -1545,17 +1562,20 @@ function Plugin:SendAwardListToClients()
 	
 	local AwardMessage = {}
 	AwardMessage.Message = ""    
-	AwardMessage.Duration = Plugin.Config.AwardMsgTime
-	AwardMessage.ColourR = Plugin.Config.AwardMsgColour[1]
-	AwardMessage.ColourG = Plugin.Config.AwardMsgColour[2]
-	AwardMessage.ColourB = Plugin.Config.AwardMsgColour[3]
+	AwardMessage.Duration = self.Config.AwardMsgTime
+	AwardMessage.ColourR = self.Config.AwardMsgColour[1]
+	AwardMessage.ColourG = self.Config.AwardMsgColour[2]
+	AwardMessage.ColourB = self.Config.AwardMsgColour[3]
 	
+	local AwardMessages = {}
 	for i = 1, self.Config.ShowNumAwards do
 		if i > #self.Awards then break end
 		if self.Awards[ i ].message then 
-			AwardMessage.Message = StringFormat( "%s%s\n", AwardMessage.Message, self.Awards[ i ].message )
+			TableInsert( AwardMessages, self.Awards[ i ].message)
 		end
-	end 
+	end	
+	AwardMessage.Message = TableConcat( AwardMessages, "\n" )
+	
 	self:SendNetworkMessage( nil, "StatsAwards", AwardMessage, true )
 end
 

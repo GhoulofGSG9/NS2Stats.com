@@ -25,7 +25,10 @@ Plugin.Killstreaks = {}
 
 function Plugin:Initialise()
     self.Enabled = true
-
+	
+	--create Commands
+	self:CreateCommands()
+	
     return true
 end
 
@@ -176,8 +179,34 @@ function Plugin:PlaySoundForEveryPlayer( SoundName )
     end
 end
 
+function Plugin:CreateCommands()
+	local CSound = self:BindCommand( "sh_sounds", {"quake", "sounds"} , function( Client, Value)
+	
+		-- 0 = nil, 1 = false, 2 = true
+		if Value == nil then
+			Value = 0
+		elseif Value then
+			Value = 2
+		else
+			Value = 1
+		end
+		
+		self:SendNetworkMessage( Client, "Command",{ Name = "Sounds", Value = Value } , true)
+	end, true, true )
+	CSound:AddParam{ Type = "boolean", Optional = true }
+	CSound:Help( "<boolean> Allows you to set if kill-streak sounds should be played for you or not." )
+	
+	local CVolume = self:BindCommand( "sh_soundvolume", {"quakevolume", "soundvolume"}, function( Client, Value)
+		self:SendNetworkMessage( Client, "SoundVolume",{ Name = "Sounds", Value = Value } , true)
+	end, true, true)
+	CVolume:AddParam{ Type = "number", Min = 0, Max = 200, Round= true, Error = "Please set a value between 0 and 200. Any value outside this limit is not allowed" }
+	CVolume:Help( "<volume in percent> Set the killstreak volume to whatever you like between 0 and 200%" )
+end
+
 function Plugin:Cleanup()
     self.BaseClass.Cleanup( self )
+	
     self.Killstreaks = nil
+	
     self.Enabled = false
 end
