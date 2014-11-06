@@ -32,13 +32,14 @@ function Plugin:Initialise()
     return true
 end
 
-function Plugin:OnEntityKilled( Gamerules, Victim, Attacker )
+function Plugin:OnEntityKilled( _, Victim, Attacker )
     if not Attacker or not Victim or not Victim:isa( "Player" ) then return end
     
     if not Attacker:isa( "Player" ) then 
          local RealKiller = Attacker.GetOwner and Attacker:GetOwner() or nil
          if RealKiller and RealKiller:isa( "Player" ) then
-            Attacker = RealKiller
+             --noinspection UnusedDef
+             Attacker = RealKiller
          else return end
     end
     
@@ -49,7 +50,8 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker )
         local Colour = { 255, 0, 0 }
         local team = Victim:GetTeamNumber()
         
-        if team == 1 then Colour = self.Config.MarineColour
+        if team == 1 then --noinspection UnusedDef
+        Colour = self.Config.MarineColour
         elseif team == 2 then Colour = self.Config.AlienColour end
         
         Shine:NotifyColour(nil, Colour[ 1 ], Colour[ 2 ], Colour[ 3 ], StringFormat( self.Config.StoppedMsg, Victim:GetName(), Attacker:GetName() ))
@@ -62,7 +64,7 @@ function Plugin:OnEntityKilled( Gamerules, Victim, Attacker )
     if not self.Killstreaks[ AttackerClient ] then self.Killstreaks[ AttackerClient ] = 1
     else self.Killstreaks[ AttackerClient ] = self.Killstreaks[ AttackerClient ] + 1 end    
 
-    Plugin:CheckForMultiKills( Attacker:GetName(), self.Killstreaks[ AttackerClient ], Attacker:GetTeamNumber() )      
+    self:CheckForMultiKills( Attacker:GetName(), self.Killstreaks[ AttackerClient ], Attacker:GetTeamNumber() )
 end
 
 Shine.Hook.SetupGlobalHook( "RemoveAllObstacles", "OnGameReset", "PassivePost" )
@@ -76,7 +78,7 @@ function Plugin:ClientDisconnect( Client )
     self.Killstreaks[ Client ] = nil
 end
 
-function Plugin:PostJoinTeam( Gamerules, Player )
+function Plugin:PostJoinTeam( _, Player )
     local Client = Player:GetClient()
     if not Client then return end
     
@@ -166,7 +168,8 @@ function Plugin:CheckForMultiKills( Name, Streak, Teamnumber )
     local Colour = { 250, 0, 0 }
     
     if Teamnumber then
-        if Teamnumber == 1 then Colour = self.Config.MarineColour
+        if Teamnumber == 1 then --noinspection UnusedDef
+        Colour = self.Config.MarineColour
         else Colour = self.Config.AlienColour end
     end
     Shine:NotifyColour( nil, Colour[ 1 ], Colour[ 2 ], Colour[ 3 ], StringFormat( StreakData.Text, Name ) )
@@ -186,7 +189,8 @@ function Plugin:CreateCommands()
 		if Value == nil then
 			Value = 0
 		elseif Value then
-			Value = 2
+            --noinspection UnusedDef
+            Value = 2
 		else
 			Value = 1
 		end

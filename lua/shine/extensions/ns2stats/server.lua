@@ -1036,32 +1036,40 @@ end
 function Plugin:AddLog( Params )    
 	if self.RoundFinished or not Params then return end
 	
-	if not self.Log then self.Log = {} end
-	if not self.Log[ self.LogPartNumber ] then
-		self.Log[ self.LogPartNumber ] = { 
-			Strings = {},
-			Length = 0
-		}	
-	end
-
 	if Shared.GetCheatsEnabled() and self.StatsEnabled then 
 		self.StatsEnabled = false
 		Shine:Notify( nil, "", "NS2Stats", "Cheats were enabled! NS2Stats will disable itself now!")
+	end
+	
+	if not self.Log then self.Log = {} end
+	
+	local Log = self.Log[ self.LogPartNumber ]	
+	if not Log then
+	
+		self.Log[ self.LogPartNumber ] = { 
+			Strings = {},
+			Length = 0,
+			Lines = 0,
+		}
+		Log = self.Log[ self.LogPartNumber ]
+		
 	end
 
 	Params.time = Shared.GetGMTString( false )
 	Params.gametime = Shared.GetTime() - self.GameStartTime
 
 	local LogString = JsonEncode( Params )
-
-	TableInsert( self.Log[ self.LogPartNumber ].Strings , LogString )
-	self.Log[ self.LogPartNumber ].Length = self.Log[ self.LogPartNumber ].Length + StringLen( LogString )
+	
+	Log.Lines = Log.Lines + 1
+	Log.Strings[ Log.Lines ] = LogString
+	Log.Length = Log.Length + StringLen( LogString )
 
 	--avoid that log gets too long
-	if self.Log[ self.LogPartNumber ].Length > 32000 then
+	if Log.Length > 32000 then
 		self.LogPartNumber = self.LogPartNumber + 1    
 		if self.StatsEnabled then self:SendData() end        
 	end
+	
 end
 
 --add playerlist to log
@@ -1129,11 +1137,18 @@ function Plugin:SendData()
 	if not self.StatsEnabled or self.Working or self.LogPartNumber <= self.LogPartToSend and not self.RoundFinished then return end
 	
 	self.Working = true
-	
+
+	--Insert "" for extra \n
+	local Log = self.Log[ self.LogPartToSend ]
+	if Log.Strings[ Log.Lines ] ~= "" then
+		Log.Lines = Log.Lines + 1
+		Log.Strings[  Log.Lines ] = ""
+	end
+
 	local Params =
 	{
 		key = self.Config.ServerKey,
-		roundlog = TableConcat( self.Log[ self.LogPartToSend ].Strings, "\n") ,
+		roundlog = TableConcat( Log.Strings, "\n") ,
 		part_number = self.LogPartToSend,
 		last_part = self.RoundFinished and self.LogPartNumber == self.LogPartToSend and 1 or 0,
 		map = Shared.GetMapName(),

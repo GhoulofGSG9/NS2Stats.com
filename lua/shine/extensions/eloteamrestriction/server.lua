@@ -6,7 +6,6 @@ Script.Load( "lua/shine/core/server/playerinfohub.lua" )
 local Shine = Shine
 local InfoHub = Shine.PlayerInfoHub
 
-local Notify = Shared.Message
 local StringFormat = string.format
 
 local Plugin = Plugin
@@ -63,7 +62,7 @@ function Plugin:ClientDisconnect( Client )
     self:DestroyTimer(StringFormat( "Kick_%s", SteamId ))
 end
 
-function Plugin:JoinTeam( Gamerules, Player, NewTeam, Force, ShineForce )    
+function Plugin:JoinTeam( _, Player, NewTeam, _, ShineForce )
     if ShineForce or self.Config.AllowSpectating and NewTeam == kSpectatorIndex or NewTeam == kTeamReadyRoom then self:DestroyTimer( StringFormat( "Kick_%s", SteamId )) return end
 	
 	return self:Check( Player )
@@ -134,6 +133,7 @@ function Plugin:Check( Player )
     local Deaths = tonumber( Playerdata.deaths ) or 1
     if Deaths < 1 then Deaths = 1 end
     local Kills = tonumber( Playerdata.kills ) or 1
+    --noinspection UnusedDef
     local KD = Kills / Deaths
     
     if self.Config.TeamStats then
@@ -142,12 +142,14 @@ function Plugin:Check( Player )
             Deaths = tonumber( Playerdata.marine.deaths ) or 1
             if Deaths < 1 then Deaths = 1 end
             Kills = tonumber( Playerdata.marine.kills ) or 1
+            --noinspection UnusedDef
             KD = Kills / Deaths
         else
             Elo = AlienElo
             Deaths = tonumber( Playerdata.alien.deaths ) or 1
             if Deaths < 1 then Deaths = 1 end
             Kills = tonumber( Playerdata.alien.kills ) or 1
+            --noinspection UnusedDef
             KD = Kills / Deaths
         end
     end
