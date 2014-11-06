@@ -44,13 +44,13 @@ function Plugin:Initialise()
 	return true
 end
 
-function Plugin:SetGameState( Gamerules, NewState, OldState )
+function Plugin:SetGameState( _, NewState )
     if NewState == kGameState.Started and self.Config.DisableAfterRoundtime and self.Config.DisableAfterRoundtime > 0 then        
         self:CreateTimer( "Disable", self.Config.DisableAfterRoundtime * 60 , 1, function() Enabled = false end )
     end
 end
 
-function Plugin:EndGame( Gamerules, WinningTeam )
+function Plugin:EndGame()
     self:DestroyTimer( "Disable" )
     Enabled = true
 end
@@ -79,6 +79,7 @@ function Plugin:OnReceiveNs2StatsData( Client )
 	self:Check( Player )
 end
 
+--noinspection UnusedDef
 function Plugin:CheckCommLogin( CommandStation, Player )
     if not self.Config.BlockCC or not Player or not Player.GetClient or Shine.GetHumanPlayerCount() < self.Config.MinPlayer then return end
 

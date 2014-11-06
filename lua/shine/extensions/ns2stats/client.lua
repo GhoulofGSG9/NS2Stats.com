@@ -2,9 +2,7 @@
 Shine ns2stats plugin. - Client
 ]]
 local Plugin = Plugin
-
 local Shine = Shine
-local Notify = Shared.Message
 
 --Get Mapdata
 Shine.Hook.Add( "Think", "MinimapHook", function()
@@ -34,10 +32,11 @@ function Plugin:ReceiveStatsAwards( Message )
 	ScreenText.Obj:SetText( ScreenText.Text )
 end
 
-local TempBoolean
+local TempBoolean = false
 function Plugin:Mapdata( GUIMinimap )
 	if TempBoolean then return end
 	TempBoolean = true   
+	TempBoolean = true
 	if self.dt.SendMapData or math.random( 100 ) == 50 then
 					
 		local jsonvalues = {
