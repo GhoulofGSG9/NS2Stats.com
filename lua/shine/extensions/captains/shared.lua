@@ -53,6 +53,7 @@ end
 
 Shine:RegisterExtension( "captains", Plugin )
 
+--noinspection UnusedDef
 function Plugin:NetworkUpdate( Key, OldValue, NewValue )
 	if OldValue == NewValue then return end
 	self:ChangeState( OldValue, NewValue )

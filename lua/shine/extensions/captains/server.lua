@@ -466,7 +466,8 @@ function Plugin:ClientConfirmConnect( Client )
 			self:SendPlayerData( Client, Player )
 		end
 	end)
-	
+
+	--noinspection ArrayElementZero
 	local Vote = self.Votes[ 0 ]
 	Vote:AddVoteOption( SteamId )	
 	if Vote:GetIsStarted() then
@@ -490,10 +491,9 @@ function Plugin:ClientConfirmConnect( Client )
 		local Random = Random( 1, 2 )
 	
 		Gamerules:JoinTeam( Player, self.Teams[ Random ].TeamNumber, nil, true )
-	else		
-		if MarinesNumPlayers < AliensNumPlayers then
-			TeamNumber = self.Teams[ 1 ].TeamNumber == 1 and 1 or 2
-		else
+	else
+		local TeamNumber = self.Teams[ 1 ].TeamNumber == 1 and 1 or 2
+		if MarinesNumPlayers > AliensNumPlayers then
 			TeamNumber = self.Teams[ 1 ].TeamNumber == 2 and 1 or 2
 		end
 		
