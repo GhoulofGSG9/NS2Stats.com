@@ -1161,7 +1161,7 @@ end
 
 --Analyze the answer of server
 function Plugin:OnHTTPResponseFromSend( Response )	
-	local Success, Message = pcall( JsonEncode, Response )
+	local Success, Message = pcall( JsonDecode, Response )
 	
 	if Success and Message then
 		if Message.other then
@@ -1212,52 +1212,43 @@ function Plugin:AddPlayerToTable( Client )
 end
 
 --create new entry
-function Plugin:CreatePlayerEntry(Client)
+function Plugin:CreatePlayerEntry( Client )
 	if not Client.GetControllingPlayer then
 		Notify( "[NS2Stats Debug]: Tried to create nil Player" )
 		return
 	end
-	
+
 	local Player = Client:GetControllingPlayer()
-	
 	if not Player then return end
-	local PlayerInfo = {}
-	
-	PlayerInfo.teamnumber = Player:GetTeamNumber() or 0
-	PlayerInfo.lifeform = Player:GetMapName()
-	PlayerInfo.score = 0
-	PlayerInfo.assists = 0
-	PlayerInfo.deaths = 0
-	PlayerInfo.kills = 0
-	PlayerInfo.totalKills = Player.totalKills or 0
-	PlayerInfo.totalAssists = Player.totalAssists or 0
-	PlayerInfo.totalDeaths = Player.totalDeaths or 0
-	PlayerInfo.playerSkill = Player.playerSkill or 0
-	PlayerInfo.totalScore = Player.totalScore or 0
-	PlayerInfo.totalPlayTime = Player.totalPlayTime or 0
-	PlayerInfo.playerLevel = Player.playerLevel or 0   
-	PlayerInfo.steamId = self:GetId(Client) or 0
-	PlayerInfo.name = Player:GetName() or ""
-	PlayerInfo.ping = Client:GetPing() or 0
-	PlayerInfo.isbot = Client:GetIsVirtual() or false
-	PlayerInfo.isCommander = false
-	PlayerInfo.dc = false
-	PlayerInfo.total_constructed = 0
-	PlayerInfo.weapons = {}
-	PlayerInfo.killstreak = 0
-	PlayerInfo.highestKillstreak = 0
-	PlayerInfo.jumps = 0
-	PlayerInfo.code = 0
-			
-	--for bots
-	if PlayerInfo.isbot then
-		PlayerInfo.ping = 0
-		PlayerInfo.ipaddress = "127.0.0.1"
-	else
-		PlayerInfo.ping = Client:GetPing()
-		PlayerInfo.ipaddress = IPAddressToString( Server.GetClientAddress( Client ) )
-	end
-	
+
+	local IsBot = Client:GetIsVirtual()
+
+	local PlayerInfo = {
+		steamId = self:GetId( Client ),
+		teamnumber = Player:GetTeamNumber() or 0,
+		lifeform = Player:GetMapName(),
+		score = 0,
+		assists = 0,
+		deaths = 0,
+		kills = 0,
+		isCommander = false,
+		totalKills = Player.totalKills or 0,
+		totalAssists = Player.totalAssists or 0,
+		totalDeaths = Player.totalDeaths or 0,
+		playerSkill = Player.playerSkill or 0,
+		totalScore = Player.totalScore or 0,
+		totalPlayTime = Player.totalPlayTime or 0,
+		playerLevel = Player.playerLevel or 0,
+		isbot = IsBot,
+		ipaddress = IsBot and "127.0.0.1" or IPAddressToString( Server.GetClientAddress( Client ) ),
+		ping = IsBot and 0 or Client:GetPing(),
+		dc = false,
+		total_constructed = 0,
+		killstreak = 0,
+		highestKillstreak = 0,
+		jumps = 0,
+		weapons = {}
+	}
 	return PlayerInfo
 end
 
