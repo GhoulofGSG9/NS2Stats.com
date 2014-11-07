@@ -1056,8 +1056,9 @@ function Plugin:AddLog( Params )
 	Params.time = Shared.GetGMTString( false )
 	Params.gametime = Shared.GetTime() - self.GameStartTime
 
-	local _, LogString = pcall( JsonEncode( Params ) )
-	if not LogString then return end
+	local Success, LogString, c = pcall( JsonEncode, Params )
+
+	if not Success then return end
 
 	TableInsert( Log.Strings, LogString)
 	Log.Length = Log.Length + StringLen( LogString )
@@ -1160,9 +1161,9 @@ end
 
 --Analyze the answer of server
 function Plugin:OnHTTPResponseFromSend( Response )	
-	local _, Message pcall( JsonDecode( Response ) )
+	local Success, Message = pcall( JsonEncode, Response )
 	
-	if Message then        
+	if Success and Message then
 		if Message.other then
 			self.StatsEnabled = false
 			Notify( StringFormat( "[NSStats]: %s", Message.other ))
@@ -1412,7 +1413,7 @@ function Plugin:SendServerStatus( GameState )
 	local stime = Shared.GetGMTString( false )
 	local gameTime = Shared.GetTime() - self.GameStartTime
 
-	local Sucess, PlayersString = pcall( JsonEncode(self.PlayersInfos) )
+	local Sucess, PlayersString = pcall( JsonEncode, self.PlayersInfos )
 	if not Sucess then return end
 
 	local Params =
@@ -1437,9 +1438,9 @@ function Plugin:AcceptKey( Response )
 			Notify( "NS2Stats: Unable to receive unique key from server, stats wont work yet. " )
 			Notify( "NS2Stats: Server restart might help." )
 		else
-			local _, Decoded = pcall( JsonDecode( Response ) )
+			local Success, Decoded = pcall( JsonDecode, Response )
 
-			local Key = Decoded and Decoded.key
+			local Key = Success and Decoded and Decoded.key
 			if Key then
 				self.Config.ServerKey = Key
 
@@ -1479,8 +1480,8 @@ function Plugin:GetServerId()
 				self:GenerateServerKey()
 			end
 
-			local _, Data = pcall( JsonDecode( Response ) )
-			local Id = Data and Data.id
+			local Success, Data = pcall( JsonDecode, Response )
+			local Id = Success and Data and Data.id
 
 			if Id then
 				self.ServerId = Data.id
@@ -1509,8 +1510,8 @@ function Plugin:CreateCommands()
 
 			HTTPRequest( PlayerUrl, "GET", function( Response )
 
-				local _, Data = pcall( JsonDecode( Response ) )
-				local PlayerId = Data and Data.id or ""
+				local Success, Data = pcall( JsonDecode, Response )
+				local PlayerId = Success and Data and Data.id or ""
 
 				local URL = StringFormat( "%s/Player/Player/%s", self.Config.WebsiteUrl, PlayerId )
 				Server.SendNetworkMessage( Client, "Shine_Web", { URL = URL, Title = "My Stats" }, true )
