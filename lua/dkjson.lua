@@ -1,6 +1,6 @@
 -- Module options:
-local always_try_using_lpeg = true
-local register_global_module_table = false
+local always_try_using_lpeg = false
+local register_global_module_table = true
 local global_module_name = 'json'
 
 --[==[
@@ -43,18 +43,16 @@ SOFTWARE.
 
 -- global dependencies:
 local pairs, type, tostring, tonumber, getmetatable, setmetatable, rawset =
-      pairs, type, tostring, tonumber, getmetatable, setmetatable, rawset
+pairs, type, tostring, tonumber, getmetatable, setmetatable, rawset
 local error, require, pcall, select = error, require, pcall, select
 local floor, huge = math.floor, math.huge
 local strrep, gsub, strsub, strbyte, strchar, strfind, strlen, strformat =
-      string.rep, string.gsub, string.sub, string.byte, string.char,
-      string.find, string.len, string.format
+string.rep, string.gsub, string.sub, string.byte, string.char,
+string.find, string.len, string.format
 local strmatch = string.match
 local concat = table.concat
 
---Modification for NS2: made json a global table
-json = { version = "dkjson 2.5" }
-local json = json
+local json = { version = "dkjson 2.5" }
 
 if register_global_module_table then
   _G[global_module_name] = json
@@ -203,7 +201,7 @@ end
 function json.addnewline (state)
   if state.indent then
     state.bufferlen = addnewline2 (state.level or 0,
-                           state.buffer, state.bufferlen or #(state.buffer))
+      state.buffer, state.bufferlen or #(state.buffer))
   end
 end
 
@@ -298,54 +296,54 @@ encode2 = function (value, indent, level, buffer, buflen, tables, globalorder, s
     end
     local msg
     if isa then -- JSON array
-      buflen = buflen + 1
-      buffer[buflen] = "["
+    buflen = buflen + 1
+    buffer[buflen] = "["
+    for i = 1, n do
+      buflen, msg = encode2 (value[i], indent, level, buffer, buflen, tables, globalorder, state)
+      if not buflen then return nil, msg end
+      if i < n then
+        buflen = buflen + 1
+        buffer[buflen] = ","
+      end
+    end
+    buflen = buflen + 1
+    buffer[buflen] = "]"
+    else -- JSON object
+    local prev = false
+    buflen = buflen + 1
+    buffer[buflen] = "{"
+    local order = valmeta and valmeta.__jsonorder or globalorder
+    if order then
+      local used = {}
+      n = #order
       for i = 1, n do
-        buflen, msg = encode2 (value[i], indent, level, buffer, buflen, tables, globalorder, state)
-        if not buflen then return nil, msg end
-        if i < n then
-          buflen = buflen + 1
-          buffer[buflen] = ","
+        local k = order[i]
+        local v = value[k]
+        if v then
+          used[k] = true
+          buflen, msg = addpair (k, v, prev, indent, level, buffer, buflen, tables, globalorder, state)
+          prev = true -- add a seperator before the next element
         end
       end
-      buflen = buflen + 1
-      buffer[buflen] = "]"
-    else -- JSON object
-      local prev = false
-      buflen = buflen + 1
-      buffer[buflen] = "{"
-      local order = valmeta and valmeta.__jsonorder or globalorder
-      if order then
-        local used = {}
-        n = #order
-        for i = 1, n do
-          local k = order[i]
-          local v = value[k]
-          if v then
-            used[k] = true
-            buflen, msg = addpair (k, v, prev, indent, level, buffer, buflen, tables, globalorder, state)
-            prev = true -- add a seperator before the next element
-          end
-        end
-        for k,v in pairs (value) do
-          if not used[k] then
-            buflen, msg = addpair (k, v, prev, indent, level, buffer, buflen, tables, globalorder, state)
-            if not buflen then return nil, msg end
-            prev = true -- add a seperator before the next element
-          end
-        end
-      else -- unordered
-        for k,v in pairs (value) do
+      for k,v in pairs (value) do
+        if not used[k] then
           buflen, msg = addpair (k, v, prev, indent, level, buffer, buflen, tables, globalorder, state)
           if not buflen then return nil, msg end
           prev = true -- add a seperator before the next element
         end
       end
-      if indent then
-        buflen = addnewline2 (level - 1, buffer, buflen)
-      end
-      buflen = buflen + 1
-      buffer[buflen] = "}"
+    else -- unordered
+    for k,v in pairs (value) do
+      buflen, msg = addpair (k, v, prev, indent, level, buffer, buflen, tables, globalorder, state)
+      if not buflen then return nil, msg end
+      prev = true -- add a seperator before the next element
+    end
+    end
+    if indent then
+      buflen = addnewline2 (level - 1, buffer, buflen)
+    end
+    buflen = buflen + 1
+    buffer[buflen] = "}"
     end
     tables[value] = nil
   else
@@ -362,7 +360,7 @@ function json.encode (value, state)
   state.buffer = buffer
   updatedecpoint()
   local ret, msg = encode2 (value, state.indent, state.level or 0,
-                   buffer, state.bufferlen or 0, state.tables or {}, state.keyorder, state)
+    buffer, state.bufferlen or 0, state.tables or {}, state.keyorder, state)
   if not ret then
     error (msg, 2)
   elseif oldbuffer == buffer then
@@ -427,16 +425,16 @@ local function unichar (value)
     return strchar (value)
   elseif value <= 0x07ff then
     return strchar (0xc0 + floor(value/0x40),
-                    0x80 + (floor(value) % 0x40))
+      0x80 + (floor(value) % 0x40))
   elseif value <= 0xffff then
     return strchar (0xe0 + floor(value/0x1000),
-                    0x80 + (floor(value/0x40) % 0x40),
-                    0x80 + (floor(value) % 0x40))
+      0x80 + (floor(value/0x40) % 0x40),
+      0x80 + (floor(value) % 0x40))
   elseif value <= 0x10ffff then
     return strchar (0xf0 + floor(value/0x40000),
-                    0x80 + (floor(value/0x1000) % 0x40),
-                    0x80 + (floor(value/0x40) % 0x40),
-                    0x80 + (floor(value) % 0x40))
+      0x80 + (floor(value/0x1000) % 0x40),
+      0x80 + (floor(value/0x40) % 0x40),
+      0x80 + (floor(value) % 0x40))
   else
     return nil
   end
@@ -711,3 +709,5 @@ end
 if always_try_using_lpeg then
   pcall (json.use_lpeg)
 end
+
+return json

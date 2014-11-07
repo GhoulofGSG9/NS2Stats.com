@@ -14,10 +14,15 @@ end )
 
 function Plugin:Initialise()
 	self.Enabled = true
+
 	if Shine.AddStartupMessage then
 		Shine.AddStartupMessage( "Shine NS2Stats.com Plugin is running. Please use sh_verify to set yourself as server admin at NS2Stats.com" )
 	end
+
 	self:SetupAdminMenuCommands()
+
+	self.MapDataSend = false
+
 	return true 
 end
 
@@ -32,11 +37,11 @@ function Plugin:ReceiveStatsAwards( Message )
 	ScreenText.Obj:SetText( ScreenText.Text )
 end
 
-local TempBoolean = false
 function Plugin:Mapdata( GUIMinimap )
-	if TempBoolean then return end
-	TempBoolean = true   
-	TempBoolean = true
+	if self.MapDataSend then return end
+
+	self.MapDataSend = true
+
 	if self.dt.SendMapData or math.random( 100 ) == 50 then
 					
 		local jsonvalues = {
@@ -54,7 +59,13 @@ function Plugin:Mapdata( GUIMinimap )
 			backgroundHeight = GUIMinimap.kBackgroundHeight,
 			scale = GUIMinimap.scale
 		}
-		if not jsonvalues.plotToMapLin_X or not jsonvalues.scale or not jsonvalues.scaleX then TempBoolean = false return end --check if datas are valid
+
+		--check if datas are valid
+		if not jsonvalues.plotToMapLin_X or not jsonvalues.scale or not jsonvalues.scaleX then
+			self.MapDataSend = false
+			return
+		end
+
 		local params =
 		{
 			secret = "jokukovasalasana",
@@ -68,9 +79,9 @@ end
 --Votemenu    
 Shine.VoteMenu:AddPage( "Stats", function( self )
 	self:AddSideButton( "Show my Stats", function()
-	Shared.ConsoleCommand( "sh_showplayerstats" )
-	self:SetPage( "Main" )
-	self:SetIsVisible( false )
+		Shared.ConsoleCommand( "sh_showplayerstats" )
+		self:SetPage( "Main" )
+		self:SetIsVisible( false )
 	end )      
 	self:AddSideButton( "Show Server Stats", function()
 		Shared.ConsoleCommand( "sh_showserverstats" )
