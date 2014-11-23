@@ -159,7 +159,9 @@ function Plugin:Initialise()
 	
 	-- every 30 sec send Server Status
 	if self.Config.StatusReport then
-		self:CreateTimer( "SendStatus" , 30, -1, function() self:SendServerStatus( self.CurrentGameState ) end)
+		self:CreateTimer( "SendStatus" , 30, -1, function()
+			self:SendServerStatus( self.CurrentGameState )
+		end)
 	end
 	
 	return true
@@ -1056,7 +1058,7 @@ function Plugin:AddLog( Params )
 	Params.time = Shared.GetGMTString( false )
 	Params.gametime = Shared.GetTime() - self.GameStartTime
 
-	local Success, LogString, c = pcall( JsonEncode, Params )
+	local Success, LogString = pcall( JsonEncode, Params )
 
 	if not Success then return end
 
@@ -1125,10 +1127,11 @@ function Plugin:SendData()
 	if not self.StatsEnabled or self.Working or self.LogPartNumber <= self.LogPartToSend and not self.RoundFinished then
 		return
 	end
-	
-	self.Working = true
 
 	local Log = self.Log[ self.LogPartToSend ]
+	if not Log then return end
+
+	self.Working = true
 
 	--Insert "" for extra \n
 	if Log.Strings[ #Log.Strings ] ~= "" then
@@ -1160,28 +1163,33 @@ function Plugin:SendData()
 end
 
 --Analyze the answer of server
-function Plugin:OnHTTPResponseFromSend( Response )	
-	local Success, Message = pcall( JsonDecode, Response )
-	
-	if Success and Message then
-		if Message.other then
-			self.StatsEnabled = false
-			Notify( StringFormat( "[NSStats]: %s", Message.other ))
-			return
-		end
-	
-		if Message.error == "NOT_ENOUGH_PLAYERS" then
-			self.StatsEnabled = false
-			Notify( "[NS2Stats]: Send failed because of too less players " )
-			return
-		end	
+function Plugin:OnHTTPResponseFromSend( Response )
 
-		if Message.link then
-			local Link = StringFormat( "%s%s", self.Config.WebsiteUrl, Message.link)
-			Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" , Link))
-			self.Config.Lastroundlink = Link
-			self:SaveConfig()
-			return
+	if string.UTF8Length( Response ) > 0 then
+		Notify(StringFormat("[Debug] Ns2Stats Response: %s" , Response))
+
+		local Success, Message = pcall( JsonDecode, Response )
+
+		if Success and Message then
+			if Message.other then
+				self.StatsEnabled = false
+				Notify( StringFormat( "[NSStats]: %s", Message.other ))
+				return
+			end
+
+			if Message.error == "NOT_ENOUGH_PLAYERS" then
+				self.StatsEnabled = false
+				Notify( "[NS2Stats]: Send failed because of too less players " )
+				return
+			end
+
+			if Message.link then
+				local Link = StringFormat( "%s%s", self.Config.WebsiteUrl, Message.link)
+				Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" , Link))
+				self.Config.Lastroundlink = Link
+				self:SaveConfig()
+				return
+			end
 		end
 	end
 	
