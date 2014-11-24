@@ -22,7 +22,6 @@ local TableInsert = table.insert
 local TableConcat = table.concat
 
 local JsonEncode = json.encode
-local JsonDecode = json.decode
 
 local HTTPRequest = Shared.SendHTTPRequest
 
@@ -58,6 +57,15 @@ end
 
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
+
+local function JsonDecode( s )
+	if not s or not Shine.IsType( s, "string" ) then return end
+
+	local length = string.UTF8Length( s )
+	if not length or length <= 3 then return end
+
+	return json.decode( string )
+end
 
 function Plugin:SetupHooks()
 	
@@ -1163,33 +1171,28 @@ function Plugin:SendData()
 end
 
 --Analyze the answer of server
-function Plugin:OnHTTPResponseFromSend( Response )
+function Plugin:OnHTTPResponseFromSend( Response )	
+	local Success, Message = pcall( JsonDecode, Response )
+	
+	if Success and Message then
+		if Message.other then
+			self.StatsEnabled = false
+			Notify( StringFormat( "[NSStats]: %s", Message.other ))
+			return
+		end
+	
+		if Message.error == "NOT_ENOUGH_PLAYERS" then
+			self.StatsEnabled = false
+			Notify( "[NS2Stats]: Send failed because of too less players " )
+			return
+		end	
 
-	if string.UTF8Length( Response ) > 0 then
-		Notify(StringFormat("[Debug] Ns2Stats Response: %s" , Response))
-
-		local Success, Message = pcall( JsonDecode, Response )
-
-		if Success and Message then
-			if Message.other then
-				self.StatsEnabled = false
-				Notify( StringFormat( "[NSStats]: %s", Message.other ))
-				return
-			end
-
-			if Message.error == "NOT_ENOUGH_PLAYERS" then
-				self.StatsEnabled = false
-				Notify( "[NS2Stats]: Send failed because of too less players " )
-				return
-			end
-
-			if Message.link then
-				local Link = StringFormat( "%s%s", self.Config.WebsiteUrl, Message.link)
-				Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" , Link))
-				self.Config.Lastroundlink = Link
-				self:SaveConfig()
-				return
-			end
+		if Message.link then
+			local Link = StringFormat( "%s%s", self.Config.WebsiteUrl, Message.link)
+			Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" , Link))
+			self.Config.Lastroundlink = Link
+			self:SaveConfig()
+			return
 		end
 	end
 	
