@@ -22,7 +22,6 @@ local TableInsert = table.insert
 local TableConcat = table.concat
 
 local JsonEncode = json.encode
-local JsonDecode = json.decode
 
 local HTTPRequest = Shared.SendHTTPRequest
 
@@ -58,6 +57,15 @@ end
 
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
+
+local function JsonDecode( s )
+	if not s or not Shine.IsType( s, "string" ) then return end
+
+	local length = string.UTF8Length( s )
+	if not length or length <= 3 then return end
+
+	return json.decode( string )
+end
 
 function Plugin:SetupHooks()
 	
@@ -159,7 +167,9 @@ function Plugin:Initialise()
 	
 	-- every 30 sec send Server Status
 	if self.Config.StatusReport then
-		self:CreateTimer( "SendStatus" , 30, -1, function() self:SendServerStatus( self.CurrentGameState ) end)
+		self:CreateTimer( "SendStatus" , 30, -1, function()
+			self:SendServerStatus( self.CurrentGameState )
+		end)
 	end
 	
 	return true
@@ -1056,7 +1066,7 @@ function Plugin:AddLog( Params )
 	Params.time = Shared.GetGMTString( false )
 	Params.gametime = Shared.GetTime() - self.GameStartTime
 
-	local Success, LogString, c = pcall( JsonEncode, Params )
+	local Success, LogString = pcall( JsonEncode, Params )
 
 	if not Success then return end
 
@@ -1125,10 +1135,11 @@ function Plugin:SendData()
 	if not self.StatsEnabled or self.Working or self.LogPartNumber <= self.LogPartToSend and not self.RoundFinished then
 		return
 	end
-	
-	self.Working = true
 
 	local Log = self.Log[ self.LogPartToSend ]
+	if not Log then return end
+
+	self.Working = true
 
 	--Insert "" for extra \n
 	if Log.Strings[ #Log.Strings ] ~= "" then
