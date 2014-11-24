@@ -1510,13 +1510,12 @@ function Plugin:CreateCommands()
 			local PlayerUrl = StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl,
 				self:GetId( Target or Client ) )
 
-			HTTPRequest( PlayerUrl, "GET", function( Response )
+				HTTPRequest( PlayerUrl, "GET", function( Response )
+					local Success, Data = pcall( JsonDecode, Response )
+					local PlayerId = Success and Data and Data.id or ""
 
-				local Success, Data = pcall( JsonDecode, Response )
-				local PlayerId = Success and Data and Data.id or ""
-
-				local URL = StringFormat( "%s/Player/Player/%s", self.Config.WebsiteUrl, PlayerId )
-				Server.SendNetworkMessage( Client, "Shine_Web", { URL = URL, Title = "My Stats" }, true )
+					local URL = StringFormat( "%s/Player/Player/%s", self.Config.WebsiteUrl, PlayerId )
+					Server.SendNetworkMessage( Client, "Shine_Web", { URL = URL, Title = "My Stats" }, true )
 				end )
 	end, true )
 	ShowPStats:AddParam{ Type = "client", Optional = true, Default = false }
