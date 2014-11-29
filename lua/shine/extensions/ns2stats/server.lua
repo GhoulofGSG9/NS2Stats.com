@@ -64,7 +64,7 @@ local function JsonDecode( s )
 	local length = string.UTF8Length( s )
 	if not length or length <= 3 then return end
 
-	return json.decode( string )
+	return json.decode( s )
 end
 
 function Plugin:SetupHooks()
@@ -1533,7 +1533,7 @@ function Plugin:CreateCommands()
 	ShowLastRound:Help("Shows stats of last round played on this server")
 	
 	local ShowSStats = self:BindCommand( "sh_showserverstats", "showserverstats", function( Client )
-		local URL = StringFormat( "%s/server/server/%s",self.Config.WebsiteUrl, self:GetServerId() )
+		local URL = StringFormat( "%s/server/server/%s",self.Config.WebsiteUrl, self:GetServerId() or "" )
 		Server.SendNetworkMessage( Client, "Shine_Web", { URL = URL, Title = "Server Stats" }, true )
 	end, true )
 	ShowSStats:Help("Shows server stats") 
