@@ -128,51 +128,53 @@ function Plugin:Initialise()
 	if StringSub( self.Config.WebsiteUrl, 1, 7 ) ~= "http://" then
 		return false, "The website url of your config is not legit"
 	end
-	
-	self:SetupHooks()
-	
+
 	self.Enabled = true
 	
 	self.dt.WebsiteUrl = self.Config.WebsiteUrl
 	self.dt.SendMapData = self.Config.SendMapData
-	
-	if self.Config.ServerKey == "" then
-		self:GenerateServerKey()
-	else
-		self:GetServerId()
-	end  
 	
 	--create values
 	self.StatsEnabled = true
 	self.SuccessfulSends = 0
 	self.ResendCount = 0
 	
-	self:OnGameReset()
-	
 	--create Commands
-	self:CreateCommands()	
+	self:CreateCommands()
+	
+	return true
+end
+
+function Plugin:OnFirstThink()
+	self:SetupHooks()
+
+	if self.Config.ServerKey == "" then
+		self:GenerateServerKey()
+	else
+		self:GetServerId()
+	end
 
 	--check if there are already players at the server
 	for _, Client in ipairs( Shine.GetAllClients() ) do
 		self:ClientConfirmConnect( Client )
 	end
-	
+
+	self:OnGameReset()
+
 	--Timers
-	
+
 	--every 1 sec
 	--to update Weapon data
 	self:CreateTimer( "WeaponUpdate", 1, -1, function()
 		self:UpdateWeaponTable()
 	end )
-	
+
 	-- every 30 sec send Server Status
 	if self.Config.StatusReport then
 		self:CreateTimer( "SendStatus" , 30, -1, function()
 			self:SendServerStatus( self.CurrentGameState )
 		end)
 	end
-	
-	return true
 end
 
 -- Events
