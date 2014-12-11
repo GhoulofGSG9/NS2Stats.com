@@ -1272,6 +1272,7 @@ function Plugin:CreatePlayerEntry( Client )
 
 	local PlayerInfo = {
 		steamId = self:GetId( Client ),
+		name = Player:GetName(),
 		teamnumber = Player:GetTeamNumber() or 0,
 		lifeform = Player:GetMapName(),
 		score = 0,
