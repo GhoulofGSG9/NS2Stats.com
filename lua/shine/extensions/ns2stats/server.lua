@@ -1279,7 +1279,7 @@ function Plugin:CreatePlayerEntry( Client )
 		assists = 0,
 		deaths = 0,
 		kills = 0,
-		isCommander = false,
+		isCommander = Player.GetIsCommander and Player:GetIsCommander() or false,
 		totalKills = Player.totalKills or 0,
 		totalAssists = Player.totalAssists or 0,
 		totalDeaths = Player.totalDeaths or 0,
