@@ -141,11 +141,13 @@ function Plugin:Initialise()
 	
 	--create Commands
 	self:CreateCommands()
+
+	self:SimpleTimer( 1, function() self:FirstThink() end)
 	
 	return true
 end
 
-function Plugin:OnFirstThink()
+function Plugin:FirstThink()
 
 	if self.Config.ServerKey == "" then
 		self:GenerateServerKey()
@@ -181,18 +183,24 @@ end
 function Plugin:OnGameReset()
 	--Resets all Stats
 	self.Working = true
+
 	self.Log = {}
 	self.LogPartNumber = 1
 	self.LogPartToSend  = 1
+
 	self.GameStartTime = 0
 	self.RoundStarted = false
 	self.RoundFinished = false
+
 	self.NextAwardId = 0
 	self.Awards = {}
+
 	self.CurrentGameState = 0
+
 	self.PlayersInfos = {}
 	self.ItemInfos = {}
 	self.BuildingsInfos = {}
+
 	self.OldUpgrade = -1
 	self.DoDamageHeathChange = {}
 	self.HitCache = {}
