@@ -1272,13 +1272,14 @@ function Plugin:CreatePlayerEntry( Client )
 
 	local PlayerInfo = {
 		steamId = self:GetId( Client ),
+		name = Player:GetName(),
 		teamnumber = Player:GetTeamNumber() or 0,
 		lifeform = Player:GetMapName(),
 		score = 0,
 		assists = 0,
 		deaths = 0,
 		kills = 0,
-		isCommander = false,
+		isCommander = Player.GetIsCommander and Player:GetIsCommander() or false,
 		totalKills = Player.totalKills or 0,
 		totalAssists = Player.totalAssists or 0,
 		totalDeaths = Player.totalDeaths or 0,
