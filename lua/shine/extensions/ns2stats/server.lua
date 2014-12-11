@@ -146,7 +146,6 @@ function Plugin:Initialise()
 end
 
 function Plugin:OnFirstThink()
-	self:SetupHooks()
 
 	if self.Config.ServerKey == "" then
 		self:GenerateServerKey()
@@ -154,12 +153,9 @@ function Plugin:OnFirstThink()
 		self:GetServerId()
 	end
 
-	--check if there are already players at the server
-	for _, Client in ipairs( Shine.GetAllClients() ) do
-		self:ClientConfirmConnect( Client )
-	end
-
 	self:OnGameReset()
+
+	self:SetupHooks()
 
 	--Timers
 
@@ -189,10 +185,10 @@ function Plugin:OnGameReset()
 	self.LogPartNumber = 1
 	self.LogPartToSend  = 1
 	self.GameStartTime = 0
+	self.RoundStarted = false
 	self.RoundFinished = false
 	self.NextAwardId = 0
 	self.Awards = {}
-	self.RoundStarted = false
 	self.CurrentGameState = 0
 	self.PlayersInfos = {}
 	self.ItemInfos = {}
@@ -297,7 +293,7 @@ end
 
 --score changed
 function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
-	if self.RoundFinished then return end
+	if not self.RoundStarted then return end
 	
 	local Client = Shine.GetClientByID( PlayerInfoEntity.clientId )  
 	if not Client then return end
@@ -330,7 +326,9 @@ function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
 	self:UpdatePlayerInTable( Client, Player, PlayerInfo )
 end
 
-function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam )	
+function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam )
+	if not self.RoundStarted then return end
+
 	local PlayerInfo = self:GetPlayerByClient( Player:GetClient() )
 	if not PlayerInfo then return end
 	
@@ -394,10 +392,14 @@ end
 
 --For Flame-thrower tracking
 function Plugin:PreFirePrimary( Weapon )
+	if not self.RoundStarted then return end
+
 	self.FireCache[ Weapon:GetId() ] = true
 end
 
 function Plugin:PostFirePrimary( Weapon, Player )
+	if not self.RoundStarted then return end
+
 	local Id = Weapon:GetId()
 
 	if self.FireCache[ Id ] then
@@ -454,6 +456,8 @@ function Plugin:PreRadiusDamage( entities, centerOrigin, radius, fullDamage, doe
 end
 
 function Plugin:PostRadiusDamage( entities, centerOrigin, radius, fullDamage, doer, ignoreLOS, fallOffFunc )
+	if not self.RoundStarted then return end
+
 	local Id = doer:GetId()
 	if not self.DetonateCache[ Id ] then return end
 	
@@ -462,6 +466,8 @@ function Plugin:PostRadiusDamage( entities, centerOrigin, radius, fullDamage, do
 end
 
 function Plugin:OnMeleeMiss( weapon, player )
+	if not self.RoundStarted then return end
+
 	self:AddMissToLog( player, weapon )
 end
 
@@ -606,7 +612,7 @@ end
 
 --Chatlogging
 function Plugin:PlayerSay( Client, Message )
-	if not self.Config.LogChat then return end
+	if not self.Config.LogChat or not self.RoundStarted then return end
 	
 	local Player = Client:GetControllingPlayer()
 	if not Player then return end
@@ -626,7 +632,9 @@ end
 if not Shine.IsNS2Combat then
 
 	--Resource gathered
-	function Plugin:OnTeamGetResources( ResourceTower )    
+	function Plugin:OnTeamGetResources( ResourceTower )
+		if not self.RoundStarted then return end
+
 		local Params =
 		{
 			team = ResourceTower:GetTeam():GetTeamNumber(),
@@ -669,6 +677,7 @@ if not Shine.IsNS2Combat then
 	--Building built
 	function Plugin:OnFinishedBuilt( ConstructMixin, Builder )
 		if not self.RoundStarted then return end
+
 		self.BuildingsInfos[ ConstructMixin:GetId() ] = true 
 
 		local TechId = ConstructMixin:GetTechId()    
@@ -704,10 +713,13 @@ if not Shine.IsNS2Combat then
 	--Ghost Buildings (Blueprints)
 	function Plugin:OnGhostCreated(GhostStructureMixin)
 		if not self.RoundStarted then return end
+
 		self:GhostStructureAction( "ghost_create", GhostStructureMixin )
 	end
 
 	function Plugin:OnGhostDestroyed(GhostStructureMixin)
+		if not self.RoundStarted then return end
+
 		self.BuildingsInfos[ GhostStructureMixin:GetId() ] = nil
 		self:GhostStructureAction( "ghost_destroy", GhostStructureMixin )
 	end
@@ -735,6 +747,8 @@ if not Shine.IsNS2Combat then
 
 	--Upgrades Started
 	function Plugin:OnTechStartResearch( ResearchMixin, ResearchNode, Player )
+		if not self.RoundStarted then return end
+
 		if Player:isa( "Commander" ) then
 			local Client = Player:GetClient()  
 			local SteamId = self:GetId( Client ) or 0
@@ -756,7 +770,8 @@ if not Shine.IsNS2Combat then
 
 	--Upgradefinished
 	function Plugin:OnTechResearched( ResearchMixin, Structure, ResearchId)
-		if not Structure then return end
+		if not Structure or not self.RoundStarted then return end
+
 		local ResearchNode = ResearchMixin:GetTeam():GetTechTree():GetTechNode( ResearchId )    
 		if not ResearchNode then return end
 		
@@ -779,6 +794,8 @@ if not Shine.IsNS2Combat then
 
 	--Upgrade lost
 	function Plugin:AddUpgradeLostToLog( UpgradableMixin, TechId )
+		if not self.RoundStarted then return end
+
 		local Params =
 		{
 			team = UpgradableMixin:GetTeamNumber(),
@@ -792,6 +809,8 @@ if not Shine.IsNS2Combat then
 
 	--Research canceled
 	function Plugin:AddUpgradeAbortedToLog( ResearchMixin, ResearchNode )
+		if not self.RoundStarted then return end
+
 		local TechId = ResearchNode:GetTechId()
 		local SteamId = self:GetTeamCommanderSteamid( ResearchMixin:GetTeamNumber() )
 
@@ -809,6 +828,8 @@ if not Shine.IsNS2Combat then
 
 	--Building recyled
 	function Plugin:OnBuildingRecycled( Structure, ResearchID )
+		if not self.RoundStarted then return end
+
 		local tOrigin = Structure:GetOrigin()
 		local TechId = Structure:GetTechId()
 		
@@ -843,7 +864,7 @@ end
 
 --Structure gets killed
 function Plugin:OnStructureKilled( Structure, Attacker , Doer )
-	if not self.BuildingsInfos[ Structure:GetId() ] then return end
+	if not self.BuildingsInfos[ Structure:GetId() ] or not self.RoundStarted then return end
 	self.BuildingsInfos[ Structure:GetId() ] = nil
 	
 	local tOrigin = Structure:GetOrigin()
@@ -910,6 +931,7 @@ end
 
 function Plugin:OnEntityDestroy( Entity )
 	if not self.RoundStarted then return end
+
 	if Entity.isGhostStructure and self.BuildingsInfos[ Entity:GetId() ] then 
 		self:OnGhostDestroyed( Entity )
 	end    
@@ -917,6 +939,8 @@ end
 
 --add Player death to Log
 function Plugin:AddDeathToLog( Target, Attacker, Doer )
+	if not self.RoundStarted then return end
+
 	if Attacker and Doer and Target then
 		local aOrigin = Attacker:GetOrigin()
 		local tOrigin = Target:GetOrigin()        
@@ -1028,6 +1052,8 @@ end
 
 --Check Killstreaks
 function Plugin:AddKill( AttackerSteamId )
+	if not self.RoundStarted then return end
+
 	for _,PlayerInfo in ipairs(self.PlayersInfos) do	
 		if PlayerInfo.steamId == AttackerSteamId then	
 			PlayerInfo.killstreak = PlayerInfo.killstreak + 1	
@@ -1267,7 +1293,7 @@ end
 
 --Update Player Entry
 function Plugin:UpdatePlayerInTable(Client, Player, PlayerInfo)
-	if PlayerInfo.dc then return end
+	if PlayerInfo.dc or not self.RoundStarted then return end
 	
 	PlayerInfo.name = Player:GetName()
 	PlayerInfo.score = Player.score or 0
@@ -1377,6 +1403,7 @@ end
 --Update Weapontable
 function Plugin:UpdateWeaponTable() 
 	if not self.RoundStarted then return end
+
 	for _, Client in ipairs( Shine.GetAllClients() ) do
 		self:UpdateWeaponData( Client )
 	end
