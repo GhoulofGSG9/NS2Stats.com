@@ -28,7 +28,7 @@ Plugin.DefaultConfig = {
     MaxKD = 3,
     ShowInform = true,
     InformMessage = "This Server is Elo rating restricted",
-    BlockMessage = "You don't fit to the Elo rating limit on this server. Your ELO:  %s Server: Min %s , Max %s",
+    BlockMessage = "You don't fit to the Elo rating limit on this server. Your ELO: %s Server: Min %s , Max %s",
     KickMessage = "You will be kicked in %s seconds",
 	WaitMessage = "Please wait while your Player data is retrieved",
     BlockNewPlayers = false,
@@ -69,6 +69,8 @@ function Plugin:JoinTeam( _, Player, NewTeam, _, ShineForce )
 end
 
 function Plugin:Check( Player )
+    if not Player then return end
+
 	local Client = Player:GetClient()
     if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignoreelo" ) then return end
     
