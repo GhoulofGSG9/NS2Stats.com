@@ -56,27 +56,19 @@ function Plugin:EndGame()
 end
 
 function Plugin:OnReceiveSteamData( Client )
-	local SteamId = Client:GetUserId()
-	if not InfoHub:GetIsRequestFinished( SteamId ) then return end
-	
-	local Player = Client:GetControllingPlayer()
-	self:Check( Player )
+    self:AutoCheck( Client )
 end
 
 function Plugin:OnReceiveHiveData( Client )
-	local SteamId = Client:GetUserId()
-	if not InfoHub:GetIsRequestFinished( SteamId ) then return end
-	
-	local Player = Client:GetControllingPlayer()
-	self:Check( Player )
+    self:AutoCheck( Client )
 end
 
 function Plugin:OnReceiveNs2StatsData( Client )
-	local SteamId = Client:GetUserId()
-	if not InfoHub:GetIsRequestFinished( SteamId ) then return end
-	
-	local Player = Client:GetControllingPlayer()
-	self:Check( Player )
+    self:AutoCheck( Client )
+end
+
+function Plugin:ClientConfirmConnect( Client )
+    self:AutoCheck( Client )
 end
 
 --noinspection UnusedDef
@@ -86,8 +78,17 @@ function Plugin:CheckCommLogin( CommandStation, Player )
     return self:Check( Player, true )
 end
 
+function Plugin:AutoCheck( Client )
+    local Player = Client:GetControllingPlayer()
+    local SteamId = Client:GetUserId()
+
+    if not Player or not InfoHub:GetIsRequestFinished( SteamId ) then return end
+
+    self:Check( Player )
+end
+
 function Plugin:Check( Player, ComCheck )
-	if not ComCheck and not self.Config.BlockTeams or not Enabled then return end
+	if not Player or not ComCheck and not self.Config.BlockTeams or not Enabled then return end
 	
     local Client = Player:GetClient()
     if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignorestatus" ) then return end

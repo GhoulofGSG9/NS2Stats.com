@@ -1543,18 +1543,9 @@ end
 
 --Commands
 function Plugin:CreateCommands()    
-	local ShowPStats = self:BindCommand( "sh_showplayerstats", { "showplayerstats", "showstats" },
-		function( Client, Target )
-			local PlayerUrl = StringFormat("%s/api/oneplayer?ns2_id=%s", self.Config.WebsiteUrl,
-				self:GetId( Target or Client ) )
-
-				HTTPRequest( PlayerUrl, "GET", function( Response )
-					local Success, Data = pcall( JsonDecode, Response )
-					local PlayerId = Success and Data and Data.id or ""
-
-					local URL = StringFormat( "%s/Player/Player/%s", self.Config.WebsiteUrl, PlayerId )
-					Server.SendNetworkMessage( Client, "Shine_Web", { URL = URL, Title = "My Stats" }, true )
-				end )
+	local ShowPStats = self:BindCommand( "sh_showplayerstats", { "showplayerstats", "showstats" }, function( Client, Target )
+		local URL = StringFormat( "%s/player/ns2id/%s", self.Config.WebsiteUrl, self:GetId( Target or Client ))
+		Server.SendNetworkMessage( Client, "Shine_Web", { URL = URL, Title = "My Stats" }, true )
 	end, true )
 	ShowPStats:AddParam{ Type = "client", Optional = true, Default = false }
 	ShowPStats:Help( "<optional player> Shows stats from the given player or yourself" )
@@ -1583,8 +1574,8 @@ function Plugin:CreateCommands()
 	
 	local Verify = self:BindCommand( "sh_verify", {"verifystats","verify"},function(Client)
 		local VerifyUrl = StringFormat("%s/api/verifyServer/%s?s=479qeuehq2829&key=%s", self.Config.WebsiteUrl,
-			self:GetId(Client), self.Config.ServerKey)
-		HTTPRequest( VerifyUrl, "GET",		function( Response )
+			self:GetId( Client ), self.Config.ServerKey)
+		HTTPRequest( VerifyUrl, "GET",	function( Response )
 			ServerAdminPrint( Client, Response )
 		end )
 	end )
