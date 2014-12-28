@@ -63,7 +63,10 @@ function Plugin:ClientDisconnect( Client )
 end
 
 function Plugin:JoinTeam( _, Player, NewTeam, _, ShineForce )
-    if ShineForce or self.Config.AllowSpectating and NewTeam == kSpectatorIndex or NewTeam == kTeamReadyRoom then self:DestroyTimer( StringFormat( "Kick_%s", SteamId )) return end
+    if ShineForce or self.Config.AllowSpectating and NewTeam == kSpectatorIndex or NewTeam == kTeamReadyRoom then
+        self:DestroyTimer( StringFormat( "Kick_%s", SteamId ))
+        return
+    end
 	
 	return self:Check( Player )
 end
