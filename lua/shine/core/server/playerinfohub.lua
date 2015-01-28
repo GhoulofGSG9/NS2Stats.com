@@ -123,7 +123,12 @@ function PlayerInfoHub:OnConnect( Client )
         self.SteamData[ SteamId ] = {}
         self.SteamData[ SteamId ].Badges = {}
     end
-    
+
+    --[[
+    -- Status:
+     - -2 = Fetching
+     - -1 = Timeout
+     ]]
     if not self.SteamData[ SteamId ].PlayTime and self.Requests.STEAMPLAYTIME[1] then
         PlayerInfoHub.SteamData[ SteamId ].PlayTime = -2
 
@@ -153,7 +158,6 @@ function PlayerInfoHub:OnConnect( Client )
             end
         end )
     end
-
 
     if not self.SteamData[ SteamId ].Badges.Normal and self.Requests.STEAMBADGES[1] then
         PlayerInfoHub.SteamData[ SteamId ].Badges.Normal = -2
@@ -232,7 +236,7 @@ function PlayerInfoHub:GetSteamData( SteamId )
     return self.SteamData[ SteamId ]
 end
 
-function PlayerInfoHub:GetIsRequestFinished( SteamId )
+wfunction PlayerInfoHub:GetIsRequestFinished( SteamId )
     return (not self.Requests.STEAMPLAYTIME[1] or self.SteamData[ SteamId ].Playtime ~= -2 ) and
             (not self.Requests.STEAMBADGES[1] or self.SteamData[ SteamId ].Badges.Normal ~= -2) and
             (not self.Requests.NS2STATS[1] or self.Ns2StatsData[ SteamId ] ~= -2) and GetHiveDataBySteamId(SteamId)
