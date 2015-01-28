@@ -1,9 +1,9 @@
 --[[
     Shine Ns2Stats Badges
 ]]
-Script.Load( "lua/shine/core/server/playerinfohub.lua" )
 
 local Shine = Shine
+local InfoHub = Shine.PlayerInfoHub
 
 local Plugin = {}
 
@@ -24,19 +24,13 @@ Plugin.CheckConfig = true
 function Plugin:Initialise()
 	self.Enabled = true
 	
-	--assign badges for all already connected clients
-	local InfoHub = Shine.PlayerInfoHub
-	local Clients = Shine.GetAllClients()
-	
-	for i = 1, #Clients do
-		local Client = Clients[ i ]
-		local SteamId = Client:GetUserId()
-		
-		if InfoHub:GetIsRequestFinished( SteamId ) then
-			self:OnReceiveNs2StatsData( Client, InfoHub:GetNs2StatsData( SteamId ) )
-			self:OnReceiveSteamData( Client, InfoHub:GetSteamData( SteamId ) )
-		end
-	end
+    if self.Config.Flags then
+        InfoHub:Request("NS2StatsBadges", "NS2STATS")
+    end
+
+    if self.Config.SteamBadges then
+        InfoHub:Request("NS2StatsBadges", "STEAMBADGES")
+    end
 	
 	return true
 end
@@ -63,15 +57,23 @@ function Plugin:SetBadge( Client, Badge, Row )
     return true
 end
 
+local SteamBadges = {
+    "steam_Rookie",
+    "steam_Squad Leader",
+    "steam_Veteran",
+    "steam_Commander",
+    "steam_Special Ops"
+}
+
 function Plugin:OnReceiveSteamData( Client, SteamData )
     if not self.Config.SteamBadges then return end
     
-    if SteamData.Badges.Normal and SteamData.Badges.Normal ~= 0 then
-        self:SetBadge( Client, SteamData.Badges.Normal )
+    if SteamData.Badges.Normal and SteamData.Badges.Normal > 0 then
+        self:SetBadge( Client, SteamBadges[SteamData.Badges.Normal] )
     end
         
-    if SteamData.Badges.Foil and SteamData.Badges.Foil ~= 0 then
-        self:SetBadge( Client, SteamData.Badges.Foil )
+    if SteamData.Badges.Foil and SteamData.Badges.Foil == 1 then
+        self:SetBadge( Client, "steam_Sanji Survivor" )
     end
 end
 
@@ -85,6 +87,11 @@ function Plugin:OnReceiveNs2StatsData( Client, Ns2StatsData )
         Nationality = "UNO"
         self:SetBadge( Client, Nationality, 2 )
     end
+end
+
+function Plugin:CleanUp()
+    InfoHub:RemoveRequest("NS2StatsBadges")
+    self.BaseClass.Cleanup( self )
 end
 
 Shine:RegisterExtension( "ns2statsbadges", Plugin )

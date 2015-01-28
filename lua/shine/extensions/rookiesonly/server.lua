@@ -86,3 +86,8 @@ function Plugin:Check( Player )
     self:Kick( Player )
     return false
 end
+
+function Plugin:CleanUp()
+    InfoHub:RemoveRequest(self.Name)
+    self.BaseClass.Cleanup( self )
+end

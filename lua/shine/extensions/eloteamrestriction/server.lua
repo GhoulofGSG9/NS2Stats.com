@@ -40,12 +40,19 @@ Plugin.DefaultConfig = {
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
 
+Plugin.Name = "Elo Restriction"
+
 function Plugin:Initialise()
     local Gamemode = Shine.GetGamemode()
     if Gamemode ~= "ns2" then        
         return false, StringFormat( "The eloteamrestriction plugin does not work with %s.", Gamemode )
     end
-  
+
+    InfoHub:Request( self.Name, "NS2STATS" )
+    if self.Config.UseSteamTime or self.Config.ForceSteamTime then
+        InfoHub:Request( self.Name, "STEAMPLAYTIME" )
+    end
+
     self.Enabled = true
     return true
 end
@@ -186,7 +193,6 @@ function Plugin:Check( Player )
 	self:DestroyTimer( StringFormat( "Kick_%s", SteamId ))
 end
 
-Plugin.Name = "Elo Restriction"
 function Plugin:Notify( Player, Message, Format, ... )
    if not Player or not Message then return end
    
@@ -233,4 +239,9 @@ function Plugin:Kick( Player )
             Server.DisconnectClient( Client )
         end    
     end)    
+end
+
+function Plugin:CleanUp()
+    InfoHub:RemoveRequest(self.Name)
+    self.BaseClass.Cleanup( self )
 end
