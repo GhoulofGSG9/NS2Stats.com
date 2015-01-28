@@ -41,6 +41,15 @@ local Enabled = true
 
 function Plugin:Initialise()
 	self.Enabled = true
+
+    if self.Config.UseSteamTime then
+        InfoHub:Request( self.Name, "STEAMPLAYTIME")
+    end
+
+    if not self.Config.ForceSteamTime then
+        InfoHub:Request( self.Name, "NS2STATS")
+    end
+
 	return true
 end
 
@@ -118,7 +127,7 @@ function Plugin:Check( Player, ComCheck )
     end
     
     if not PlayTime or PlayTime < 0 then return end
-    
+
     local CheckTime = self.Config.MinPlaytime
     
     if ComCheck then CheckTime = self.Config.MinComPlaytime end
@@ -132,4 +141,9 @@ function Plugin:Check( Player, ComCheck )
         self:Kick( Player )
         return false
     end
+end
+
+function Plugin:CleanUp()
+    InfoHub:RemoveRequest( self.Name )
+    self.BaseClass.Cleanup( self )
 end
