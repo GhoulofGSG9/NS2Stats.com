@@ -89,7 +89,6 @@ function PlayerInfoHub:Request( Name, DataType)
 
 
     for _, client in ipairs(Shine.GetAllClients()) do
-        Print("ho")
         self:OnConnect(client)
     end
 end
