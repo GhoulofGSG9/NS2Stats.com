@@ -89,7 +89,6 @@ function PlayerInfoHub:Request( Name, DataType)
 
 
     for _, client in ipairs(Shine.GetAllClients()) do
-        Print("ho")
         self:OnConnect(client)
     end
 end
@@ -236,7 +235,7 @@ function PlayerInfoHub:GetSteamData( SteamId )
     return self.SteamData[ SteamId ]
 end
 
-wfunction PlayerInfoHub:GetIsRequestFinished( SteamId )
+function PlayerInfoHub:GetIsRequestFinished( SteamId )
     return (not self.Requests.STEAMPLAYTIME[1] or self.SteamData[ SteamId ].Playtime ~= -2 ) and
             (not self.Requests.STEAMBADGES[1] or self.SteamData[ SteamId ].Badges.Normal ~= -2) and
             (not self.Requests.NS2STATS[1] or self.Ns2StatsData[ SteamId ] ~= -2) and GetHiveDataBySteamId(SteamId)
