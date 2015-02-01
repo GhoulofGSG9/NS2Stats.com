@@ -564,15 +564,12 @@ function Plugin:CheckCommanders( Gamerules )
 	local Team1Com = Team1 and Team1:GetCommander()
 	local Team2Com = Team2 and Team2:GetCommander()
 	
-	local Team1Ready = self.Teams[ 1 ].Ready
-	local Team2Ready = self.Teams[ 2 ].Ready
-	
-	if Team1Ready and not Team1Com then
-		Team1Ready = false
+	if self.Teams[ 1 ].Ready and not Team1Com then
+        self.Teams[ 1 ].Ready = false
 		self:Notify( nil, "%s is no longer ready.", true, self:GetTeamName( 1 ) )
 	end
-	if Team2Ready and not Team2Com then
-		Team2Ready = false
+	if self.Teams[ 2 ].Ready and not Team2Com then
+        self.Teams[ 2 ].Ready = false
 		self:Notify(nil, "%s is no longer ready.", true, self:GetTeamName( 2 ) )
 	end
 	
@@ -813,8 +810,8 @@ function Plugin:CreateCommands()
 			self:Notify( Client:GetControllingPlayer(), "Your team needs to have a Commander before you can set it ready !")
 			return
 		end
-		
-		Ready = not Ready
+
+        self.Teams[ TeamNumber ].Ready = not self.Teams[ TeamNumber ].Ready
 		
 		self:Notify( nil, "%s is now %s", true, self:GetTeamName( TeamNumber ), Ready and "ready" or "not ready" )
 	end
