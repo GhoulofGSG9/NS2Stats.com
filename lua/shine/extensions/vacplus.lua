@@ -8,7 +8,7 @@ local Notify = Shared.Message
 Plugin.Version = "1.0"
 Plugin.HasConfig = true
 
-Plugin.ConfigName = "Ns2StatsBadges.json"
+Plugin.ConfigName = "vacplus.json"
 Plugin.DefaultConfig =
 {
     CheckVACBans = true,
@@ -68,3 +68,5 @@ function Plugin:CleanUp()
     InfoHub:RemoveRequest( "VAC+" )
     self.BaseClass.Cleanup( self )
 end
+
+Shine:RegisterExtension( "vacplus", Plugin )
