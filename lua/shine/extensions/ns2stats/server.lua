@@ -157,7 +157,7 @@ function Plugin:FirstThink()
 
 	self:OnGameReset()
 
-	self:SetupHooks()
+        self:SetupHooks()
 
 	--Timers
 
@@ -181,6 +181,8 @@ end
 
 --Game reset
 function Plugin:OnGameReset()
+    PROFILE("NS2Stats:OnGameReset()")
+
 	--Resets all Stats
 	self.Working = true
 
@@ -230,7 +232,9 @@ function Plugin:SetGameState( Gamerules, NewState, OldState )
 end
 
 --Gameend
-function Plugin:EndGame( Gamerules, WinningTeam )         
+function Plugin:EndGame( Gamerules, WinningTeam )
+    PROFILE("NS2Stats:EndGame()")
+
 	if self.Config.Awards then self:SendAwardListToClients() end
 	self:AddPlayersToLog( 1 )
 	
@@ -263,6 +267,8 @@ end
 
 --Player Connected
 function Plugin:ClientConfirmConnect( Client )
+    PROFILE("NS2Stats:ClientConfirmConnect()")
+
 	if not Client or Client:GetIsVirtual() then return end
 	
 	local Params =
@@ -284,6 +290,8 @@ end
 
 --Player Disconnect
 function Plugin:ClientDisconnect( Client )
+    PROFILE("NS2Stats:ClientDisconnect()")
+
 	if not Client then return end
 	
 	local PlayerInfo = self:GetPlayerByClient( Client )
@@ -301,6 +309,8 @@ end
 
 --score changed
 function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
+    PROFILE("NS2Stats:OnPlayerScoreChanged()")
+
 	if not self.RoundStarted then return end
 	
 	local Client = Shine.GetClientByID( PlayerInfoEntity.clientId )  
@@ -335,6 +345,8 @@ function Plugin:OnPlayerScoreChanged( PlayerInfoEntity )
 end
 
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam )
+    PROFILE("NS2Stats:PostJoinTeam()")
+
 	if not self.RoundStarted then return end
 
 	local PlayerInfo = self:GetPlayerByClient( Player:GetClient() )
@@ -474,6 +486,7 @@ function Plugin:PostRadiusDamage( entities, centerOrigin, radius, fullDamage, do
 end
 
 function Plugin:OnMeleeMiss( weapon, player )
+    PROFILE("NS2Stats:OnMeleeMiss()")
 	if not self.RoundStarted then return end
 
 	self:AddMissToLog( player, weapon )
@@ -481,6 +494,7 @@ end
 
 --add Hit
 function Plugin:AddHitToLog( Target, Attacker, Doer, Damage )
+    PROFILE("NS2Stats:AddHitToLog()")
 	if not Attacker then return end
 	
 	if Target:isa( "Player" ) then
@@ -491,7 +505,9 @@ function Plugin:AddHitToLog( Target, Attacker, Doer, Damage )
 end
 
 --Add miss
-function Plugin:AddMissToLog( Attacker, Doer )
+function Plugin:AddMissToLog( Attacker, Doer)
+    PROFILE("NS2Stats:AddMissToLog()")
+
 	local Client = Attacker and Attacker:GetClient()
 	if not Client then return end
 
@@ -872,6 +888,8 @@ end
 
 --Structure gets killed
 function Plugin:OnStructureKilled( Structure, Attacker , Doer )
+    PROFILE("NS2Stats:OnStructureKilled()")
+
 	if not self.BuildingsInfos[ Structure:GetId() ] or not self.RoundStarted then return end
 	self.BuildingsInfos[ Structure:GetId() ] = nil
 	
@@ -928,6 +946,8 @@ end
 
 --Entity Killed
 function Plugin:OnEntityKilled(Gamerules, TargetEntity, Attacker, Inflictor)
+    PROFILE("NS2Stats:OnEntityKilled()")
+
 	if not self.RoundStarted then return end
 	
 	if TargetEntity:isa( "Player" ) then
@@ -947,6 +967,7 @@ end
 
 --add Player death to Log
 function Plugin:AddDeathToLog( Target, Attacker, Doer )
+    PROFILE("NS2Stats:AddDeathToLog()")
 	if not self.RoundStarted then return end
 
 	if Attacker and Doer and Target then
@@ -1078,7 +1099,8 @@ end
 --Log functions
 
 --add to log
-function Plugin:AddLog( Params )    
+function Plugin:AddLog( Params )
+    PROFILE("NS2Stats:AddLog()")
 	if self.RoundFinished or not Params then return end
 	
 	if Shared.GetCheatsEnabled() and self.StatsEnabled then 
@@ -1119,6 +1141,7 @@ end
 
 --add playerlist to log
 function Plugin:AddPlayersToLog( Type )
+    PROFILE("NS2Stats:AddPlayersToLog()")
 	local Temp = {
 		action = Type == 0 and "player_list_start" or "player_list_end",
 		list = self.PlayersInfos
@@ -1128,6 +1151,7 @@ end
 
 --Add server infos
 function Plugin:AddServerInfos( Params )
+    PROFILE("NS2Stats:AddServerInfos()")
 
 	local Mods = {}
 	local GetMod = Server.GetActiveModId
@@ -1168,6 +1192,7 @@ end
 
 --send Log to NS2Stats Server
 function Plugin:SendData()
+    PROFILE("NS2Stats:SendData()")
 	if not self.StatsEnabled or self.Working or self.LogPartNumber <= self.LogPartToSend and not self.RoundFinished then
 		return
 	end
@@ -1207,7 +1232,8 @@ function Plugin:SendData()
 end
 
 --Analyze the answer of server
-function Plugin:OnHTTPResponseFromSend( Response )	
+function Plugin:OnHTTPResponseFromSend( Response )
+    PROFILE("NS2Stats:OnHTTPResponseFromSend()")
 	local Success, Message = pcall( JsonDecode, Response )
 	
 	if Success and Message then
@@ -1250,6 +1276,7 @@ end
 	
 --add Player to table
 function Plugin:AddPlayerToTable( Client )
+    PROFILE("NS2Stats:AddPlayerToTable()")
 	if not Client then return end
 	
 	local Entry = self:CreatePlayerEntry( Client )
@@ -1260,6 +1287,7 @@ end
 
 --create new entry
 function Plugin:CreatePlayerEntry( Client )
+    PROFILE("NS2Stats:CreatePlayerEntry()")
 	if not Client.GetControllingPlayer then
 		Notify( "[NS2Stats Debug]: Tried to create nil Player" )
 		return
@@ -1302,6 +1330,7 @@ end
 
 --Update Player Entry
 function Plugin:UpdatePlayerInTable(Client, Player, PlayerInfo)
+    PROFILE("NS2Stats:UpdatePlayerInTable()")
 	if PlayerInfo.dc or not self.RoundStarted then return end
 	
 	PlayerInfo.name = Player:GetName()
@@ -1418,7 +1447,8 @@ function Plugin:UpdateWeaponTable()
 	end
 end   
 
-function Plugin:UpdateWeaponData( Client ) 
+function Plugin:UpdateWeaponData( Client )
+    PROFILE("NS2Stats:UpdateWeaponData()")
 	if not Client then return end
 	
 	local PlayerInfo = self:GetPlayerByClient( Client )
@@ -1449,6 +1479,7 @@ end
 
 --send Status report to NS2Stats
 function Plugin:SendServerStatus( GameState )
+    PROFILE("NS2Stats:SendServerStatus()")
 	if self.RoundFinished then return end
 	local stime = Shared.GetGMTString( false )
 	local gameTime = Shared.GetTime() - self.GameStartTime
@@ -1509,6 +1540,7 @@ end
 
 local bGettingServerId
 function Plugin:GetServerId()
+    PROFILE("NS2Stats:GetServerId()")
 	if bGettingServerId then return end
 
 	if not self.ServerId then
@@ -1601,6 +1633,7 @@ end
 
 --Awards
 function Plugin:MakeAwardsList()
+    PROFILE("NS2Stats:MakeAwardsList()")
 	self:AddAward( self:AwardMostDamage() )
 	self:AddAward( self:AwardMostKillsAndAssists() )
 	self:AddAward( self:AwardMostConstructed() )

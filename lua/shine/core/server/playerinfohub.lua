@@ -25,6 +25,7 @@ local last = 0
 local working = false
 
 local function ProcessQueue()
+    PROFILE("PlayerInfoHub:ProcessQueue()")
     working = true
     current = current + 1
 
@@ -73,7 +74,8 @@ end
 PlayerInfoHub.Requests = {
     NS2STATS = {},
     STEAMPLAYTIME = {},
-    STEAMBADGES = {}
+    STEAMBADGES = {},
+    STEAMBANS ={}
 }
 
 function PlayerInfoHub:Request( Name, DataType)
@@ -112,6 +114,7 @@ function PlayerInfoHub:RemoveRequest( Name, DataType)
 end
 
 function PlayerInfoHub:OnConnect( Client )
+    PROFILE("PlayerInfoHub:OnConnect()")
     if not Shine:IsValidClient( Client ) then return end
     
     local SteamId = Client:GetUserId()
@@ -131,31 +134,49 @@ function PlayerInfoHub:OnConnect( Client )
     if not self.SteamData[ SteamId ].PlayTime and self.Requests.STEAMPLAYTIME[1] then
         PlayerInfoHub.SteamData[ SteamId ].PlayTime = -2
 
-        AddToHTTPQueue( StringFormat( "http://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v1/?key=2EFCCE2AF701859CDB6BBA3112F95972&SteamId=%s", SteamId64 ), function( Response )
+        AddToHTTPQueue( StringFormat( "http://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=2EFCCE2AF701859CDB6BBA3112F95972&SteamId=%s&appids_filter[0]=4920", SteamId64 ), function( Response )
             local Temp = JsonDecode( Response )
             
-            Temp = Temp and Temp.response and Temp.response.games
+            Temp = Temp and Temp.response and Temp.response.games and Temp.response.games[1]
             if not Temp then
                 PlayerInfoHub.SteamData[ SteamId ].PlayTime = 0
                 return 
-            end
-            
-            for i = 1, #Temp do
-                if Temp[ i ].appid == 4920 then
-                    PlayerInfoHub.SteamData[ SteamId ].PlayTime = Temp[ i ].playtime_forever and Temp[ i ].playtime_forever * 60 or 0
-                    return
-                end
+            else
+                PlayerInfoHub.SteamData[ SteamId ].PlayTime = Temp.playtime_forever and Temp.playtime_forever * 60 or 0
             end
 
-            if not PlayerInfoHub.Requests.STEAMBADGES[1] or PlayerInfoHub.SteamData[ SteamId ].Badges.Normal ~= -2 then
+            if not PlayerInfoHub.Requests.STEAMBADGES[1] or PlayerInfoHub.SteamData[ SteamId ].Badges.Normal ~= -2 and
+                    (not PlayerInfoHub.Requests.STEAMBANS[1] or PlayerInfoHub.SteamData[ SteamId ].Bans ~= -2) then
                 Call( "OnReceiveSteamData", Client, PlayerInfoHub.SteamData[ SteamId ] )
             end
         end, function()
             PlayerInfoHub.SteamData[ SteamId ].PlayTime = -1
-            if not PlayerInfoHub.Requests.STEAMBADGES[1] or PlayerInfoHub.SteamData[ SteamId ].Badges.Normal ~= -2 then
+            if not PlayerInfoHub.Requests.STEAMBADGES[1] or PlayerInfoHub.SteamData[ SteamId ].Badges.Normal ~= -2 and
+                    (not PlayerInfoHub.Requests.STEAMBANS[1] or PlayerInfoHub.SteamData[ SteamId ].Bans ~= -2) then
                 Call( "OnReceiveSteamData", Client, PlayerInfoHub.SteamData[ SteamId ] )
             end
         end )
+    end
+
+    --Todo Vac Bans http://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=2EFCCE2AF701859CDB6BBA3112F95972&steamids=76561198009337703
+    if not self.SteamData[ SteamId ].Bans and self.Requests.STEAMBANS[1] then
+        self.SteamData[ SteamId ].Bans = -2
+        AddToHTTPQueue( StringFormat( "http://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=2EFCCE2AF701859CDB6BBA3112F95972&steamids=%s", SteamId64 ),function( Response )
+            local data = JsonDecode( Response )
+            PlayerInfoHub.SteamData[ SteamId ].Bans = data and data.players and data.players[1] or 0
+
+            if (not PlayerInfoHub.Requests.STEAMPLAYTIME[1] or PlayerInfoHub.SteamData[ SteamId ].Playtime ~= -2) and
+                    (not PlayerInfoHub.Requests.STEAMBADGES[1] or PlayerInfoHub.SteamData[ SteamId ].Badges.Normal ~= -2) then
+                Call( "OnReceiveSteamData", Client, PlayerInfoHub.SteamData[ SteamId ] )
+            end
+        end, function()
+            PlayerInfoHub.SteamData[ SteamId ].Bans = -1
+
+            if (not PlayerInfoHub.Requests.STEAMPLAYTIME[1] or PlayerInfoHub.SteamData[ SteamId ].Playtime ~= -2) and
+                    (not PlayerInfoHub.Requests.STEAMBADGES[1] or PlayerInfoHub.SteamData[ SteamId ].Badges.Normal ~= -2) then
+                Call( "OnReceiveSteamData", Client, PlayerInfoHub.SteamData[ SteamId ] )
+            end
+        end)
     end
 
     if not self.SteamData[ SteamId ].Badges.Normal and self.Requests.STEAMBADGES[1] then
@@ -179,13 +200,16 @@ function PlayerInfoHub:OnConnect( Client )
                 end
             end
 
-            if not PlayerInfoHub.Requests.STEAMPLAYTIME[1] or PlayerInfoHub.SteamData[ SteamId ].Playtime ~= -2 then
+            if not PlayerInfoHub.Requests.STEAMPLAYTIME[1] or PlayerInfoHub.SteamData[ SteamId ].Playtime ~= -2 and
+                    (not PlayerInfoHub.Requests.STEAMBANS[1] or PlayerInfoHub.SteamData[ SteamId ].Bans ~= -2) then
                 Call( "OnReceiveSteamData", Client, PlayerInfoHub.SteamData[ SteamId ] )
             end
         end, function()
-            if not PlayerInfoHub.Requests.STEAMPLAYTIME[1] or PlayerInfoHub.SteamData[ SteamId ].Playtime ~= -2 then
-                PlayerInfoHub.SteamData[ SteamId ].Badges.Normal = -1
-                PlayerInfoHub.SteamData[ SteamId ].Badges.Foil = -1
+            PlayerInfoHub.SteamData[ SteamId ].Badges.Normal = -1
+            PlayerInfoHub.SteamData[ SteamId ].Badges.Foil = -1
+
+            if not PlayerInfoHub.Requests.STEAMPLAYTIME[1] or PlayerInfoHub.SteamData[ SteamId ].Playtime ~= -2 and
+                    (not PlayerInfoHub.Requests.STEAMBANS[1] or PlayerInfoHub.SteamData[ SteamId ].Bans ~= -2) then
                 Call( "OnReceiveSteamData", Client, PlayerInfoHub.SteamData[ SteamId ] )
             end
         end )

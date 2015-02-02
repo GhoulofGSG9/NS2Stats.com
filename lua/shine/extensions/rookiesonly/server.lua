@@ -55,6 +55,7 @@ function Plugin:AutoCheck( Client )
 end
 
 function Plugin:Check( Player )
+    PROFILE("Rookies Only:Check()")
     if not Player then return end
 
     local Client = Player:GetClient()
