@@ -79,6 +79,7 @@ function Plugin:JoinTeam( _, Player, NewTeam, _, ShineForce )
 end
 
 function Plugin:Check( Player )
+    PROFILE("EloTeamRestriction:Check()")
     if not Player then return end
 
 	local Client = Player:GetClient()

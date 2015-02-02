@@ -97,6 +97,7 @@ function Plugin:AutoCheck( Client )
 end
 
 function Plugin:Check( Player, ComCheck )
+    PROFILE("NoRookies:Check()")
 	if not Player or not ComCheck and not self.Config.BlockTeams or not Enabled then return end
 	
     local Client = Player:GetClient()

@@ -38,6 +38,8 @@ function Plugin:ReceiveStatsAwards( Message )
 end
 
 function Plugin:Mapdata( GUIMinimap )
+    PROFILE("NS2Stats:Mapdata()")
+
 	if self.MapDataSend then return end
 
 	self.MapDataSend = true
