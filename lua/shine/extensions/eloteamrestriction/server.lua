@@ -60,12 +60,14 @@ end
 function Plugin:ClientConfirmConnect( Client )
     local Player = Client:GetControllingPlayer()
     if self.Config.ShowInform and Player then self:Notify( Player, self.Config.InformMessage ) end
+
+    self:AutoCheck( Client )
 end
 
 function Plugin:ClientDisconnect( Client )
     local SteamId = Client:GetUserId()
     if not SteamId or SteamId <= 0 then return end
-    
+
     self:DestroyTimer(StringFormat( "Kick_%s", SteamId ))
 end
 
@@ -74,8 +76,29 @@ function Plugin:JoinTeam( _, Player, NewTeam, _, ShineForce )
         self:DestroyTimer( StringFormat( "Kick_%s", SteamId ))
         return
     end
-	
+
 	return self:Check( Player )
+end
+
+function Plugin:OnReceiveSteamData( Client )
+    self:AutoCheck( Client )
+end
+
+function Plugin:OnReceiveHiveData( Client )
+    self:AutoCheck( Client )
+end
+
+function Plugin:OnReceiveNs2StatsData( Client )
+    self:AutoCheck( Client )
+end
+
+function Plugin:AutoCheck( Client )
+    local Player = Client:GetControllingPlayer()
+    local SteamId = Client:GetUserId()
+
+    if not Player or not InfoHub:GetIsRequestFinished( SteamId ) then return end
+
+    self:Check( Player )
 end
 
 function Plugin:Check( Player )

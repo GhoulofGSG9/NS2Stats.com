@@ -64,22 +64,6 @@ function Plugin:EndGame()
     Enabled = true
 end
 
-function Plugin:OnReceiveSteamData( Client )
-    self:AutoCheck( Client )
-end
-
-function Plugin:OnReceiveHiveData( Client )
-    self:AutoCheck( Client )
-end
-
-function Plugin:OnReceiveNs2StatsData( Client )
-    self:AutoCheck( Client )
-end
-
-function Plugin:ClientConfirmConnect( Client )
-    self:AutoCheck( Client )
-end
-
 --noinspection UnusedDef
 function Plugin:CheckCommLogin( CommandStation, Player )
     if not self.Config.BlockCC or not Player or not Player.GetClient or Shine.GetHumanPlayerCount() < self.Config.MinPlayer then return end
@@ -87,36 +71,27 @@ function Plugin:CheckCommLogin( CommandStation, Player )
     return self:Check( Player, true )
 end
 
-function Plugin:AutoCheck( Client )
-    local Player = Client:GetControllingPlayer()
-    local SteamId = Client:GetUserId()
-
-    if not Player or not InfoHub:GetIsRequestFinished( SteamId ) then return end
-
-    self:Check( Player )
-end
-
 function Plugin:Check( Player, ComCheck )
     PROFILE("NoRookies:Check()")
 	if not Player or not ComCheck and not self.Config.BlockTeams or not Enabled then return end
-	
+
     local Client = Player:GetClient()
     if not Shine:IsValidClient( Client ) or Shine:HasAccess( Client, "sh_ignorestatus" ) then return end
-    
+
     local SteamId = Client:GetUserId()
     if not SteamId or SteamId <= 0 then return end
-    
+
     if not InfoHub:GetIsRequestFinished( SteamId ) then self:Notify( Player, self.Config.WaitMessage ) return false end
-    
+
     local PlayTime
-    
-    local SteamData = InfoHub:GetSteamData( SteamId )    
+
+    local SteamData = InfoHub:GetSteamData( SteamId )
     if self.Config.UseSteamTime or self.Config.ForceSteamTime then
         PlayTime = SteamData.PlayTime
     end
-    
+
     if not self.Config.ForceSteamTime then
-		local HiveData = InfoHub:GetHiveData( SteamId )    
+		local HiveData = InfoHub:GetHiveData( SteamId )
 		if type( HiveData ) == "table" and HiveData.playTime and ( not PlayTime or HiveData.playTime > PlayTime ) then
 			PlayTime = tonumber( HiveData.playTime )
 		end
@@ -126,13 +101,13 @@ function Plugin:Check( Player, ComCheck )
 			PlayTime = tonumber( Ns2StatsData.time_played )
 		end
     end
-    
+
     if not PlayTime or PlayTime < 0 then return end
 
     local CheckTime = self.Config.MinPlaytime
-    
+
     if ComCheck then CheckTime = self.Config.MinComPlaytime end
-    
+
     if PlayTime < CheckTime * 3600 then
         self:Notify( Player, self.Config.BlockMessage )
 		Notify( StringFormat("[No Rookies]: %s failed the check with %s hours", Shine.GetClientInfo( Client ), PlayTime / 3600 ))
@@ -142,9 +117,4 @@ function Plugin:Check( Player, ComCheck )
         self:Kick( Player )
         return false
     end
-end
-
-function Plugin:CleanUp()
-    InfoHub:RemoveRequest( self.Name )
-    self.BaseClass.Cleanup( self )
 end

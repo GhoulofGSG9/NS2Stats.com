@@ -39,21 +39,6 @@ function Plugin:Initialise()
     return true
 end
 
-function Plugin:OnReceiveHiveData( Client )
-    self:AutoCheck( Client )
-end
-
-function Plugin:ClientConfirmConnect( Client )
-    self:AutoCheck( Client )
-end
-
-function Plugin:AutoCheck( Client )
-    local Player = Client:GetControllingPlayer()
-    local SteamId = Client:GetUserId()
-
-    self:Check( Player )
-end
-
 function Plugin:Check( Player )
     PROFILE("Rookies Only:Check()")
     if not Player then return end
@@ -65,18 +50,17 @@ function Plugin:Check( Player )
     local SteamId = Client:GetUserId()
     if not SteamId or SteamId <= 0 then return end
 
+    if not InfoHub:GetIsRequestFinished( SteamId ) then self:Notify( Player, self.Config.WaitMessage ) return false end
+
     local HiveData = InfoHub:GetHiveData(SteamId)
-
-    if not HiveData then self:Notify( Player, self.Config.WaitMessage ) return false end
-
-    if HiveData == -1 then return end
+    if not HiveData then return end
 
     if self.Mode == 1 then
         if not HiveData.level or tonumber(HiveData.level) <= self.Config.MaxLevel then
-            return true
+            return
         end
     elseif not HiveData.playTime or tonumber(HiveData.playTime) <= self.Config.MaxPlaytime then
-        return true
+        return
     end
 
     self:Notify( Player, self.Config.BlockMessage )
@@ -86,9 +70,4 @@ function Plugin:Check( Player )
     end
     self:Kick( Player )
     return false
-end
-
-function Plugin:CleanUp()
-    InfoHub:RemoveRequest(self.Name)
-    self.BaseClass.Cleanup( self )
 end
