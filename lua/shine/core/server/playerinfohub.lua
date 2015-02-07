@@ -78,6 +78,8 @@ PlayerInfoHub.Requests = {
     STEAMBANS ={}
 }
 
+PlayerInfoHub.HiveQueue = {}
+
 function PlayerInfoHub:Request( Name, DataType)
     if not Name or not DataType then return end
 
@@ -124,6 +126,13 @@ function PlayerInfoHub:OnConnect( Client )
     if not self.SteamData[ SteamId ] then 
         self.SteamData[ SteamId ] = {}
         self.SteamData[ SteamId ].Badges = {}
+    end
+
+    if not self:GetHiveData( SteamId ) then
+        self.HiveQueue[ SteamId ] = true
+        Shine.Timer.Create( StringFormat("HiveRequest%s", SteamId), 5, 1, function()
+            PlayerInfoHub.HiveQueue[ SteamId ] = nil
+        end )
     end
 
     --[[
@@ -243,6 +252,8 @@ Add("OnSetPlayerLevel", "HiveRequestFinished", function(Player)
     local SteamId = Client and Client:GetUserId()
 
     if SteamId then
+        Shine.Timer.Destroy(StringFormat("HiveRequest%s", SteamId))
+        PlayerInfoHub.HiveQueue[ SteamId ] = nil
         Call( "OnReceiveHiveData", Client, GetHiveDataBySteamId(SteamId) )
     end
 end)
@@ -262,5 +273,5 @@ end
 function PlayerInfoHub:GetIsRequestFinished( SteamId )
     return (not self.Requests.STEAMPLAYTIME[1] or self.SteamData[ SteamId ].Playtime ~= -2 ) and
             (not self.Requests.STEAMBADGES[1] or self.SteamData[ SteamId ].Badges.Normal ~= -2) and
-            (not self.Requests.NS2STATS[1] or self.Ns2StatsData[ SteamId ] ~= -2) and GetHiveDataBySteamId(SteamId)
+            (not self.Requests.NS2STATS[1] or self.Ns2StatsData[ SteamId ] ~= -2) and not self.HiveQueue[ SteamId ]
 end
