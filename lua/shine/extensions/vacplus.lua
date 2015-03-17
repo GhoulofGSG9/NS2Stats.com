@@ -3,8 +3,6 @@ local InfoHub = Shine.PlayerInfoHub
 
 local Plugin = {}
 
-local Notify = Shared.Message
-
 Plugin.Version = "1.0"
 Plugin.HasConfig = true
 
