@@ -36,8 +36,7 @@ Plugin.ConfigName = "Ns2Stats.json"
 Plugin.DefaultConfig =
 {
 	SendMapData = false, --Send Mapdata, only set true if minimap is missing at website or is incorrect
-	StatusReport = false, -- send Status to NS2Stats every min
-	EnableHiveStats = true, -- should we enable UWE Hive Stats
+	StatusReport = false, -- send Status to NS2Stats every 30 sec
 	WebsiteUrl = "http://ns2stats.com", --this is the ns2stats URL
 	Awards = true, --show Award
 	ShowNumAwards = 4, --how many Awards should be shown at the end of the game?
@@ -157,7 +156,7 @@ function Plugin:FirstThink()
 
 	self:OnGameReset()
 
-        self:SetupHooks()
+	self:SetupHooks()
 
 	--Timers
 
@@ -1132,7 +1131,7 @@ function Plugin:AddLog( Params )
 	Log.Length = Log.Length + StringLen( LogString )
 
 	--avoid that log gets too long
-	if Log.Length > 32000 then
+	if Log.Length > 30000 then
 		self.LogPartNumber = self.LogPartNumber + 1    
 		if self.StatsEnabled then self:SendData() end
 	end
@@ -1220,15 +1219,20 @@ function Plugin:SendData()
 	Shine.TimedHTTPRequest( SendUrl, "POST", Params, function( Response )
 			self:OnHTTPResponseFromSend( Response )
 	end, function()
-		self.working = false 
-		self.ResendCount = self.ResendCount + 1 
-		if self.ResendCount > 5 then 
-			self.StatsEnabled = false
-			Notify( "Ns2Stats.com seems to be not available at the moment. Disabling stats sending" )
-			return
-		end
+		self:OnHTTPTimeoutFromSend()
+	end, 15)
+end
+
+function Plugin:OnHTTPTimeoutFromSend()
+	self.working = false
+	self.ResendCount = self.ResendCount + 1
+
+	if self.ResendCount > 1 then
+		self.StatsEnabled = false
+		Notify( "Ns2Stats.com seems to be not available at the moment. Disabling stats sending" )
+	else
 		self:SendData()
-	end, 30)
+	end
 end
 
 --Analyze the answer of server
@@ -1236,38 +1240,42 @@ function Plugin:OnHTTPResponseFromSend( Response )
     PROFILE("NS2Stats:OnHTTPResponseFromSend()")
 	local Success, Message = pcall( JsonDecode, Response )
 	
-	if Success and Message then
-		if Message.other then
+	if Success then
+		if Message.info == "LOG_RECEIVED_OK" then
+
+			self.Log[ self.LogPartToSend ] = nil
+			self.LogPartToSend = self.LogPartToSend  + 1
+			self.SuccessfulSends  = self.SuccessfulSends  + 1
+
+			self.working = false
+			self:SendData()
+
+		elseif Message.other then
+
 			self.StatsEnabled = false
 			Notify( StringFormat( "[NSStats]: %s", Message.other ))
-			return
-		end
-	
-		if Message.error == "NOT_ENOUGH_PLAYERS" then
+
+		elseif Message.error == "NOT_ENOUGH_PLAYERS" then
+
 			self.StatsEnabled = false
 			Notify( "[NS2Stats]: Send failed because of too less players " )
-			return
-		end	
 
-		if Message.link then
+		elseif Message.link then
+
 			local Link = StringFormat( "%s%s", self.Config.WebsiteUrl, Message.link)
 			Shine:Notify( nil, "", "", StringFormat("Round has been saved to NS2Stats : %s" , Link))
 			self.Config.Lastroundlink = Link
 			self:SaveConfig()
-			return
+
+		else --Ns2stats returned something we didn't expect so probably web-server is not working correctly.
+
+			self.StatsEnabled = false
+			Notify( "Ns2Stats.com seems to be not available at the moment. Disabling stats sending" )
+
 		end
+	else
+		self:OnHTTPTimeoutFromSend()
 	end
-	
-	if StringFind( Response, "LOG_RECEIVED_OK", nil, true ) then
-		self.Log[ self.LogPartToSend ] = nil
-		self.LogPartToSend = self.LogPartToSend  + 1
-		self.SuccessfulSends  = self.SuccessfulSends  + 1
-		self.Working = false
-		self:SendData()
-	else --we couldn't reach the NS2Stats Servers
-		self.Working = false
-		self:SimpleTimer( 5, function() self:SendData() end)
-	end    
 end
 
 --Log end 
@@ -1497,7 +1505,7 @@ function Plugin:SendServerStatus( GameState )
 		map = Shared.GetMapName(),
 	}
 
-	HTTPRequest( StringFormat( "%s/api/sendstatus", self.Config.WebsiteUrl ), "POST", Params, function() end )	
+	HTTPRequest( StringFormat( "%s/api/sendstatus", self.Config.WebsiteUrl ), "POST", Params)
 end
 --Timer end
 
@@ -1618,7 +1626,7 @@ function Plugin:CreateCommands()
 		Notify( StringFormat( "[NS2Stats]: %s  has been added as Tag to this roundlog", tag ))
 	end )    
 	Tag:AddParam{ Type = "string", TakeRestOfLine = true, Error = "Please specify a tag to be added.", MaxLength = 30 }
-	Tag:Help( "Adds the given tag to the Stats" )
+	Tag:Help( "Adds the given tag to the stats" )
 	
 	local Debug = self:BindCommand( "sh_statsdebug", "statsdebug", function( Client )
 		Shine:AdminPrint( Client, "NS2Stats Debug Report:" )
