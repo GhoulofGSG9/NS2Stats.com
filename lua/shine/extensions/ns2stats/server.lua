@@ -123,7 +123,12 @@ function Plugin:SetupHooks()
 end
 
 function Plugin:Initialise()
-	
+
+	--remove this once we have a new server
+	if self.Config.WebsiteUrl == "http://ns2stats.com" then
+		return false, "Ns2Stats.com is not operating anymore, thanks for all your support!"
+	end
+
 	if StringSub( self.Config.WebsiteUrl, 1, 7 ) ~= "http://" then
 		return false, "The website url of your config is not legit"
 	end
@@ -1916,7 +1921,9 @@ function Plugin:GetStatsURL()
 	return self.Config.WebsiteUrl
 end 
 
-function Plugin:Cleanup()	
+function Plugin:Cleanup()
+	self.Enabled = false
+
 	self.StatsEnabled = nil
 	self.SuccessfulSends = nil
 	self.ResendCount = nil
@@ -1940,6 +1947,4 @@ function Plugin:Cleanup()
 	self.DetonateCache = nil
 	
 	self.BaseClass.Cleanup( self )
-
-	self.Enabled = false
 end
