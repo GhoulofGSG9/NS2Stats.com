@@ -128,7 +128,7 @@ function PlayerInfoHub:OnConnect( Client )
         self.SteamData[ SteamId ].Badges = {}
     end
 
-    if not self:GetHiveData( SteamId ) then
+    if not Shine.IsNS2Combat and not self:GetHiveData( SteamId ) then
         self.HiveQueue[ SteamId ] = true
         Shine.Timer.Create( StringFormat("HiveRequest%s", SteamId), 5, 1, function()
             PlayerInfoHub.HiveQueue[ SteamId ] = nil
