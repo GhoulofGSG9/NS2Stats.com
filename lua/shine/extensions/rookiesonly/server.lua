@@ -34,6 +34,12 @@ Plugin.Name = "Rookies Only"
 Plugin.DisconnectReason = "You are not a rookie anymore"
 
 function Plugin:Initialise()
+    local Gamemode = Shine.GetGamemode()
+
+    if Gamemode ~= "ns2" then
+        return false, StringFormat( "The rookie-only plugin does not work with %s.", Gamemode )
+    end
+
     self.Enabled = true
     self.Config.Mode = math.Clamp( self.Config.Mode, 1, 2 )
     return true

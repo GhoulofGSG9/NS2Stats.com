@@ -167,7 +167,6 @@ function PlayerInfoHub:OnConnect( Client )
         end )
     end
 
-    --Todo Vac Bans http://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=2EFCCE2AF701859CDB6BBA3112F95972&steamids=76561198009337703
     if not self.SteamData[ SteamId ].Bans and self.Requests.STEAMBANS[1] then
         self.SteamData[ SteamId ].Bans = -2
         AddToHTTPQueue( StringFormat( "http://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=2EFCCE2AF701859CDB6BBA3112F95972&steamids=%s", SteamId64 ),function( Response )
