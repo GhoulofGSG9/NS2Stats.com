@@ -25,7 +25,7 @@ function Plugin:Initialise()
 	self.Enabled = true
 	
     if self.Config.Flags then
-        InfoHub:Request("NS2StatsBadges", "NS2STATS")
+        InfoHub:Request("NS2StatsBadges", "GEODATA")
     end
 
     if self.Config.SteamBadges then
@@ -77,10 +77,10 @@ function Plugin:OnReceiveSteamData( Client, SteamData )
     end
 end
 
-function Plugin:OnReceiveNs2StatsData( Client, Ns2StatsData )
+function Plugin:OnReceiveGeoData( Client, GeoData )
     if not self.Config.Flags then return end
     
-    local Nationality = type( Ns2StatsData ) == "table" and tostring( Ns2StatsData.nationality ) or "UNO"    
+    local Nationality = GeoData.country_code or "UNO"
     local SetBagde = self:SetBadge( Client, Nationality, 2 )
     
     if not SetBagde then
