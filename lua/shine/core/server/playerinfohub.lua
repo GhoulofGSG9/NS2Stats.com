@@ -198,7 +198,7 @@ function PlayerInfoHub:OnConnect( Client )
 			local data = JsonDecode( Response )
 			PlayerInfoHub.GeoData[ SteamId ] = data or 0
 
-            Call( "OnReceiveGeoData", Client, PlayerInfoHub.GeoData[ SteamId ] )
+			Call( "OnReceiveGeoData", Client, PlayerInfoHub.GeoData[ SteamId ] )
 		end, function()
 			PlayerInfoHub.GeoData[ SteamId ] = -1
 
@@ -292,5 +292,5 @@ function PlayerInfoHub:GetIsRequestFinished( SteamId )
 	return (not self.Requests.STEAMPLAYTIME[1] or self.SteamData[ SteamId ].Playtime ~= -2 ) and
 			(not self.Requests.STEAMBADGES[1] or self.SteamData[ SteamId ].Badges.Normal ~= -2) and
 			(not self.Requests.NS2STATS[1] or self.Ns2StatsData[ SteamId ] ~= -2) and
-			(not self.Requests.GEODATA[1][1] or self.GeoData[ SteamId ] ~= -2) and not self.HiveQueue[ SteamId ]
+			(not self.Requests.GEODATA[1] or self.GeoData[ SteamId ] ~= -2) and not self.HiveQueue[ SteamId ]
 end
