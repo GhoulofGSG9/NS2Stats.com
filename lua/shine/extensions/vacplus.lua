@@ -64,7 +64,10 @@ end
 
 function Plugin:CleanUp()
     InfoHub:RemoveRequest( "VAC+" )
+
     self.BaseClass.Cleanup( self )
+
+    self.Enabled = false
 end
 
 Shine:RegisterExtension( "vacplus", Plugin )

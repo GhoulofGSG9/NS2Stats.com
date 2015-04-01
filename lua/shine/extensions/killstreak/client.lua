@@ -94,9 +94,9 @@ function Plugin:ReceiveCommand( Message )
 end
 
 function Plugin:Cleanup()
+	self.Sounds = nil
+
     self.BaseClass.Cleanup( self )
-	
-    self.Sounds = nil
-	
-    self.Enabled = false
+
+	self.Enabled = false
 end

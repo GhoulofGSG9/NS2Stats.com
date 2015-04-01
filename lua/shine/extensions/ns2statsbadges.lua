@@ -41,8 +41,8 @@ function Plugin:SetBadge( Client, Badge, Row )
     if not GiveBadge then
 		if self.Enabled then
 			Notify( "[ERROR]: The Ns2StatsBadge plugin does not work without the Badges+ Mod !" )
-			self.Enabled = false
-		end
+            Shine:UnloadExtension( "ns2statsbadges" )
+        end
         return
     end
  
@@ -91,7 +91,10 @@ end
 
 function Plugin:CleanUp()
     InfoHub:RemoveRequest("NS2StatsBadges")
+
     self.BaseClass.Cleanup( self )
+
+    self.Enabled = false
 end
 
 Shine:RegisterExtension( "ns2statsbadges", Plugin )
