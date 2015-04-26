@@ -1922,8 +1922,6 @@ function Plugin:GetStatsURL()
 end 
 
 function Plugin:Cleanup()
-	self.Enabled = false
-
 	self.StatsEnabled = nil
 	self.SuccessfulSends = nil
 	self.ResendCount = nil
@@ -1947,4 +1945,6 @@ function Plugin:Cleanup()
 	self.DetonateCache = nil
 	
 	self.BaseClass.Cleanup( self )
+
+	self.Enabled = false
 end

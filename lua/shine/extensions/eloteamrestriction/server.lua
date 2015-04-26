@@ -267,5 +267,8 @@ end
 
 function Plugin:CleanUp()
     InfoHub:RemoveRequest(self.Name)
+
     self.BaseClass.Cleanup( self )
+
+    self.Enabled = false
 end

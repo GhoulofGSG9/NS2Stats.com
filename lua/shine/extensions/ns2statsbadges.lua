@@ -25,7 +25,7 @@ function Plugin:Initialise()
 	self.Enabled = true
 	
     if self.Config.Flags then
-        InfoHub:Request("NS2StatsBadges", "NS2STATS")
+        InfoHub:Request("NS2StatsBadges", "GEODATA")
     end
 
     if self.Config.SteamBadges then
@@ -41,8 +41,8 @@ function Plugin:SetBadge( Client, Badge, Row )
     if not GiveBadge then
 		if self.Enabled then
 			Notify( "[ERROR]: The Ns2StatsBadge plugin does not work without the Badges+ Mod !" )
-			self.Enabled = false
-		end
+            Shine:UnloadExtension( "ns2statsbadges" )
+        end
         return
     end
  
@@ -77,10 +77,10 @@ function Plugin:OnReceiveSteamData( Client, SteamData )
     end
 end
 
-function Plugin:OnReceiveNs2StatsData( Client, Ns2StatsData )
+function Plugin:OnReceiveGeoData( Client, GeoData )
     if not self.Config.Flags then return end
     
-    local Nationality = type( Ns2StatsData ) == "table" and tostring( Ns2StatsData.nationality ) or "UNO"    
+    local Nationality = GeoData.country_code or "UNO"
     local SetBagde = self:SetBadge( Client, Nationality, 2 )
     
     if not SetBagde then
@@ -91,7 +91,10 @@ end
 
 function Plugin:CleanUp()
     InfoHub:RemoveRequest("NS2StatsBadges")
+
     self.BaseClass.Cleanup( self )
+
+    self.Enabled = false
 end
 
 Shine:RegisterExtension( "ns2statsbadges", Plugin )

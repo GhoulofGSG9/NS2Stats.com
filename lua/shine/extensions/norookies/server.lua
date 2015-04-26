@@ -40,9 +40,14 @@ Plugin.DisconnectReason = "You didn't fit to the required playtime"
 local Enabled = true
 
 function Plugin:Initialise()
+    local Gamemode = Shine.GetGamemode()
+    if Gamemode ~= "ns2" then
+        return false, StringFormat( "The no-rookie plugin does not work with %s.", Gamemode )
+    end
+
 	self.Enabled = true
 
-    if self.Config.UseSteamTime then
+    if self.Config.UseSteamTime or self.Config.ForceSteamTime then
         InfoHub:Request( self.Name, "STEAMPLAYTIME")
     end
 

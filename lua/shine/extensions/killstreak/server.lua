@@ -208,9 +208,9 @@ function Plugin:CreateCommands()
 end
 
 function Plugin:Cleanup()
-    self.BaseClass.Cleanup( self )
-	
     self.Killstreaks = nil
-	
+
+    self.BaseClass.Cleanup( self )
+
     self.Enabled = false
 end
